@@ -1,5 +1,6 @@
 import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
+import { ConfigService } from '../config.service/config.service';
 import { TerminalSize } from '../terminal/terminal';
 import { ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState } from './websocket.service.types';
 
@@ -10,11 +11,10 @@ export interface IDisposable
     dispose() : void;
 }
 
+// Reflects the IShell interface
 export class WebsocketStream implements IDisposable
 {
     private connectionUrl : string;
-    // TODO oauth
-    private jwt: string;
     private websocket : HubConnection;
 
     // stdout
@@ -29,10 +29,9 @@ export class WebsocketStream implements IDisposable
     private shellStateSubject: BehaviorSubject<ShellState> = new BehaviorSubject<ShellState>({loading: true, disconnected: false});
     public shellStateData: Observable<ShellState> = this.shellStateSubject.asObservable();
 
-    constructor(connectionUrl: string, jwt: string, inputStream: BehaviorSubject<string>, resizeStream: BehaviorSubject<TerminalSize>)
+    constructor(private configService: ConfigService, connectionUrl: string, inputStream: BehaviorSubject<string>, resizeStream: BehaviorSubject<TerminalSize>)
     {
         this.connectionUrl = connectionUrl;
-        this.jwt = jwt; // it is currently the apiKey
 
         this.inputSubscription = inputStream.asObservable().subscribe(
             async (data) => 
@@ -99,7 +98,7 @@ export class WebsocketStream implements IDisposable
         const connectionBuilder = new HubConnectionBuilder();
         connectionBuilder.withUrl(
             this.connectionUrl, 
-            { headers: { 'X-API-KEY': this.jwt } } // TODO: change to authorization header for jwt
+            { headers: {authorization: this.configService.getAuthHeader() } }
         );
     
         return connectionBuilder.build();

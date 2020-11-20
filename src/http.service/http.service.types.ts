@@ -72,7 +72,7 @@ export interface ConnectionSummary {
     serverType: TargetType
 }
 
-export interface SsmTargetInfo {
+export interface SsmTargetSummary {
     id: string;
     name: string;
     status: SsmTargetStatus;
@@ -90,7 +90,7 @@ export enum AuthenticationType {
     UseExisting = "UseExisting"
 }
   
-export interface SshServerInfo {
+export interface SshTargetSummary {
     id: string;
     alias: string;
     host: string;

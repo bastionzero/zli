@@ -1,19 +1,22 @@
 import { TargetType } from '../types';
 import got, { Got } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, ListSessionsResponse, SessionDetails, SshServerInfo as SshServerSummary, SsmTargetInfo as SsmTargetSummary } from './http.service.types';
+import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
+import { ConfigService } from '../config.service/config.service';
 
 export class HttpService
 {
     // ref for got: https://github.com/sindresorhus/got
-    private httpClient: Got;
+    protected httpClient: Got;
+    private configService: ConfigService;
 
-    // TODO: oauth flow, read jwt from config
-    constructor(baseUrl: string, apiSecret: string)
+    constructor(configService: ConfigService, serviceRoute: string)
     {
+        this.configService = configService;
+
         this.httpClient = got.extend({
-            prefixUrl: baseUrl,
-            headers: {'X-API-KEY': apiSecret},
+            prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
+            headers: {authorization: this.configService.getAuthHeader()},
         });
     }
 
@@ -46,10 +49,9 @@ export class HttpService
 
 export class SessionService extends HttpService
 {
-
-    constructor(baseUrl: string, apiSecret: string)
+    constructor(configService: ConfigService)
     {
-        super(baseUrl + 'api/v1/session/', apiSecret);
+        super(configService, 'api/v1/session/');
     }
 
     public GetSession(sessionId: string) : Promise<SessionDetails>
@@ -83,9 +85,9 @@ export class SessionService extends HttpService
 
 export class ConnectionService extends HttpService
 {
-    constructor(baseUrl: string, apiSecret: string)
+    constructor(configService: ConfigService)
     {
-        super(baseUrl + 'api/v1/connection/', apiSecret);
+        super(configService, 'api/v1/connection/');
     }
 
     public GetConnection(connectionId: string) : Promise<ConnectionSummary>
@@ -118,9 +120,9 @@ export class ConnectionService extends HttpService
 
 export class SsmTargetService extends HttpService
 {
-    constructor(baseUrl: string, apiSecret: string)
+    constructor(configService: ConfigService)
     {
-        super(baseUrl + 'api/v1/ssmTarget/', apiSecret);
+        super(configService, 'api/v1/ssmTarget/');
     }
 
     public GetSsmTarget(targetId: string) : Promise<SsmTargetSummary>
@@ -136,17 +138,17 @@ export class SsmTargetService extends HttpService
 
 export class SshTargetService extends HttpService
 {
-    constructor(baseUrl: string, apiSecret: string)
+    constructor(configService: ConfigService)
     {
-        super(baseUrl + 'api/v1/sshTarget/', apiSecret);
+        super(configService, 'api/v1/sshTarget/');
     }
 
-    public GetSsmTarget(targetId: string) : Promise<SshServerSummary>
+    public GetSsmTarget(targetId: string) : Promise<SshTargetSummary>
     {
         return this.Get('', {id: targetId});
     }
 
-    public ListSsmTargets() : Promise<SshServerSummary[]>
+    public ListSsmTargets() : Promise<SshTargetSummary[]>
     {
         return this.Post('list', {});
     }

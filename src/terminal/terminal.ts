@@ -1,6 +1,7 @@
 import { BehaviorSubject } from 'rxjs';
 import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
 import termsize from 'term-size';
+import { ConfigService } from '../config.service/config.service';
 
 export interface TerminalSize
 {
@@ -15,9 +16,9 @@ export class ShellTerminal implements IDisposable
     private inputSubject: BehaviorSubject<string> = new BehaviorSubject<string>(null);
     private resizeSubject: BehaviorSubject<TerminalSize> = new BehaviorSubject<TerminalSize>({rows: 0, columns: 0});
 
-    constructor(connectionUrl: string, jwt: string)
+    constructor(configService: ConfigService, connectionUrl: string)
     {
-        this.websocketStream = new WebsocketStream(connectionUrl, jwt, this.inputSubject, this.resizeSubject);
+        this.websocketStream = new WebsocketStream(configService, connectionUrl, this.inputSubject, this.resizeSubject);
     }
 
     public start()
