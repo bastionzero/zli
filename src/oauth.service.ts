@@ -7,7 +7,6 @@ export class OAuthService implements IDisposable {
     private authServiceUrl: string;
     private server: http.Server; // callback listener
     public oauthFinished: Promise<void>; // acts like a task completion source
-    public listenerReady: Promise<void>; // acts like a task completion source
 
     // TODO inject configService
     constructor(authServiceUrl: string) {
@@ -36,7 +35,7 @@ export class OAuthService implements IDisposable {
                     this.oauthFinished = Promise.resolve();
                     break;
 
-                case "/logout-callback":
+                case '/logout-callback':
                     console.log('logout callback');
                     break;
 
@@ -52,7 +51,7 @@ export class OAuthService implements IDisposable {
     }
 
     // The client will make the log-in requests with the following parameters
-    private async getClient() : Promise<Client>
+    private async getClient(): Promise<Client>
     {
         const clunk80Auth = await Issuer.discover(this.authServiceUrl);
         return new clunk80Auth.Client({
@@ -63,8 +62,9 @@ export class OAuthService implements IDisposable {
         });
     }
 
-    public async login(callback: (tokenSet: TokenSet, expireTime: number) => void) {
-
+    public async login(callback: (tokenSet: TokenSet, expireTime: number) => void): Promise<void> 
+    {
+        this.oauthFinished = new Promise((reject, resolve) => {});
         const client = await this.getClient();
         const code_verifier = generators.codeVerifier();
         const code_challenge = generators.codeChallenge(code_verifier);
@@ -83,7 +83,7 @@ export class OAuthService implements IDisposable {
         await open(client.authorizationUrl(authParams));
     }
 
-    public async refresh(tokenSetParams: TokenSetParameters) : Promise<TokenSet>
+    public async refresh(tokenSetParams: TokenSetParameters): Promise<TokenSet>
     {
         const client = await this.getClient();
         const tokenSet = new TokenSet(tokenSetParams);

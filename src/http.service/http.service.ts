@@ -66,7 +66,7 @@ export class SessionService extends HttpService
 
     public async CreateSession(sessionName? : string) : Promise<string>
     {
-        var req : CreateSessionRequest;
+        var req : CreateSessionRequest = {connectionsToOpen: []};
         
         if(sessionName)
             req.displayName = sessionName;
@@ -95,14 +95,15 @@ export class ConnectionService extends HttpService
         return this.Get('', {id: connectionId});
     }
 
-    public async CreateConnection(targetType: TargetType, targetId: string, sessionId: string) : Promise<string>
+    public async CreateConnection(targetType: TargetType, targetId: string, sessionId: string, targetUser: string) : Promise<string>
     {
         var req : CreateConnectionRequest = {
             serverType: targetType, 
             serverId: targetId, 
-            sessionId: sessionId
+            sessionId: sessionId,
+            username: targetUser
         };
-
+        
         const resp = await this.Post<CreateConnectionRequest, CreateConnectionResponse>('create', req);
 
         return resp.connectionId;

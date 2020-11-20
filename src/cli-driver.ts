@@ -20,21 +20,22 @@ export class CliDriver
             var ouath = new OAuthService(this.configService.authUrl());
 
             // All times related to oauth are in epoch second
-            const now: number = new Date().getSeconds();
+            const now: number = Date.now() / 1000;
             
             if(this.configService.tokenSet() && this.configService.tokenSet().expires_at < now && this.configService.tokenSetExpireTime() > now)
             {
+                console.log('AAA');
                 // refresh using existing creds
                 var newTokenSet = await ouath.refresh(this.configService.tokenSet());
                 this.configService.setTokenSet(newTokenSet);
-            } else {
+            } else if(this.configService.tokenSetExpireTime() < now) {
+                console.log('BBB');
                 // renew with log in flow
                 await ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
+                await ouath.oauthFinished;
             }
-
-            await ouath.oauthFinished;
         })
-        .command('connect [targetType] [targetId]', 'Connect to a target', (yargs) => {
+        .command('connect [targetType] [targetId] [targetUser]', 'Connect to a target', (yargs) => {
             yargs.positional('targetType', {
                 type: 'string',
                 describe: 'ssm or ssh',
@@ -44,6 +45,9 @@ export class CliDriver
                 type: 'string',
                 describe: 'GUID of target',
                 demandOption: 'Target Id must be provided (GUID)'
+            }).positional('targetUser', {
+                type: 'string',
+                describe: 'The username on the target to connect as'
             })
         }, async (argv) => {
             // call list session
@@ -56,8 +60,7 @@ export class CliDriver
             var cliSessionId: string;
             if(cliSpace.length === 0)
             {
-                const resp =  await sessionService.CreateSession('cli-space');
-                cliSessionId = resp;
+                cliSessionId =  await sessionService.CreateSession('cli-space');
             } else {
                 // there should only be 1
                 cliSessionId = cliSpace.pop().id;
@@ -65,7 +68,7 @@ export class CliDriver
 
             // make a new connection
             const connectionService = new ConnectionService(this.configService);
-            const connectionId = await connectionService.CreateConnection(<TargetType> argv.targetType, <string> argv.targetId, cliSessionId);
+            const connectionId = await connectionService.CreateConnection(<TargetType> argv.targetType, <string> argv.targetId, cliSessionId, <string> argv.targetUser);
 
             // run terminal
             const queryString = `?connectionId=${connectionId}`;

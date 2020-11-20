@@ -49,6 +49,7 @@ export interface CreateConnectionRequest {
     sessionId: string;
     serverId: string;
     serverType: TargetType;
+    username: string;
 }
   
 export interface CreateConnectionResponse {
