@@ -2,6 +2,7 @@ import { AuthorizationParameters, Client, generators, Issuer, TokenSet, TokenSet
 import open from 'open';
 import { IDisposable } from "./websocket.service/websocket.service";
 import http, { RequestListener } from "http";
+import { setTimeout } from "timers";
 
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;
@@ -13,7 +14,7 @@ export class OAuthService implements IDisposable {
         this.authServiceUrl = authServiceUrl;
     }
 
-    private setupCallbackListener(client: Client, codeVerifier: string, callback: (tokenSet: TokenSet, expireTime: number) => void): void {
+    private setupCallbackListener(client: Client, codeVerifier: string, callback: (tokenSet: TokenSet, expireTime: number) => void, resolve: (value?: void | PromiseLike<void>) => void): void {
         const host = '127.0.0.1';
         const port = 3000; // TODO: read from config
 
@@ -32,15 +33,16 @@ export class OAuthService implements IDisposable {
                     // write to config with callback
                     callback(tokenSet, tokenSetExpireTime);
 
-                    this.oauthFinished = Promise.resolve();
+                    // resolve oauthFinished here
+                    resolve();
                     break;
 
                 case '/logout-callback':
-                    console.log('logout callback');
+                    // console.log('logout callback');
                     break;
 
                 default:
-                    console.log(`default callback at: ${req.url}`);
+                    // console.log(`default callback at: ${req.url}`);
                     break;
             }
         };
@@ -62,25 +64,28 @@ export class OAuthService implements IDisposable {
         });
     }
 
-    public async login(callback: (tokenSet: TokenSet, expireTime: number) => void): Promise<void> 
+    public login(callback: (tokenSet: TokenSet, expireTime: number) => void): void 
     {
-        this.oauthFinished = new Promise((reject, resolve) => {});
-        const client = await this.getClient();
-        const code_verifier = generators.codeVerifier();
-        const code_challenge = generators.codeChallenge(code_verifier);
+        this.oauthFinished = new Promise(async (resolve, reject) => {
+            setTimeout(() => reject('Log in timeout reached'), 3 * 60 * 1000);
 
-        this.setupCallbackListener(client, code_verifier, callback);
+            const client = await this.getClient();
+            const code_verifier = generators.codeVerifier();
+            const code_challenge = generators.codeChallenge(code_verifier);
 
-        // parameters that get serialized into the url
-        var authParams: AuthorizationParameters = {
-            client_id: 'CLI',
-            code_challenge: code_challenge,
-            code_challenge_method: 'S256',
-            // both openid and offline_access must be set for refresh token
-            scope: 'openid offline_access email profile backend-api',
-        };
+            this.setupCallbackListener(client, code_verifier, callback, resolve);
 
-        await open(client.authorizationUrl(authParams));
+            // parameters that get serialized into the url
+            var authParams: AuthorizationParameters = {
+                client_id: 'CLI',
+                code_challenge: code_challenge,
+                code_challenge_method: 'S256',
+                // both openid and offline_access must be set for refresh token
+                scope: 'openid offline_access email profile backend-api',
+            };
+
+            await open(client.authorizationUrl(authParams));
+        });
     }
 
     public async refresh(tokenSetParams: TokenSetParameters): Promise<TokenSet>

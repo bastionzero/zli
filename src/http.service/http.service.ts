@@ -1,8 +1,9 @@
 import { TargetType } from '../types';
-import got, { Got } from 'got/dist/source';
+import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
 import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
+import chalk from 'chalk';
 
 export class HttpService
 {
@@ -17,31 +18,45 @@ export class HttpService
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
             headers: {authorization: this.configService.getAuthHeader()},
+            // throwHttpErrors: false // potentially do this if we want to check http without exceptions
         });
+    }
+
+    private handleHttpException(reason?: any) : void 
+    {
+        console.log(chalk.red(`HttpService Error:\n${reason}`));
     }
 
     protected async Get<TResp>(route: string, queryParams: Dictionary<string>) : Promise<TResp>
     {
-        var resp : TResp = await this.httpClient.get(
-            route,
-            {
-                searchParams: queryParams,
-                parseJson: text => JSON.parse(text),
-            }
-        ).json();
-
+        try {
+            var resp : TResp = await this.httpClient.get(
+                route,
+                {
+                    searchParams: queryParams,
+                    parseJson: text => JSON.parse(text),
+                }
+            ).json();    
+        } catch(error) {
+            this.handleHttpException(error)
+        }
+        
         return resp;
     }
 
     protected async Post<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
     {
-        var resp : TResp = await this.httpClient.post(
-            route,
-            {
-                json: body,
-                parseJson: text => JSON.parse(text)
-            }
-        ).json();
+        try{
+            var resp : TResp = await this.httpClient.post(
+                route,
+                {
+                    json: body,
+                    parseJson: text => JSON.parse(text)
+                }
+            ).json();
+        } catch(error) {
+            this.handleHttpException(error);
+        }
 
         return resp;
     }

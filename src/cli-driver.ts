@@ -2,13 +2,19 @@ import { TargetType } from "./types";
 import { argv } from "process";
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
-import { ConnectionService, SessionService } from "./http.service/http.service";
+import { ConnectionService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
+import chalk from "chalk";
 
 export class CliDriver
 {
     private configService: ConfigService;
+
+    private thoumMessage(message: string): void
+    {
+        console.log(chalk.magenta(`thoum >>> ${message}`));
+    }
 
     public start()
     {
@@ -24,14 +30,14 @@ export class CliDriver
             
             if(this.configService.tokenSet() && this.configService.tokenSet().expires_at < now && this.configService.tokenSetExpireTime() > now)
             {
-                console.log('AAA');
+                this.thoumMessage('Refreshing oauth');
                 // refresh using existing creds
                 var newTokenSet = await ouath.refresh(this.configService.tokenSet());
                 this.configService.setTokenSet(newTokenSet);
             } else if(this.configService.tokenSetExpireTime() < now) {
-                console.log('BBB');
+                this.thoumMessage('Log in required, opening browser');
                 // renew with log in flow
-                await ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
+                ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
                 await ouath.oauthFinished;
             }
         })
@@ -92,7 +98,16 @@ export class CliDriver
                     terminal.writeString(str);
                 }
             });
-            console.log('CTRL+Q to exit thoum');
+            this.thoumMessage('CTRL+Q to exit thoum');
+        })
+        .command('list-targets', 'List all SSM and SSH targets', () => {}, async () => {
+            const ssmTargetService = new SsmTargetService(this.configService);
+            const ssmList = await ssmTargetService.ListSsmTargets();
+
+            const sshTargetService = new SshTargetService(this.configService);
+            const sshList = await sshTargetService.ListSsmTargets();
+
+
         })
 
         // .command('config [configName]', 'Set up your config file', (yargs) => {
@@ -104,7 +119,7 @@ export class CliDriver
         //         choices: ['prod', 'staging', 'dev'],
         //     }) 
         // }, (argv) => {
-        //     console.log('edit config flow', argv);
+        //     this.thoumMessage('edit config flow', argv);
         // })
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod'})
         .help()
