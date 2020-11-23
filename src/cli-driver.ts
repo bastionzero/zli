@@ -123,17 +123,6 @@ export class CliDriver
             console.log('Targets:');
             console.log(table.toString());
         })
-        // .command('config [configName]', 'Set up your config file', (yargs) => {
-        //     yargs.positional('configName', {
-        //         type: 'string',
-        //         describe: 'The name of the config you are editing (default: prod)',
-        //         demandOption: 'true',
-        //         default: 'prod',
-        //         choices: ['prod', 'staging', 'dev'],
-        //     }) 
-        // }, (argv) => {
-        //     this.thoumMessage('edit config flow', argv);
-        // })
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod'})
         .help()
         .argv;

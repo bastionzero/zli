@@ -13,17 +13,23 @@ export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
 
     constructor(configName: string) {
+        var appName = this.getAppName(configName);
         this.config = new Conf<ThoumConfigSchema>({
             projectName: 'thoum-cli',
             configName: configName, // prod, stage, dev
             defaults: {
-                authUrl: 'https://auth-webshell-development-vpc-0917-115500-nabeel.clunk80.com:5003/' , // 'https://auth-app.clunk80.com:5003/',
-                serviceUrl: 'https://webshell-development-vpc-0917-115500-nabeel.clunk80.com/' ,//'https://app.clunk80.com/',
+                authUrl: appName ? this.getAuthUrl(appName) : undefined,
+                serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
                 tokenSetExpireTime: 0 // Seconds
             },
             accessPropertiesByDotNotation: true,
         });
+
+        if(configName == "dev" && ! this.config.get('serviceUrl')) {
+            let errorMessage = `Config not initialized for dev environment: Must add serviceUrl and authUrl in: ${this.config.path}`;
+            throw new Error(errorMessage);
+        }
     }
 
     public serviceUrl(): string {
@@ -55,5 +61,26 @@ export class ConfigService {
 
         if(tokenSetExpireTime)
             this.config.set('tokenSetExpireTime', tokenSetExpireTime);
+    }
+
+    private getAuthUrl(appName: string) {
+        return `https://auth-${appName}.clunk80.com:5003/`;
+    }
+
+    private getServiceUrl(appName: string) {
+
+        return `https://${appName}.clunk80.com/`;
+    }
+
+    private getAppName(configName: string) {
+        switch(configName)
+        {
+            case "prod":
+                return "app";
+            case "stage":
+                return "app-stage-4329423";
+            default:
+                return undefined;
+        }
     }
 }
