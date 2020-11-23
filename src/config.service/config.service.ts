@@ -6,7 +6,8 @@ type ThoumConfigSchema = {
     authUrl: string,
     serviceUrl: string,
     tokenSet: TokenSetParameters,
-    tokenSetExpireTime: number
+    tokenSetExpireTime: number,
+    callbackListenerPort: number
 }
 
 export class ConfigService {
@@ -21,7 +22,8 @@ export class ConfigService {
                 authUrl: appName ? this.getAuthUrl(appName) : undefined,
                 serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
-                tokenSetExpireTime: 0 // Seconds
+                tokenSetExpireTime: 0, // Seconds
+                callbackListenerPort: 3000
             },
             accessPropertiesByDotNotation: true,
         });
@@ -30,6 +32,14 @@ export class ConfigService {
             let errorMessage = `Config not initialized for dev environment: Must add serviceUrl and authUrl in: ${this.config.path}`;
             throw new Error(errorMessage);
         }
+    }
+
+    public configPath(): string {
+        return this.config.path;
+    }
+
+    public callbackListenerPort(): number {
+        return this.config.get('callbackListenerPort');
     }
 
     public serviceUrl(): string {

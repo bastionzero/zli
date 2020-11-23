@@ -1,10 +1,9 @@
 import { TargetType } from '../types';
-import got, { Got, HTTPError } from 'got/dist/source';
+import got, { Got } from 'got/dist/source';
 import { Dictionary } from 'lodash';
 import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import chalk from 'chalk';
-import { config } from 'process';
 
 export class HttpService
 {

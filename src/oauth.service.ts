@@ -3,20 +3,22 @@ import open from 'open';
 import { IDisposable } from "./websocket.service/websocket.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
+import chalk from "chalk";
 
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;
     private server: http.Server; // callback listener
     public oauthFinished: Promise<void>; // acts like a task completion source
+    private callbackPort: number;
+    private host: string = '127.0.0.1';
 
     // TODO inject configService
-    constructor(authServiceUrl: string) {
+    constructor(authServiceUrl: string, callbackPort: number = 3000) {
         this.authServiceUrl = authServiceUrl;
+        this.callbackPort = callbackPort;
     }
 
     private setupCallbackListener(client: Client, codeVerifier: string, callback: (tokenSet: TokenSet, expireTime: number) => void, resolve: (value?: void | PromiseLike<void>) => void): void {
-        const host = '127.0.0.1';
-        const port = 3000; // TODO: read from config
 
         const requestListener: RequestListener = async (req, res) => {
             res.writeHead(200);
@@ -26,12 +28,14 @@ export class OAuthService implements IDisposable {
                 case "/login-callback":
                     const params = client.callbackParams(req);
                     
-                    const tokenSet = await client.callback('http://127.0.0.1:3000/login-callback', params, { code_verifier: codeVerifier });
+                    const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
                     const tokenSetExpireTime: number = (Date.now() / 1000) + (60 * 60 * 12) - 30; // 12 hours minus 30 seconds from now (epoch time in seconds)
-                    console.log('Tokens received and validated');
+                    console.log(chalk.magenta(`thoum >>> log in successful`));
+                    console.log(chalk.magenta(`thoum >>> callback listener closed`));
                     
                     // write to config with callback
                     callback(tokenSet, tokenSetExpireTime);
+                    this.server.close();
 
                     // resolve oauthFinished here
                     resolve();
@@ -48,8 +52,8 @@ export class OAuthService implements IDisposable {
         };
 
         this.server = http.createServer(requestListener);
-        this.server.listen(port, host, () => {
-        });
+        this.server.listen(this.callbackPort, this.host, () => {});
+        console.log(chalk.magenta(`thoum >>> callback listening on http://${this.host}:${this.callbackPort}/`));
     }
 
     // The client will make the log-in requests with the following parameters
@@ -58,7 +62,7 @@ export class OAuthService implements IDisposable {
         const clunk80Auth = await Issuer.discover(this.authServiceUrl);
         return new clunk80Auth.Client({
             client_id: 'CLI',
-            redirect_uris: ['http://127.0.0.1:3000/login-callback'],
+            redirect_uris: [`http://${this.host}:${this.callbackPort}/login-callback`],
             response_types: ['code'],
             token_endpoint_auth_method: 'none'
         });
@@ -99,7 +103,10 @@ export class OAuthService implements IDisposable {
 
     dispose(): void {
         if(this.server)
+        {
+            this.server.close();
             this.server = undefined;
+        }
 
         if(! this.oauthFinished)
             this.oauthFinished = Promise.resolve();
