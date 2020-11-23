@@ -2,6 +2,7 @@ import { BehaviorSubject } from 'rxjs';
 import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
 import termsize from 'term-size';
 import { ConfigService } from '../config.service/config.service';
+import chalk from 'chalk';
 
 export interface TerminalSize
 {
@@ -15,41 +16,45 @@ export class ShellTerminal implements IDisposable
     // stdin
     private inputSubject: BehaviorSubject<string> = new BehaviorSubject<string>(null);
     private resizeSubject: BehaviorSubject<TerminalSize> = new BehaviorSubject<TerminalSize>({rows: 0, columns: 0});
+    private blockInput: boolean = true;
 
     constructor(configService: ConfigService, connectionUrl: string)
     {
         this.websocketStream = new WebsocketStream(configService, connectionUrl, this.inputSubject, this.resizeSubject);
     }
 
-    public start()
-    {        
-        // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
-        // https://github.com/nodejs/node/issues/16194
-        // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
-        // TODO bring this up a level?
-        process.stdout.on('resize', () => 
-        {
-            const resizeEvent = termsize();
+    public start(termSize: TerminalSize)
+    {
+        // Handle writing to stdout
+        // TODO: bring this up a level
+        this.websocketStream.outputData.subscribe(data => process.stdout.write(data));
+
+        // initial terminal size
+        this.websocketStream.start(termSize.rows, termSize.columns);
+        
+        // Pauses input on disconnected states
+        this.websocketStream.shellStateData.subscribe(newState => {
+            if(! newState.disconnected && ! newState.loading)
+                this.blockInput = false;
+            else
+            {
+                this.blockInput = true;
+
+                if(! newState.loading) 
+                    console.log(chalk.red('\nthoum >>> Disconnection detected'));
+            }
+        }); 
+    }
+
+    public resize(resizeEvent: TerminalSize)
+    {
+        if(! this.blockInput)
             this.resizeSubject.next({rows: resizeEvent.rows, columns: resizeEvent.columns});
-        });
-
-        this.websocketStream.outputData.subscribe(data => 
-        {
-            process.stdout.write(data);
-        });
-        
-        const terminalSize = termsize();
-        this.websocketStream.start(terminalSize.rows, terminalSize.columns);
-        // TOTO: abstract the process.std to a NodeJS.WriteStream 
-        // member and pass in from constructor
-        
-        // TODO, pause input on disconnected states
-        // this.websocketStream.shellStateData.subscribe() 
-
     }
 
     public writeString(input: string) : void {
-        this.inputSubject.next(input);
+        if(! this.blockInput)
+            this.inputSubject.next(input);
     }
 
     public writeBytes(input: Uint8Array) : void {

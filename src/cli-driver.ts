@@ -1,4 +1,4 @@
-import { TargetType } from "./types";
+import { SessionState, TargetType } from "./types";
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
@@ -6,6 +6,7 @@ import { OAuthService } from "./oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
 import Table from 'cli-table3';
+import termsize from 'term-size';
 
 
 export class CliDriver
@@ -65,7 +66,8 @@ export class CliDriver
                 const sessionService = new SessionService(this.configService);
                 const listSessions = await sessionService.ListSessions();
 
-                var cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space'); // TODO: cli-space name can be changed in config
+                // space names are not unique, make sure to find the latest active one
+                var cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
 
                 // maybe make a session
                 var cliSessionId: string;
@@ -86,7 +88,17 @@ export class CliDriver
                 const connectionUrl = `${this.configService.serviceUrl()}api/v1/hub/ssh/${queryString}`;
 
                 var terminal = new ShellTerminal(this.configService, connectionUrl);
-                terminal.start();
+                terminal.start(termsize());
+                
+                // Terminal resize event logic
+                // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
+                // https://github.com/nodejs/node/issues/16194
+                // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
+                process.stdout.on('resize', () => 
+                {
+                    const resizeEvent = termsize();
+                    terminal.resize(resizeEvent);
+                });
 
                 // To get 'keypress' events you need the following lines
                 // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
@@ -109,7 +121,7 @@ export class CliDriver
         .command(
             'list-targets', 
             'List all SSM and SSH targets', 
-            (yargs) => { yargs.alias('lt', 'list-targets'); },
+            () => {},
             async () => {
                 const ssmTargetService = new SsmTargetService(this.configService);
                 const ssmList = await ssmTargetService.ListSsmTargets();

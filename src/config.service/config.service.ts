@@ -26,10 +26,11 @@ export class ConfigService {
                 callbackListenerPort: 3000
             },
             accessPropertiesByDotNotation: true,
+            clearInvalidConfig: false
         });
 
         if(configName == "dev" && ! this.config.get('serviceUrl')) {
-            let errorMessage = `Config not initialized for dev environment: Must add serviceUrl and authUrl in: ${this.config.path}`;
+            let errorMessage = `Config not initialized (or is invalid) for dev environment: Must add serviceUrl and authUrl in: ${this.config.path}`;
             throw new Error(errorMessage);
         }
     }
