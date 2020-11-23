@@ -58,7 +58,8 @@ export class CliDriver
                     demandOption: 'Target Id must be provided (GUID)'
                 }).positional('targetUser', {
                     type: 'string',
-                    describe: 'The username on the target to connect as, required for SSM'
+                    describe: 'The username on the target to connect as, required for SSM',
+                    demandOption: false 
                 })
             },
             async (argv) => {
@@ -75,13 +76,20 @@ export class CliDriver
                 {
                     cliSessionId =  await sessionService.CreateSession('cli-space');
                 } else {
-                    // there should only be 1
+                    // there should only be 1 active 'cli-space' session
                     cliSessionId = cliSpace.pop().id;
                 }
 
+                const targetType = <TargetType> argv.targetType;
+                const targetId = <string> argv.targetId;
+                // We do the following for ssh since we are required to pass
+                // in a user although it does not get read at any point
+                // TODO: fix how enums are parsed and compared
+                const targetUser = argv.targetType === "ssh" ? "totally-a-user" : <string> argv.targetUser;
+
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
-                const connectionId = await connectionService.CreateConnection(<TargetType> argv.targetType, <string> argv.targetId, cliSessionId, <string> argv.targetUser);
+                const connectionId = await connectionService.CreateConnection(targetType, targetId, cliSessionId, targetUser);
 
                 // run terminal
                 const queryString = `?connectionId=${connectionId}`;
@@ -105,12 +113,12 @@ export class CliDriver
                 const readline = require('readline');
                 readline.emitKeypressEvents(process.stdin);
                 process.stdin.setRawMode(true);
-                process.stdin.on('keypress', (str, key) => {
+                process.stdin.on('keypress', async (str, key) => {
                     if (key.ctrl && key.name === 'q') {
                         // close the session
-                        connectionService.CloseConnection(connectionId).catch();
+                        await connectionService.CloseConnection(connectionId).catch();
                         terminal.dispose();
-                        process.exit();
+                        process.exit(0);
                     } else {
                         terminal.writeString(str);
                     }
@@ -139,7 +147,7 @@ export class CliDriver
                 });
 
                 ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
-                sshList.forEach(ssh => table.push(['ssm', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+                sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
                 
                 const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
