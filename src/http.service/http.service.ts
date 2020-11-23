@@ -1,5 +1,5 @@
 import { TargetType } from '../types';
-import got, { Got } from 'got/dist/source';
+import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
 import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
@@ -22,9 +22,16 @@ export class HttpService
         });
     }
 
-    private handleHttpException(reason?: any) : void 
+    private handleHttpException(error: HTTPError) : void
     {
-        console.log(chalk.red(`HttpService Error:\n${reason}`));
+        let errorMessage = error.message;
+
+        // Handle 500 errors by printing out our custom exception message
+        if(error.response.statusCode == 500) {
+            errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
+        }
+
+        console.log(chalk.red(`HttpService Error:\n${errorMessage}`));
     }
 
     protected async Get<TResp>(route: string, queryParams: Dictionary<string>) : Promise<TResp>
@@ -36,11 +43,11 @@ export class HttpService
                     searchParams: queryParams,
                     parseJson: text => JSON.parse(text),
                 }
-            ).json();    
+            ).json();
         } catch(error) {
             this.handleHttpException(error)
         }
-        
+
         return resp;
     }
 
@@ -51,7 +58,7 @@ export class HttpService
                 route,
                 {
                     json: body,
-                    parseJson: text => JSON.parse(text)
+                    parseJson: text => JSON.parse(text),
                 }
             ).json();
         } catch(error) {
@@ -82,7 +89,7 @@ export class SessionService extends HttpService
     public async CreateSession(sessionName? : string) : Promise<string>
     {
         var req : CreateSessionRequest = {connectionsToOpen: []};
-        
+
         if(sessionName)
             req.displayName = sessionName;
 
@@ -113,12 +120,12 @@ export class ConnectionService extends HttpService
     public async CreateConnection(targetType: TargetType, targetId: string, sessionId: string, targetUser: string) : Promise<string>
     {
         var req : CreateConnectionRequest = {
-            serverType: targetType, 
-            serverId: targetId, 
+            serverType: targetType,
+            serverId: targetId,
             sessionId: sessionId,
             username: targetUser
         };
-        
+
         const resp = await this.Post<CreateConnectionRequest, CreateConnectionResponse>('create', req);
 
         return resp.connectionId;
