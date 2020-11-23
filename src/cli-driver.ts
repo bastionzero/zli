@@ -1,11 +1,13 @@
 import { TargetType } from "./types";
-import { argv } from "process";
+import { argv, config } from "process";
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
-import { ConnectionService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
+import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
+import Table from 'cli-table3';
+
 
 export class CliDriver
 {
@@ -107,9 +109,20 @@ export class CliDriver
             const sshTargetService = new SshTargetService(this.configService);
             const sshList = await sshTargetService.ListSsmTargets();
 
+            const envService = new EnvironmentsService(this.configService);
+            const envs = await envService.ListEnvironments();
 
+            var table = new Table({
+                head: ['Type', 'Name', 'Environment', 'Id']
+              , colWidths: [6, 16, 16, 38]
+            });
+
+            ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
+            sshList.forEach(ssh => table.push(['ssm', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+
+            console.log('Targets:');
+            console.log(table.toString());
         })
-
         // .command('config [configName]', 'Set up your config file', (yargs) => {
         //     yargs.positional('configName', {
         //         type: 'string',

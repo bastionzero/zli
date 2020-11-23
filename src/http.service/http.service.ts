@@ -1,9 +1,10 @@
 import { TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
+import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import chalk from 'chalk';
+import { config } from 'process';
 
 export class HttpService
 {
@@ -138,7 +139,7 @@ export class SsmTargetService extends HttpService
 {
     constructor(configService: ConfigService)
     {
-        super(configService, 'api/v1/ssmTarget/');
+        super(configService, 'api/v1/ssm/');
     }
 
     public GetSsmTarget(targetId: string) : Promise<SsmTargetSummary>
@@ -156,7 +157,7 @@ export class SshTargetService extends HttpService
 {
     constructor(configService: ConfigService)
     {
-        super(configService, 'api/v1/sshTarget/');
+        super(configService, 'api/v1/ssh/');
     }
 
     public GetSsmTarget(targetId: string) : Promise<SshTargetSummary>
@@ -165,6 +166,20 @@ export class SshTargetService extends HttpService
     }
 
     public ListSsmTargets() : Promise<SshTargetSummary[]>
+    {
+        return this.Post('list', {});
+    }
+}
+
+
+export class EnvironmentsService extends HttpService
+{
+    constructor(configService: ConfigService)
+    {
+        super(configService, 'api/v1/environment/');
+    }
+
+    public ListEnvironments() : Promise<EnvironmentDetails[]>
     {
         return this.Post('list', {});
     }

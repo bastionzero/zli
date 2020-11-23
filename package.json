@@ -25,6 +25,7 @@
     "@types/term-size": "^2.0.3",
     "@types/yargs": "^15.0.10",
     "chalk": "^4.1.0",
+    "cli-table3": "^0.6.0",
     "conf": "^7.1.2",
     "figlet": "^1.5.0",
     "got": "^11.8.0",
