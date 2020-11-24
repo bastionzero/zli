@@ -164,7 +164,7 @@ export class CliDriver
             'logout',
             'Deauthenticate the client',
             () => {},
-            () => this.configService.setTokenSet(undefined, 0)
+            () => this.configService.logout()
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .help()

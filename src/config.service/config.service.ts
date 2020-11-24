@@ -80,6 +80,12 @@ export class ConfigService {
             this.config.set('tokenSetExpireTime', tokenSetExpireTime);
     }
 
+    public logout()
+    {
+        this.config.delete('tokenSet');
+        this.config.delete('tokenSetExpireTime');
+    }
+
     private getAuthUrl(appName: string) {
         return `https://auth-${appName}.clunk80.com:5003/`;
     }
