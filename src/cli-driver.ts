@@ -9,6 +9,7 @@ import Table from 'cli-table3';
 import termsize from 'term-size';
 import { UserinfoResponse } from "openid-client";
 import { MixpanelService } from "./mixpanel.service/mixpanel.service";
+import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 
 
 export class CliDriver
@@ -28,6 +29,7 @@ export class CliDriver
         yargs(process.argv.slice(2)) // returns array of argv
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
+        .middleware(checkVersionMiddleware)
         .middleware((argv) => 
         {
             // Config init

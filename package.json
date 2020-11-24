@@ -1,10 +1,10 @@
 {
   "name": "thoum",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "clunk80 cli",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": "dist/index.js",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": "dist/src/index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc",
@@ -25,6 +25,7 @@
     "@types/figlet": "^1.2.1",
     "@types/lodash": "^4.14.165",
     "@types/node": "^14.14.7",
+    "@types/semver": "^7.3.4",
     "@types/term-size": "^2.0.3",
     "@types/yargs": "^15.0.10",
     "chalk": "^4.1.0",
@@ -37,6 +38,7 @@
     "open": "^7.3.0",
     "openid-client": "^4.2.1",
     "rxjs": "^6.6.3",
+    "semver": "^7.3.2",
     "term-size": "^2.2.1",
     "ts-node": "^9.0.0",
     "yargs": "^16.1.1"

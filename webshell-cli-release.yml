@@ -23,7 +23,7 @@ phases:
       - mkdir -p $ReleaseDir/$Version
       - cp -a bin $ReleaseDir/$Version
       - cp -a $ReleaseDir/$Version $ReleaseDir/latest
-      - echo $Version > $ReleaseDir/latest/VERSION
+      - release-scripts/create-manifest.sh > $ReleaseDir/latest/MANIFEST
 artifacts:
   files:
     - '**/*'
