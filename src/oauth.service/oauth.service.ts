@@ -1,4 +1,4 @@
-import { AuthorizationParameters, Client, generators, Issuer, TokenSet, TokenSetParameters } from "openid-client";
+import { AuthorizationParameters, Client, generators, Issuer, TokenSet, TokenSetParameters, UserinfoResponse } from "openid-client";
 import open from 'open';
 import { IDisposable } from "../websocket.service/websocket.service";
 import http, { RequestListener } from "http";
@@ -8,9 +8,10 @@ import chalk from "chalk";
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;
     private server: http.Server; // callback listener
-    public oauthFinished: Promise<void>; // acts like a task completion source
     private callbackPort: number;
     private host: string = '127.0.0.1';
+
+    public oauthFinished: Promise<void>; // acts like a task completion source
 
     // TODO inject configService
     constructor(authServiceUrl: string, callbackPort: number = 3000) {
@@ -29,7 +30,7 @@ export class OAuthService implements IDisposable {
                     const params = client.callbackParams(req);
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
-                    const tokenSetExpireTime: number = (Date.now() / 1000) + (60 * 60 * 12) - 30; // 12 hours minus 30 seconds from now (epoch time in seconds)
+                    const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (60 * 60 * 12) - 30; // 12 hours minus 30 seconds from now (epoch time in seconds)
                     console.log(chalk.magenta(`thoum >>> log in successful`));
                     console.log(chalk.magenta(`thoum >>> callback listener closed`));
 
@@ -99,6 +100,14 @@ export class OAuthService implements IDisposable {
         const refreshedTokenSet = await client.refresh(tokenSet);
 
         return refreshedTokenSet;
+    }
+
+    public async userInfo(tokenSetParams: TokenSetParameters): Promise<UserinfoResponse>
+    {
+        const client = await this.getClient();
+        const tokenSet = new TokenSet(tokenSetParams);
+        const userInfo = await client.userinfo(tokenSet);
+        return userInfo;
     }
 
     dispose(): void {
