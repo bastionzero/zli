@@ -7,6 +7,7 @@ import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
 import Table from 'cli-table3';
 import termsize from 'term-size';
+import { read } from "fs";
 
 
 export class CliDriver
@@ -161,7 +162,7 @@ export class CliDriver
                 this.thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
             }
         )
-        .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod'})
+        .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .help()
         .argv;
     }
