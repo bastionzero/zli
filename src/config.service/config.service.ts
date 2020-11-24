@@ -7,7 +7,8 @@ type ThoumConfigSchema = {
     serviceUrl: string,
     tokenSet: TokenSetParameters,
     tokenSetExpireTime: number,
-    callbackListenerPort: number
+    callbackListenerPort: number,
+    mixpanelToken: string
 }
 
 export class ConfigService {
@@ -23,7 +24,8 @@ export class ConfigService {
                 serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
                 tokenSetExpireTime: 0, // Seconds
-                callbackListenerPort: 3000
+                callbackListenerPort: 3000,
+                mixpanelToken: this.getMixpanelToken(configName)
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: false
@@ -37,6 +39,10 @@ export class ConfigService {
 
     public configPath(): string {
         return this.config.path;
+    }
+
+    public mixpanelToken(): string {
+        return this.config.get('mixpanelToken');
     }
 
     public callbackListenerPort(): number {
@@ -92,6 +98,16 @@ export class ConfigService {
                 return "app-stage-4329423";
             default:
                 return undefined;
+        }
+    }
+
+    private getMixpanelToken(configName: string) {
+        switch(configName)
+        {
+            case "prod":
+                return "3036a28cd1d9878a0f605bd1c76cdf96";
+            default:
+                return "aef09ae2b274f4cccf33587a9c6552f0";
         }
     }
 }
