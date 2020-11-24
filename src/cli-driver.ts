@@ -7,7 +7,6 @@ import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
 import Table from 'cli-table3';
 import termsize from 'term-size';
-import { read } from "fs";
 
 
 export class CliDriver
@@ -37,7 +36,7 @@ export class CliDriver
                 // refresh using existing creds
                 var newTokenSet = await ouath.refresh(this.configService.tokenSet());
                 this.configService.setTokenSet(newTokenSet);
-            } else if(this.configService.tokenSetExpireTime() < now) {
+            } else if(! this.configService.tokenSet() || this.configService.tokenSetExpireTime() < now) {
                 this.thoumMessage('Log in required, opening browser');
                 // renew with log in flow
                 ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
@@ -156,11 +155,16 @@ export class CliDriver
         )
         .command(
             'config', 
-            'Returns config file path', 
+            'Returns config file path',
             () => {}, 
             () => {
                 this.thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
             }
+        ).command(
+            'logout',
+            'Deauthenticate the client',
+            () => {},
+            () => this.configService.setTokenSet(undefined, 0)
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .help()
