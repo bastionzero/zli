@@ -24,6 +24,7 @@ phases:
       - cp -a bin $ReleaseDir/$Version
       - cp -a $ReleaseDir/$Version $ReleaseDir/latest
       - release-scripts/create-manifest.sh > $ReleaseDir/latest/MANIFEST
+      - aws cloudfront create-invalidation --distribution-id=EI221CXMRD3VL --paths '/release/latest/*'
 artifacts:
   files:
     - '**/*'
