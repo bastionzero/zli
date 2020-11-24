@@ -39,8 +39,12 @@ export class ShellTerminal implements IDisposable
             {
                 this.blockInput = true;
 
-                if(! newState.loading) 
+                if(! newState.loading)
+                {
                     console.log(chalk.red('\nthoum >>> Disconnection detected'));
+                    // close terminal if we have disconnected
+                    process.exit(0);
+                }
             }
         }); 
     }
