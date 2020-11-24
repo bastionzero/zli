@@ -7,11 +7,16 @@ import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
 import Table from 'cli-table3';
 import termsize from 'term-size';
+import { UserinfoResponse } from "openid-client";
+import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 
 
 export class CliDriver
 {
     private configService: ConfigService;
+    private userInfo: UserinfoResponse; // sub and email
+
+    private mixpanelService: MixpanelService;
 
     private thoumMessage(message: string): void
     {
@@ -23,12 +28,17 @@ export class CliDriver
         yargs(process.argv.slice(2)) // returns array of argv
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
-        .middleware(async (argv) => {
+        .middleware((argv) => 
+        {
+            // Config init
             this.configService = new ConfigService(<string> argv.configName);
+        })
+        .middleware(async () => {
+            // OAuth flow
             var ouath = new OAuthService(this.configService.authUrl(), this.configService.callbackListenerPort());
 
             // All times related to oauth are in epoch second
-            const now: number = Date.now() / 1000;
+            const now: number = Math.floor(Date.now() / 1000);
             
             if(this.configService.tokenSet() && this.configService.tokenSet().expires_at < now && this.configService.tokenSetExpireTime() > now)
             {
@@ -42,6 +52,21 @@ export class CliDriver
                 ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
                 await ouath.oauthFinished;
             }
+
+            this.userInfo = await ouath.userInfo(this.configService.tokenSet());
+            this.thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+        })
+        .middleware(async (argv) => {
+            // Mixpanel tracking
+            this.mixpanelService = new MixpanelService(
+                this.configService.mixpanelToken(), 
+                this.userInfo.sub
+            );
+            
+            // Only captures args, not options at the moment. Capturing configName flag
+            // does not matter as that is handled by which mixpanel token is used
+            // TODO: capture options and flags
+            this.mixpanelService.TrackCliCall('CliCommand', { args: argv._ } );
         })
         .command(
             'connect [targetType] [targetId] [targetUser]', 
@@ -90,6 +115,8 @@ export class CliDriver
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
                 const connectionId = await connectionService.CreateConnection(targetType, targetId, cliSessionId, targetUser);
+
+                this.mixpanelService.TrackNewConnection(targetType);
 
                 // run terminal
                 const queryString = `?connectionId=${connectionId}`;
