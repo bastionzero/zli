@@ -120,7 +120,7 @@ export class CliDriver
                         terminal.dispose();
                         process.exit(0);
                     } else {
-                        terminal.writeString(str);
+                        terminal.writeString(key.sequence);
                     }
                 });
                 this.thoumMessage('CTRL+Q to exit thoum');
