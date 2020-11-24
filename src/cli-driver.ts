@@ -180,6 +180,8 @@ export class CliDriver
                 
                 const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
+                
+                // you can `return any;` here and onCommandFinished will receive it
             }
         )
         .command(
@@ -196,6 +198,9 @@ export class CliDriver
             () => this.configService.logout()
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
+        .onFinishCommand((result) => {
+            process.exit(0);
+        })
         .help()
         .argv;
     }
