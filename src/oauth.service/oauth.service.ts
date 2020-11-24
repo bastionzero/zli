@@ -1,6 +1,6 @@
 import { AuthorizationParameters, Client, generators, Issuer, TokenSet, TokenSetParameters } from "openid-client";
 import open from 'open';
-import { IDisposable } from "./websocket.service/websocket.service";
+import { IDisposable } from "../websocket.service/websocket.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
 import chalk from "chalk";
@@ -27,12 +27,12 @@ export class OAuthService implements IDisposable {
             switch (req.url.split('?')[0]) {
                 case "/login-callback":
                     const params = client.callbackParams(req);
-                    
+
                     const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
                     const tokenSetExpireTime: number = (Date.now() / 1000) + (60 * 60 * 12) - 30; // 12 hours minus 30 seconds from now (epoch time in seconds)
                     console.log(chalk.magenta(`thoum >>> log in successful`));
                     console.log(chalk.magenta(`thoum >>> callback listener closed`));
-                    
+
                     // write to config with callback
                     callback(tokenSet, tokenSetExpireTime);
                     this.server.close();
@@ -68,7 +68,7 @@ export class OAuthService implements IDisposable {
         });
     }
 
-    public login(callback: (tokenSet: TokenSet, expireTime: number) => void): void 
+    public login(callback: (tokenSet: TokenSet, expireTime: number) => void): void
     {
         this.oauthFinished = new Promise(async (resolve, reject) => {
             setTimeout(() => reject('Log in timeout reached'), 3 * 60 * 1000);

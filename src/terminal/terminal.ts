@@ -1,6 +1,5 @@
 import { BehaviorSubject } from 'rxjs';
 import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
-import termsize from 'term-size';
 import { ConfigService } from '../config.service/config.service';
 import chalk from 'chalk';
 

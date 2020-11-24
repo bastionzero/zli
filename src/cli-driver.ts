@@ -2,7 +2,7 @@ import { SessionState, TargetType } from "./types";
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
-import { OAuthService } from "./oauth.service";
+import { OAuthService } from "./oauth.service/oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
 import Table from 'cli-table3';
