@@ -51,8 +51,7 @@ export class CliDriver
             } else if(! this.configService.tokenSet() || this.configService.tokenSetExpireTime() < now) {
                 this.thoumMessage('Log in required, opening browser');
                 // renew with log in flow
-                ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
-                await ouath.oauthFinished;
+                await ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
             }
 
             this.userInfo = await ouath.userInfo(this.configService.tokenSet());
@@ -180,6 +179,7 @@ export class CliDriver
                 
                 const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
+                process.exit(0);
             }
         )
         .command(
@@ -193,7 +193,12 @@ export class CliDriver
             'logout',
             'Deauthenticate the client',
             () => {},
-            () => this.configService.logout()
+            async () => {
+                var ouath = new OAuthService(this.configService.authUrl(), this.configService.callbackListenerPort());
+                await ouath.logout(this.configService.tokenSet());
+                this.configService.logout();
+                process.exit(0);
+            }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .help()

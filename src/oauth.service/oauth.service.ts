@@ -11,8 +11,6 @@ export class OAuthService implements IDisposable {
     private callbackPort: number;
     private host: string = '127.0.0.1';
 
-    public oauthFinished: Promise<void>; // acts like a task completion source
-
     // TODO inject configService
     constructor(authServiceUrl: string, callbackPort: number = 3000) {
         this.authServiceUrl = authServiceUrl;
@@ -23,7 +21,6 @@ export class OAuthService implements IDisposable {
 
         const requestListener: RequestListener = async (req, res) => {
             res.writeHead(200);
-            res.end('You may close this window'); // TODO: serve HTML here
 
             switch (req.url.split('?')[0]) {
                 case "/login-callback":
@@ -37,13 +34,15 @@ export class OAuthService implements IDisposable {
                     // write to config with callback
                     callback(tokenSet, tokenSetExpireTime);
                     this.server.close();
-
-                    // resolve oauthFinished here
+                    res.end('Log in successful. You may close this window'); // TODO: serve HTML here
                     resolve();
                     break;
 
                 case '/logout-callback':
-                    // console.log('logout callback');
+                    console.log(chalk.magenta(`thoum >>> log in successful`));
+                    console.log(chalk.magenta(`thoum >>> callback listener closed`));
+                    res.end('Log out successful. You may close this window'); // TODO: serve HTML here
+                    resolve();
                     break;
 
                 default:
@@ -69,9 +68,9 @@ export class OAuthService implements IDisposable {
         });
     }
 
-    public login(callback: (tokenSet: TokenSet, expireTime: number) => void): void
+    public login(callback: (tokenSet: TokenSet, expireTime: number) => void): Promise<void>
     {
-        this.oauthFinished = new Promise(async (resolve, reject) => {
+        return new Promise<void>(async (resolve, reject) => {
             setTimeout(() => reject('Log in timeout reached'), 3 * 60 * 1000);
 
             const client = await this.getClient();
@@ -110,14 +109,34 @@ export class OAuthService implements IDisposable {
         return userInfo;
     }
 
+    public logout(tokenSetParams: TokenSetParameters): Promise<void>
+    {
+        return new Promise<void>(async (resolve, reject) => 
+        {
+            setTimeout(() => reject('Log out timeout reached'), 3 * 60 * 1000);
+
+            const client = await this.getClient();
+            const tokenSet = new TokenSet(tokenSetParams);
+            
+            // TODO: come up with better callback listener flow for login and logout flows
+            this.setupCallbackListener(
+                client, 
+                undefined, 
+                () => {}, 
+                resolve
+            ); 
+
+            const endSessionUrl = client.endSessionUrl({post_logout_redirect_uri: `http://${this.host}:${this.callbackPort}/logout-callback`, id_token_hint: tokenSet});
+
+            await open(endSessionUrl);
+        });
+    }
+
     dispose(): void {
         if(this.server)
         {
             this.server.close();
             this.server = undefined;
         }
-
-        if(! this.oauthFinished)
-            this.oauthFinished = Promise.resolve();
     }
 }
