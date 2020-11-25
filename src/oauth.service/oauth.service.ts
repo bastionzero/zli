@@ -1,4 +1,4 @@
-import { AuthorizationParameters, Client, generators, Issuer, TokenSet, TokenSetParameters, UserinfoResponse } from "openid-client";
+import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, TokenSetParameters, UserinfoResponse } from "openid-client";
 import open from 'open';
 import { IDisposable } from "../websocket.service/websocket.service";
 import http, { RequestListener } from "http";
@@ -60,12 +60,18 @@ export class OAuthService implements IDisposable {
     private async getClient(): Promise<Client>
     {
         const clunk80Auth = await Issuer.discover(this.authServiceUrl);
-        return new clunk80Auth.Client({
+        var client = new clunk80Auth.Client({
             client_id: 'CLI',
             redirect_uris: [`http://${this.host}:${this.callbackPort}/login-callback`],
             response_types: ['code'],
-            token_endpoint_auth_method: 'none'
+            token_endpoint_auth_method: 'none',
         });
+
+        // set clock skew
+        // ref: https://github.com/panva/node-openid-client/blob/77d7c30495df2df06c407741500b51498ba61a94/docs/README.md#customizing-clock-skew-tolerance
+        client[custom.clock_tolerance] = 5 * 60; // 5 minute clock skew allowed for verification
+
+        return client;
     }
 
     public login(callback: (tokenSet: TokenSet, expireTime: number) => void): Promise<void>
