@@ -156,7 +156,7 @@ export class CliDriver
                 readline.emitKeypressEvents(process.stdin);
                 process.stdin.setRawMode(true);
                 process.stdin.on('keypress', async (str, key) => {
-                    if (key.ctrl && key.name === 'q') {
+                    if (key.ctrl && key.name === 'p') {
                         // close the session
                         await connectionService.CloseConnection(connectionId).catch();
                         terminal.dispose();
@@ -165,7 +165,7 @@ export class CliDriver
                         terminal.writeString(key.sequence);
                     }
                 });
-                this.thoumMessage('CTRL+Q to exit thoum');
+                this.thoumMessage('CTRL+P to exit thoum');
             }
         )
         .command(
