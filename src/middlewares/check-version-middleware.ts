@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import got from "got/dist/source";
 import { SemVer } from "semver";
+import { thoumError, thoumWarn } from "../cli-driver";
 
 import { name as appName, version } from '../../package.json';
 
@@ -27,11 +28,11 @@ class CheckVersionMiddleware {
         let currentVersion = new SemVer(version);
 
         if (latestVersion > currentVersion) {
-            console.log(chalk.yellowBright(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`));
+            thoumWarn(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`);
         }
 
         if(latestVersion.major > currentVersion.major) {
-            console.log(chalk.redBright(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`));
+            thoumError(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`);
             console.log(chalk.bold(downloadLinks));
 
             process.exit(1);

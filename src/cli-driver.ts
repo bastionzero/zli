@@ -13,22 +13,27 @@ import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 
 
+export function thoumMessage(message: string): void
+{
+    console.log(chalk.magenta(`thoum >>> ${message}`));
+}
+
+export function thoumWarn(message: string): void
+{
+    console.log(chalk.yellowBright(`thoum >>> ${message}`));
+}
+
+export function  thoumError(message: string): void
+{
+    console.log(chalk.red(`thoum >>> ${message}`));
+}
+
 export class CliDriver
 {
     private configService: ConfigService;
     private userInfo: UserinfoResponse; // sub and email
 
     private mixpanelService: MixpanelService;
-
-    private thoumMessage(message: string): void
-    {
-        console.log(chalk.magenta(`thoum >>> ${message}`));
-    }
-
-    private thoumError(message: string): void
-    {
-        console.log(chalk.red(`thoum >>> ${message}`));
-    }
 
     public start()
     {
@@ -44,7 +49,7 @@ export class CliDriver
         .middleware(async () => {
             // OAuth
             this.userInfo = await oauthMiddleware(this.configService);
-            this.thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+            thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
         })
         .middleware(async (argv) => {
             // Mixpanel tracking
@@ -77,11 +82,11 @@ export class CliDriver
                 }).check((argv, opts) => {
                     if(argv.targetType === "ssm" && ! argv.targetUser)
                     {
-                        this.thoumError('targetUser must be set for SSM');
+                        thoumError('targetUser must be set for SSM');
                         return false;
                     }
                     if(argv.targetType === "ssh" && argv.targetUser) {
-                        this.thoumMessage('targetUser cannot be set for SSH, ignoring');
+                        thoumMessage('targetUser cannot be set for SSH, ignoring');
                     }
                     return true;
                 });
@@ -149,7 +154,7 @@ export class CliDriver
                         terminal.writeString(key.sequence);
                     }
                 });
-                this.thoumMessage('CTRL+P to exit thoum');
+                thoumMessage('CTRL+P to exit thoum');
             }
         )
         .command(
@@ -185,7 +190,7 @@ export class CliDriver
             'Returns config file path',
             () => {},
             () => {
-                this.thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
+                thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
                 process.exit(0);
             }
         ).command(
@@ -202,7 +207,7 @@ export class CliDriver
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
-        .help(); // auto gen help message
-        // .argv // returns argv of yargs
+        .help() // auto gen help message
+        .argv; // returns argv of yargs
     }
 }

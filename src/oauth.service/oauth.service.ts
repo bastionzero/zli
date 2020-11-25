@@ -3,7 +3,7 @@ import open from 'open';
 import { IDisposable } from "../websocket.service/websocket.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
-import chalk from "chalk";
+import { thoumMessage } from "../cli-driver";
 
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;
@@ -28,8 +28,8 @@ export class OAuthService implements IDisposable {
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
                     const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (60 * 60 * 12) - 30; // 12 hours minus 30 seconds from now (epoch time in seconds)
-                    console.log(chalk.magenta(`thoum >>> log in successful`));
-                    console.log(chalk.magenta(`thoum >>> callback listener closed`));
+                    thoumMessage(`thoum >>> log in successful`);
+                    thoumMessage(`thoum >>> callback listener closed`);
 
                     // write to config with callback
                     callback(tokenSet, tokenSetExpireTime);
@@ -39,8 +39,8 @@ export class OAuthService implements IDisposable {
                     break;
 
                 case '/logout-callback':
-                    console.log(chalk.magenta(`thoum >>> log in successful`));
-                    console.log(chalk.magenta(`thoum >>> callback listener closed`));
+                    thoumMessage(`thoum >>> log in successful`);
+                    thoumMessage(`thoum >>> callback listener closed`);
                     res.end('Log out successful. You may close this window'); // TODO: serve HTML here
                     resolve();
                     break;
@@ -53,7 +53,7 @@ export class OAuthService implements IDisposable {
 
         this.server = http.createServer(requestListener);
         this.server.listen(this.callbackPort, this.host, () => {});
-        console.log(chalk.magenta(`thoum >>> callback listening on http://${this.host}:${this.callbackPort}/`));
+        thoumMessage(`thoum >>> callback listening on http://${this.host}:${this.callbackPort}/`);
     }
 
     // The client will make the log-in requests with the following parameters
