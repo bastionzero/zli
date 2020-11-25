@@ -1,5 +1,5 @@
 import { SessionState, TargetType } from "./types";
-import yargs, { showHelp } from "yargs";
+import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
@@ -10,6 +10,7 @@ import termsize from 'term-size';
 import { UserinfoResponse } from "openid-client";
 import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
+import { oauthMiddleware } from "./middlewares/oauth-middleware";
 
 
 export class CliDriver
@@ -31,44 +32,27 @@ export class CliDriver
 
     public start()
     {
-        yargs(process.argv.slice(2)) // returns array of argv
+        yargs(process.argv.slice(2))
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
         .middleware(checkVersionMiddleware)
-        .middleware((argv) => 
+        .middleware((argv) =>
         {
             // Config init
             this.configService = new ConfigService(<string> argv.configName);
         })
         .middleware(async () => {
-            // OAuth flow
-            var ouath = new OAuthService(this.configService.authUrl(), this.configService.callbackListenerPort());
-
-            // All times related to oauth are in epoch second
-            const now: number = Math.floor(Date.now() / 1000);
-            
-            if(this.configService.tokenSet() && this.configService.tokenSet().expires_at < now && this.configService.tokenSetExpireTime() > now)
-            {
-                this.thoumMessage('Refreshing oauth');
-                // refresh using existing creds
-                var newTokenSet = await ouath.refresh(this.configService.tokenSet());
-                this.configService.setTokenSet(newTokenSet);
-            } else if(! this.configService.tokenSet() || this.configService.tokenSetExpireTime() < now) {
-                this.thoumMessage('Log in required, opening browser');
-                // renew with log in flow
-                await ouath.login((tokenSet, expireTime) => this.configService.setTokenSet(tokenSet, expireTime));
-            }
-
-            this.userInfo = await ouath.userInfo(this.configService.tokenSet());
+            // OAuth
+            this.userInfo = await oauthMiddleware(this.configService);
             this.thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
         })
         .middleware(async (argv) => {
             // Mixpanel tracking
             this.mixpanelService = new MixpanelService(
-                this.configService.mixpanelToken(), 
+                this.configService.mixpanelToken(),
                 this.userInfo.sub
             );
-            
+
             // Only captures args, not options at the moment. Capturing configName flag
             // does not matter as that is handled by which mixpanel token is used
             // TODO: capture options and flags
@@ -76,8 +60,8 @@ export class CliDriver
         })
         // <requiredPositional>, [optionalPositional]
         .command(
-            'connect <targetType> <targetId> [targetUser]', 
-            'Connect to a target', 
+            'connect <targetType> <targetId> [targetUser]',
+            'Connect to a target',
             (yargs) => {
                 // you must return the yarg for the handler to have types
                 return yargs.positional('targetType', {
@@ -139,12 +123,12 @@ export class CliDriver
 
                 var terminal = new ShellTerminal(this.configService, connectionUrl);
                 terminal.start(termsize());
-                
+
                 // Terminal resize event logic
                 // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
                 // https://github.com/nodejs/node/issues/16194
                 // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
-                process.stdout.on('resize', () => 
+                process.stdout.on('resize', () =>
                 {
                     const resizeEvent = termsize();
                     terminal.resize(resizeEvent);
@@ -169,8 +153,8 @@ export class CliDriver
             }
         )
         .command(
-            'list-targets', 
-            'List all SSM and SSH targets', 
+            'list-targets',
+            'List all SSM and SSH targets',
             () => {},
             async () => {
                 const ssmTargetService = new SsmTargetService(this.configService);
@@ -181,7 +165,7 @@ export class CliDriver
 
                 const envService = new EnvironmentsService(this.configService);
                 const envs = await envService.ListEnvironments();
-                
+
                 // ref: https://github.com/cli-table/cli-table3
                 var table = new Table({
                     head: ['Type', 'Name', 'Environment', 'Id']
@@ -190,16 +174,16 @@ export class CliDriver
 
                 ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
                 sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
-                
+
                 const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
                 process.exit(0);
             }
         )
         .command(
-            'config', 
+            'config',
             'Returns config file path',
-            () => {}, 
+            () => {},
             () => {
                 this.thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
                 process.exit(0);
@@ -218,7 +202,7 @@ export class CliDriver
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
-        .help() // auto gen help message
-        .argv
+        .help(); // auto gen help message
+        // .argv // returns argv of yargs
     }
 }
