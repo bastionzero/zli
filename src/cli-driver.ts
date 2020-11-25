@@ -1,5 +1,5 @@
 import { SessionState, TargetType } from "./types";
-import yargs from "yargs";
+import yargs, { showHelp } from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
@@ -69,24 +69,22 @@ export class CliDriver
             // TODO: capture options and flags
             this.mixpanelService.TrackCliCall('CliCommand', { args: argv._ } );
         })
+        // <requiredPositional>, [optionalPositional]
         .command(
-            'connect [targetType] [targetId] [targetUser]', 
+            'connect <targetType> <targetId> [targetUser]', 
             'Connect to a target', 
             (yargs) => {
                 yargs.positional('targetType', {
                     type: 'string',
                     describe: 'ssm or ssh',
                     choices: ['ssm', 'ssh'],
-                    demandOption: 'Target Type must be selected { ssm | ssh }'
                 }).positional('targetId', {
                     type: 'string',
                     describe: 'GUID of target',
-                    demandOption: 'Target Id must be provided (GUID)'
                 }).positional('targetUser', {
                     type: 'string',
-                    describe: 'The username on the target to connect as, required for SSM',
-                    demandOption: false 
-                })
+                    describe: 'User on target to assume for SSM',
+                }).implies('targetType', 'targetUser')
             },
             async (argv) => {
                 // call list session
@@ -188,6 +186,7 @@ export class CliDriver
             () => {}, 
             () => {
                 this.thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
+                process.exit(0);
             }
         ).command(
             'logout',
@@ -201,7 +200,9 @@ export class CliDriver
             }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
+        .strict()
+        .demandCommand()
         .help()
-        .argv;
+        .argv
     }
 }
