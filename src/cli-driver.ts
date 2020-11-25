@@ -24,6 +24,11 @@ export class CliDriver
         console.log(chalk.magenta(`thoum >>> ${message}`));
     }
 
+    private thoumError(message: string): void
+    {
+        console.log(chalk.red(`thoum >>> ${message}`));
+    }
+
     public start()
     {
         yargs(process.argv.slice(2)) // returns array of argv
@@ -74,7 +79,8 @@ export class CliDriver
             'connect <targetType> <targetId> [targetUser]', 
             'Connect to a target', 
             (yargs) => {
-                yargs.positional('targetType', {
+                // you must return the yarg for the handler to have types
+                return yargs.positional('targetType', {
                     type: 'string',
                     describe: 'ssm or ssh',
                     choices: ['ssm', 'ssh'],
@@ -84,7 +90,17 @@ export class CliDriver
                 }).positional('targetUser', {
                     type: 'string',
                     describe: 'User on target to assume for SSM',
-                }).implies('targetType', 'targetUser')
+                }).check((argv, opts) => {
+                    if(argv.targetType === "ssm" && ! argv.targetUser)
+                    {
+                        this.thoumError('targetUser must be set for SSM');
+                        return false;
+                    }
+                    if(argv.targetType === "ssh" && argv.targetUser) {
+                        this.thoumMessage('targetUser cannot be set for SSH, ignoring');
+                    }
+                    return true;
+                });
             },
             async (argv) => {
                 // call list session
@@ -105,11 +121,11 @@ export class CliDriver
                 }
 
                 const targetType = <TargetType> argv.targetType;
-                const targetId = <string> argv.targetId;
+                const targetId = argv.targetId;
                 // We do the following for ssh since we are required to pass
                 // in a user although it does not get read at any point
                 // TODO: fix how enums are parsed and compared
-                const targetUser = argv.targetType === "ssh" ? "totally-a-user" : <string> argv.targetUser;
+                const targetUser = argv.targetType === "ssh" ? "totally-a-user" : argv.targetUser;
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
@@ -200,9 +216,9 @@ export class CliDriver
             }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
-        .strict()
-        .demandCommand()
-        .help()
+        .strict() // if unknown command, show help
+        .demandCommand() // if no command, show help
+        .help() // auto gen help message
         .argv
     }
 }
