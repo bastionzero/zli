@@ -27,9 +27,9 @@ export class OAuthService implements IDisposable {
                     const params = client.callbackParams(req);
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
-                    const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (60 * 60 * 12) - 30; // 12 hours minus 30 seconds from now (epoch time in seconds)
-                    thoumMessage(`thoum >>> log in successful`);
-                    thoumMessage(`thoum >>> callback listener closed`);
+                    const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (30); // 12 hours minus 30 seconds from now (epoch time in seconds)
+                    thoumMessage(`log in successful`);
+                    thoumMessage(`callback listener closed`);
 
                     // write to config with callback
                     callback(tokenSet, tokenSetExpireTime);
@@ -39,8 +39,8 @@ export class OAuthService implements IDisposable {
                     break;
 
                 case '/logout-callback':
-                    thoumMessage(`thoum >>> log in successful`);
-                    thoumMessage(`thoum >>> callback listener closed`);
+                    thoumMessage(`log in successful`);
+                    thoumMessage(`callback listener closed`);
                     res.end('Log out successful. You may close this window'); // TODO: serve HTML here
                     resolve();
                     break;
@@ -53,7 +53,7 @@ export class OAuthService implements IDisposable {
 
         this.server = http.createServer(requestListener);
         this.server.listen(this.callbackPort, this.host, () => {});
-        thoumMessage(`thoum >>> callback listening on http://${this.host}:${this.callbackPort}/`);
+        thoumMessage(`callback listening on http://${this.host}:${this.callbackPort}/`);
     }
 
     // The client will make the log-in requests with the following parameters
