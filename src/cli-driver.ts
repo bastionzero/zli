@@ -69,7 +69,7 @@ export class CliDriver
         // <requiredPositional>, [optionalPositional]
         .command(
             'connect <targetType> <targetId> [targetUser]',
-            'Connect to a target, targetUser only required for SSM targets',
+            'Connect to a target, [targetUser] only required for SSM targets',
             (yargs) => {
                 // you must return the yarg for the handler to have types
                 return yargs.positional('targetType', {
@@ -264,6 +264,9 @@ export class CliDriver
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message
+        .epilog(`Command arguments key: 
+ - <arg> is required
+ - [arg] is optional or sometimes required`)
         .argv; // returns argv of yargs
     }
 }
