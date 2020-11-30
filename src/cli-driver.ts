@@ -1,4 +1,5 @@
 import { SessionState, TargetType } from "./types";
+import { findSubstring } from './utils';
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
@@ -40,6 +41,7 @@ export class CliDriver
         yargs(process.argv.slice(2))
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
+        .wrap(null)
         .middleware(checkVersionMiddleware)
         .middleware((argv) =>
         {
@@ -63,10 +65,11 @@ export class CliDriver
             // TODO: capture options and flags
             this.mixpanelService.TrackCliCall('CliCommand', { args: argv._ } );
         })
+        // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
         // <requiredPositional>, [optionalPositional]
         .command(
             'connect <targetType> <targetId> [targetUser]',
-            'Connect to a target',
+            'Connect to a target, targetUser only required for SSM targets',
             (yargs) => {
                 // you must return the yarg for the handler to have types
                 return yargs.positional('targetType', {
@@ -158,15 +161,42 @@ export class CliDriver
             }
         )
         .command(
-            'list-targets',
+            ['list-targets', 'lt'],
             'List all SSM and SSH targets',
-            () => {},
-            async () => {
+            (yargs) => {
+                return yargs
+                .option(
+                    'targetType', 
+                    { 
+                        type: 'string', 
+                        choices: ['ssm', 'ssh'],
+                        demandOption: false,
+                        alias: 't'
+                    },
+                )
+                .option(
+                    'env',
+                    {
+                        type: 'string',
+                        demandOption: false,
+                        alias: 'e'
+                    }
+                )
+                .option(
+                    'name',
+                    {
+                        type: 'string',
+                        demandOption: false,
+                        alias: 'n'
+                    }
+                )
+            },
+            async (argv) => {
                 const ssmTargetService = new SsmTargetService(this.configService);
-                const ssmList = await ssmTargetService.ListSsmTargets();
+                let ssmList = await ssmTargetService.ListSsmTargets();
 
                 const sshTargetService = new SshTargetService(this.configService);
-                const sshList = await sshTargetService.ListSsmTargets();
+                let sshList = await sshTargetService.ListSsmTargets();
 
                 const envService = new EnvironmentsService(this.configService);
                 const envs = await envService.ListEnvironments();
@@ -177,8 +207,34 @@ export class CliDriver
                 , colWidths: [6, 16, 16, 38]
                 });
 
-                ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
-                sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+                
+                // find all envIds with substring search
+                // filter targets down by endIds
+                if(argv.env)
+                {
+                    const envIdFilter = envs.filter(e => findSubstring(argv.env, e.name)).map(e => e.id);
+
+                    ssmList = ssmList.filter(ssm => envIdFilter.includes(ssm.environmentId));
+                    sshList = sshList.filter(ssh => envIdFilter.includes(ssh.environmentId));
+                }
+
+                // filter targets by name/alias
+                if(argv.name)
+                {   
+                    ssmList = ssmList.filter(ssm => findSubstring(argv.name, ssm.name));
+                    sshList = sshList.filter(ssh => findSubstring(argv.name, ssh.alias));
+                }
+
+                // push targets to printed table, maybe filter by targetType
+                if(argv.targetType === 'ssm')
+                {
+                    ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
+                } else if(argv.targetType === 'ssh') {
+                    sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+                } else {
+                    ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
+                    sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+                }
 
                 const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
