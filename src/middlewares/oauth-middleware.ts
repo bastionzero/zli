@@ -1,7 +1,7 @@
-import { UserinfoResponse } from "openid-client";
+import { errors, UserinfoResponse } from "openid-client";
 import { OAuthService } from "../oauth.service/oauth.service";
 import { ConfigService } from "../config.service/config.service";
-import { thoumMessage } from "../cli-driver";
+import { thoumError, thoumMessage, thoumWarn } from "../cli-driver";
 
 export async function oauthMiddleware(configService: ConfigService) : Promise<UserinfoResponse> {
 
@@ -15,12 +15,25 @@ export async function oauthMiddleware(configService: ConfigService) : Promise<Us
     {
         thoumMessage('Refreshing oauth');
         // refresh using existing creds
-        let newTokenSet = await ouath.refresh(configService.tokenSet());
-        configService.setTokenSet(newTokenSet);
-    } else if(! configService.tokenSet() || configService.tokenSetExpireTime() < now) {
+        await ouath.refresh(configService.tokenSet())
+        .then((newTokenSet) => configService.setTokenSet(newTokenSet))
+        // Catch oauth related errors
+        .catch((error: errors.OPError | errors.RPError) => {
+            thoumError(error.message);
+            configService.logout();
+        });
+    }
+
+    if(! configService.tokenSet() || configService.tokenSetExpireTime() < now) {
         thoumMessage('Log in required, opening browser');
         // renew with log in flow
-        await ouath.login((tokenSet, expireTime) => configService.setTokenSet(tokenSet, expireTime));
+        await ouath.login((tokenSet, expireTime) => configService.setTokenSet(tokenSet, expireTime))
+        // Catch oauth related errors
+        .catch((error: errors.OPError | errors.RPError) => {
+            thoumError(error.message);
+            configService.logout();
+            thoumWarn('Log in error detected, please try your previous command again');
+        });;
     }
 
     // Get user info from IdP

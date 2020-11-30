@@ -27,7 +27,7 @@ export class OAuthService implements IDisposable {
                     const params = client.callbackParams(req);
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
-                    const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (30); // 12 hours minus 30 seconds from now (epoch time in seconds)
+                    const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (12 * 60 * 60); // 12 hours from now (epoch time in seconds) to SSO again
                     thoumMessage(`log in successful`);
                     thoumMessage(`callback listener closed`);
 

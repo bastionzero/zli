@@ -6,7 +6,7 @@ type ThoumConfigSchema = {
     authUrl: string,
     serviceUrl: string,
     tokenSet: TokenSetParameters,
-    tokenSetExpireTime: number,
+    tokenSetExpireTime: number, // TODO: remove this when federated id server is gone
     callbackListenerPort: number,
     mixpanelToken: string
 }
