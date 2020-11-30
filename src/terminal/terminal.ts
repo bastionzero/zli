@@ -1,7 +1,6 @@
 import { BehaviorSubject } from 'rxjs';
 import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
 import { ConfigService } from '../config.service/config.service';
-import chalk from 'chalk';
 import { thoumError } from '../cli-driver';
 
 export interface TerminalSize
@@ -39,9 +38,10 @@ export class ShellTerminal implements IDisposable
             else
             {
                 this.blockInput = true;
-
-                if(! newState.loading) 
-                    thoumError('\nthoum >>> Disconnection detected');
+                
+                // TODO: offer reconnect flow
+                if(! newState.loading)
+                    thoumError('\nthoum >>> Disconnection detected, CTRL+P to exit');
             }
         }); 
     }
