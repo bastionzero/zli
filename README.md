@@ -1,28 +1,28 @@
 # thoum
 
-First time set up:
- - Generate an API key for your desired server 
- - Edit `src/index.js` for the `serviceUrl` and `apiSecret`
- - run `npm run start config`
+## Developer processes
 
-How to use:
-
+### Build and test
 ```
-npm run start connect <SSM | SSH> <TARGET-ID>
+npm run start -- <cmd> [args] --flag flagArg
 ```
 
-To quit: `CTRL+Q`
+**Escape a connection:** `CTRL+P`
 
+### Run OAuth Example
+```
+npm run proto
+```
 
-Some notes:
- - If you get random 500 errors you might have used up all your session allocation (limit of 10 per user), just drop the `sessions` table's rows (`psql -c "delete from sessions *" WebshellDb`)
+### Run against stage or deb
+The following command is hidden from the help menu:
+```
+npm run start -- <cmd> [args] --configName <prod | stage | dev>
+thoum --configName <prod | stage | dev>
+```
 
-
-TODO:
- - Add oauth flow
- - Add inquirer for dynamic config set up
- - Add error handling
- - Add more features such as listing and reconnecting
+### Known bugs as of 1.2.0
+ - If you get random 500 errors you might have used up all your session allocation (limit of 10 per user), you can go to the web UI and delete a session there
 
 
  ## CLI Release Process
@@ -40,3 +40,33 @@ The executables will be published to the s3 bucket with 2 different path prefixe
 2. `webshell-cli-release/release/{version}`
 
 Where {version} is the version that is defined in the `package.json` file. This means older versions are still accessible but the `latest` folder will always overwritten by the codebuild job.
+
+
+## Installing a release
+
+The latest releases can be found here:
+```
+Mac:        download-cli.clunk80.com/release/latest/bin/thoum-macos
+Linux:      download-cli.clunk80.com/release/latest/bin/thoum-linux
+Windows:    download-cli.clunk80.com/release/latest/bin/thoum-win.exe
+```
+
+### Mac users:
+ - download the executable
+ - `chmod +x` the exectuable
+ - Run the program once and see a warning from Apple
+ - Go to `System Preferences > Security & Privacy > General > Allow thoum`
+ - Run the executable again and confirm for Apple
+
+### Linux users:
+ - download the executable
+ - `chmod +x` the executable
+
+### Windows users:
+ - Run the executable from the command line, even though you can technically click it
+
+## Running thoum
+
+```
+thoum help  # auto-gen help menu
+```
