@@ -1,8 +1,8 @@
 import { SessionState, TargetType } from "./types";
-import { findSubstring } from './utils';
-import yargs from "yargs";
+import { findSubstring, parseTargetString } from './utils';
+import yargs, { parsed } from "yargs";
 import { ConfigService } from "./config.service/config.service";
-import { ConnectionService, EnvironmentsService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
+import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
 import chalk from "chalk";
@@ -12,6 +12,9 @@ import { UserinfoResponse } from "openid-client";
 import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
+import fs from 'fs'
+import { parse } from "path";
+import { partial } from "lodash";
 
 
 export function thoumMessage(message: string): void
@@ -198,7 +201,7 @@ export class CliDriver
                 const sshTargetService = new SshTargetService(this.configService);
                 let sshList = await sshTargetService.ListSsmTargets();
 
-                const envService = new EnvironmentsService(this.configService);
+                const envService = new EnvironmentService(this.configService);
                 const envs = await envService.ListEnvironments();
 
                 // ref: https://github.com/cli-table/cli-table3
@@ -238,6 +241,47 @@ export class CliDriver
 
                 const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
+                process.exit(0);
+            }
+        )
+        .command(
+            'copy <source> <destination>',
+            'Upload/download a file to target, target path syntax: [targetUser]@<ssm|ssh>:<targetId>:<targetPath>, [targetUser] only required for SSM',
+            (yargs) => {
+                return yargs
+                .positional('source', {
+                    type: 'string'
+                })
+                .positional('destination', {
+                    type: 'string'
+                })
+                .example('copy ssm-user@ssm:95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/renamedFile.txt', 'Download example')
+                .example('copy /Users/coolUser/renamedFile.txt ssm-user@ssm:95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt', 'Upload example');
+            },
+            async (argv) => {
+                const fileService = new FileService(this.configService);
+
+                // figure out upload or download                
+                // would be undefined if not parsed properly
+                if(parseTargetString(argv.destination))
+                {
+                    // upload case
+                    let parsedTarget = parseTargetString(argv.destination);
+
+                    const fh = fs.createReadStream(argv.source);
+
+                    await fileService.uploadFile(parsedTarget.targetId, parsedTarget.targetType, parsedTarget.targetPath, fh, parsedTarget.targetUser);
+                    thoumMessage('File upload complete');
+
+                } else if(parseTargetString(argv.source)) {
+                    // download case
+                    let parsedTarget = parseTargetString(argv.source);
+
+                    await fileService.downloadFile(parsedTarget.targetId, parsedTarget.targetType, parsedTarget.targetPath, argv.destination, parsedTarget.targetUser);
+                } else {
+                    thoumError('Invalid target string, must follow syntax:');
+                    thoumError('[targetUser]@<ssm|ssh>:<targetId>:<targetPath>');
+                }
                 process.exit(0);
             }
         )

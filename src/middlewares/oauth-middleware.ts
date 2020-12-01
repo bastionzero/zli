@@ -33,7 +33,7 @@ export async function oauthMiddleware(configService: ConfigService) : Promise<Us
             thoumError(error.message);
             configService.logout();
             thoumWarn('Log in error detected, please try your previous command again');
-        });;
+        });
     }
 
     // Get user info from IdP

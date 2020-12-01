@@ -1,9 +1,12 @@
 import { TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
-import { Dictionary } from 'lodash';
-import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary } from './http.service.types';
+import { Dictionary, reject } from 'lodash';
+import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import chalk from 'chalk';
+import fs, { ReadStream } from 'fs';
+import FormData from 'form-data';
+import { thoumMessage } from '../cli-driver';
 
 export class HttpService
 {
@@ -34,6 +37,13 @@ export class HttpService
         console.log(chalk.red(`HttpService Error:\n${errorMessage}`));
     }
 
+    protected getFormDataFromRequest(request: any): FormData {
+        return Object.keys(request).reduce((formData, key) => {
+            formData.append(key, request[key]);
+            return formData;
+        }, new FormData());
+    }
+
     protected async Get<TResp>(route: string, queryParams: Dictionary<string>) : Promise<TResp>
     {
         try {
@@ -53,7 +63,7 @@ export class HttpService
 
     protected async Post<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
     {
-        try{
+        try {
             var resp : TResp = await this.httpClient.post(
                 route,
                 {
@@ -67,6 +77,81 @@ export class HttpService
 
         return resp;
     }
+
+    protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
+    {
+        const formBody = this.getFormDataFromRequest(body);
+        
+        try {
+            var resp : TResp = await this.httpClient.post(
+                route, 
+                {
+                    body: formBody
+                }
+            ).json();
+        } catch (error) {
+            this.handleHttpException(error);
+        }
+
+        return resp;
+    }
+
+    // Returns a request object that you can add response handlers to at a higher layer
+    protected FormStream<TReq>(route: string, body: TReq, localPath: string) : Promise<void>
+    {
+        const formBody = this.getFormDataFromRequest(body);
+        const whereToSave = localPath.endsWith('/') ? localPath + `thoum-download-${Math.floor(Date.now() / 1000)}` : localPath;
+
+        // TODO: bring the handlers up a level by returning the request stream to the caller?
+
+            /* Example headers response
+            {
+                'content-type': 'application/octet-stream',
+                'content-length': '17',
+                connection: 'close',
+                date: 'Tue, 01 Dec 2020 18:37:13 GMT',
+                server: 'Kestrel',
+                'strict-transport-security': 'max-age=2592000',
+                'content-disposition': "attachment; filename=test.txt; filename*=UTF-8''test.txt",
+                'x-robots-tag': 'none',
+                'x-cache': 'Miss from cloudfront',
+                via: '1.1 e6fc68fd040718147cda2e3ef6f63637.cloudfront.net (CloudFront)',
+                'x-amz-cf-pop': 'EWR50-C1',
+                'x-amz-cf-id': '4kpHjhXXK3Erk91ApPrr9Lvt9EEzCP5EjtHdkqbPobXhA9dPdxqv6g=='
+            }
+            */
+            // TODO: something with these headers?
+            // TODO: read filename from header and save if not specified
+            // requestStream.on('response', (response) => {
+            //     console.log(response.headers);
+            // });
+
+            return new Promise((resolve, reject) => {
+                try {
+                    let requestStream = this.httpClient.stream.post(
+                        route,
+                        {
+                            isStream: true,
+                            body: formBody
+                        }
+                    );
+
+                    // Buffer is returned by 'data' event
+                    requestStream.on('data', (response: Buffer) => {
+                        fs.writeFile(whereToSave, response, () => {});
+                    })
+            
+                    requestStream.on('end', () => {
+                        thoumMessage('File download complete');
+                        thoumMessage(whereToSave);
+                        resolve();
+                    });
+                } catch (error) {
+                    this.handleHttpException(error);
+                    reject(error);
+                }
+            });
+    }   
 }
 
 export class SessionService extends HttpService
@@ -178,7 +263,7 @@ export class SshTargetService extends HttpService
 }
 
 
-export class EnvironmentsService extends HttpService
+export class EnvironmentService extends HttpService
 {
     constructor(configService: ConfigService)
     {
@@ -188,5 +273,41 @@ export class EnvironmentsService extends HttpService
     public ListEnvironments() : Promise<EnvironmentDetails[]>
     {
         return this.Post('list', {});
+    }
+}
+
+export class FileService extends HttpService
+{
+    constructor(configService: ConfigService)
+    {
+        super(configService, 'api/v1/file/');
+    }
+
+    public async uploadFile(targetId: string, targetType: TargetType, path: string, file: ReadStream, targetUser?: string): Promise<void> {
+        const request : UploadFileRequest = {
+            targetId: targetId,
+            targetType: targetType,
+            targetFilePath: path,
+            file: file,
+            targetUser: targetUser
+        };
+        
+        const resp : UploadFileResponse = await this.FormPost('upload', request);
+    
+        return;
+    }
+
+    public async downloadFile(targetId: string, targetType: TargetType, targetPath: string,localPath: string, targetUser?: string): Promise<any> {
+        
+        const request: DownloadFileRequest = {
+            targetId: targetId,
+            targetType: targetType,
+            filePath: targetPath,
+            targetUser: targetUser
+        };
+    
+        await this.FormStream('download', request, localPath);
+
+        return;
     }
 }
