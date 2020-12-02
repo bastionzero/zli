@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import got from "got/dist/source";
 import { SemVer } from "semver";
-import { thoumError, thoumWarn } from "../cli-driver";
+import { thoumError, thoumWarn } from '../utils';
 
 import { name as appName, version } from '../../package.json';
 

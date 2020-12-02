@@ -3,7 +3,7 @@ import open from 'open';
 import { IDisposable } from "../websocket.service/websocket.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
-import { thoumMessage } from "../cli-driver";
+import { thoumMessage } from '../utils';
 
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;

@@ -1,11 +1,10 @@
 import { SessionState, TargetType } from "./types";
-import { findSubstring, parseTargetString, targetStringExample, targetStringExampleNoPath } from './utils';
-import yargs, { parsed } from "yargs";
+import { findSubstring, parseTargetString, parseTargetType, targetStringExample, targetStringExampleNoPath, thoumError, thoumMessage, thoumWarn } from './utils';
+import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
-import chalk from "chalk";
 import Table from 'cli-table3';
 import termsize from 'term-size';
 import { UserinfoResponse } from "openid-client";
@@ -13,24 +12,6 @@ import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
-import { parse } from "path";
-import { partial } from "lodash";
-
-
-export function thoumMessage(message: string): void
-{
-    console.log(chalk.magenta(`thoum >>> ${message}`));
-}
-
-export function thoumWarn(message: string): void
-{
-    console.log(chalk.yellowBright(`thoum >>> ${message}`));
-}
-
-export function  thoumError(message: string): void
-{
-    console.log(chalk.red(`thoum >>> ${message}`));
-}
 
 export class CliDriver
 {
@@ -71,17 +52,25 @@ export class CliDriver
         // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
         // <requiredPositional>, [optionalPositional]
         .command(
-            'connect <targetString>',
+            'connect <targetType> <targetString>',
             'Connect to a target',
             (yargs) => {
                 // you must return the yarg for the handler to have types
-                return yargs.positional('targetString', {
+                return yargs
+                .positional('targetType', {
+                    type: 'string',
+                    choices: ['ssm', 'ssh']
+                })
+                .positional('targetString', {
                     type: 'string',
                 })
-                .example('connect ssm-user@ssm:95b72b50-d09c-49fa-8825-332abfeb013e', 'SSM connect example')
-                .example('connect ssh:dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
+                .example('connect ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e', 'SSM connect example')
+                .example('connect ssh dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
             },
             async (argv) => {
+
+                const targetType = parseTargetType(argv.targetType);
+
                 // Extra colon added to account for no path being passed into this command
                 const parsedTargetString = parseTargetString(argv.targetString + ':');
 
@@ -89,6 +78,13 @@ export class CliDriver
                 {
                     thoumError('Invalid target string, must follow syntax:');
                     thoumError(targetStringExampleNoPath);
+                    process.exit(1);
+                }
+
+                if(targetType === TargetType.SSH && parsedTargetString.targetUser)
+                {
+                    thoumWarn('Cannot specify targetUser for SSH connections');
+                    thoumWarn('Please try your previous command without the targetUser');
                     process.exit(1);
                 }
 
@@ -112,13 +108,13 @@ export class CliDriver
                 // We do the following for ssh since we are required to pass
                 // in a user although it does not get read at any point
                 // TODO: fix how enums are parsed and compared
-                const targetUser = parsedTargetString.targetType == TargetType.SSH ? 'totally-a-user' : parsedTargetString.targetUser;
+                const targetUser = targetType == TargetType.SSH ? 'totally-a-user' : parsedTargetString.targetUser;
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
-                const connectionId = await connectionService.CreateConnection(parsedTargetString.targetType, parsedTargetString.targetId, cliSessionId, targetUser);
+                const connectionId = await connectionService.CreateConnection(targetType, parsedTargetString.targetId, cliSessionId, targetUser);
 
-                this.mixpanelService.TrackNewConnection(parsedTargetString.targetType);
+                this.mixpanelService.TrackNewConnection(targetType);
 
                 // run terminal
                 const queryString = `?connectionId=${connectionId}`;
@@ -237,21 +233,35 @@ export class CliDriver
             }
         )
         .command(
-            'copy <source> <destination>',
+            'copy <targetType> <source> <destination>',
             'Upload/download a file to target',
             (yargs) => {
                 return yargs
+                .positional('targetType', {
+                    type: 'string',
+                    choices: ['ssm', 'ssh']
+                })
                 .positional('source', {
                     type: 'string'
                 })
                 .positional('destination', {
                     type: 'string'
                 })
-                .example('copy ssm-user@ssm:95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/renamedFile.txt', 'Download example')
-                .example('copy /Users/coolUser/renamedFile.txt ssm-user@ssm:95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt', 'Upload example');
+                .example('copy ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'SSM Download example')
+                .example('copy ssm /Users/coolUser/secretFile.txt ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/newFileName', 'SSM Upload example')
+                .example('copy ssh /Users/coolUser/neatFile.txt 05c6bdea-8623-4b49-83ad-f7f301fea7e1:/home/ssm-user/newFileName.txt', 'SSH Upload example');
             },
             async (argv) => {
                 const fileService = new FileService(this.configService);
+
+                const targetType = parseTargetType(argv.targetType);
+
+                if(targetType === TargetType.SSH && (parseTargetString(argv.source).targetUser || parseTargetString(argv.destination).targetUser))
+                {
+                    thoumWarn('Cannot specify targetUser for SSH connections');
+                    thoumWarn('Please try your previous command without the targetUser');
+                    process.exit(1);
+                }
 
                 // figure out upload or download                
                 // would be undefined if not parsed properly
@@ -262,14 +272,14 @@ export class CliDriver
 
                     const fh = fs.createReadStream(argv.source);
 
-                    await fileService.uploadFile(parsedTarget.targetId, parsedTarget.targetType, parsedTarget.targetPath, fh, parsedTarget.targetUser);
+                    await fileService.uploadFile(parsedTarget.targetId, targetType, parsedTarget.targetPath, fh, parsedTarget.targetUser);
                     thoumMessage('File upload complete');
 
                 } else if(parseTargetString(argv.source)) {
                     // download case
                     let parsedTarget = parseTargetString(argv.source);
 
-                    await fileService.downloadFile(parsedTarget.targetId, parsedTarget.targetType, parsedTarget.targetPath, argv.destination, parsedTarget.targetUser);
+                    await fileService.downloadFile(parsedTarget.targetId, targetType, parsedTarget.targetPath, argv.destination, parsedTarget.targetUser);
                 } else {
                     thoumError('Invalid target string, must follow syntax:');
                     thoumError(targetStringExample);

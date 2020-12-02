@@ -1,12 +1,12 @@
 import { TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
-import { Dictionary, reject } from 'lodash';
+import { Dictionary } from 'lodash';
 import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import chalk from 'chalk';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
-import { thoumMessage } from '../cli-driver';
+import { thoumMessage } from '../utils';
 
 export class HttpService
 {

@@ -1,7 +1,7 @@
 import { BehaviorSubject } from 'rxjs';
 import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
 import { ConfigService } from '../config.service/config.service';
-import { thoumError } from '../cli-driver';
+import { thoumError } from '../utils';
 
 export interface TerminalSize
 {

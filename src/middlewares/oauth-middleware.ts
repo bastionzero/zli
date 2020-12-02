@@ -1,7 +1,7 @@
 import { errors, UserinfoResponse } from "openid-client";
 import { OAuthService } from "../oauth.service/oauth.service";
 import { ConfigService } from "../config.service/config.service";
-import { thoumError, thoumMessage, thoumWarn } from "../cli-driver";
+import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
 export async function oauthMiddleware(configService: ConfigService) : Promise<UserinfoResponse> {
 
