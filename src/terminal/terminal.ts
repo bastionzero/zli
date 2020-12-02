@@ -41,7 +41,7 @@ export class ShellTerminal implements IDisposable
                 
                 // TODO: offer reconnect flow
                 if(! newState.loading)
-                    thoumError('\nDisconnection detected, CTRL+P to exit');
+                    thoumError('Disconnection detected, CTRL+P to exit');
             }
         }); 
     }

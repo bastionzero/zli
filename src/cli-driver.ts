@@ -1,5 +1,5 @@
 import { SessionState, TargetType } from "./types";
-import { findSubstring, parseTargetString } from './utils';
+import { findSubstring, parseTargetString, targetStringExample, targetStringExampleNoPath } from './utils';
 import yargs, { parsed } from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
@@ -71,33 +71,27 @@ export class CliDriver
         // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
         // <requiredPositional>, [optionalPositional]
         .command(
-            'connect <targetType> <targetId> [targetUser]',
-            'Connect to a target, [targetUser] only required for SSM targets',
+            'connect <targetString>',
+            'Connect to a target',
             (yargs) => {
                 // you must return the yarg for the handler to have types
-                return yargs.positional('targetType', {
+                return yargs.positional('targetString', {
                     type: 'string',
-                    describe: 'ssm or ssh',
-                    choices: ['ssm', 'ssh'],
-                }).positional('targetId', {
-                    type: 'string',
-                    describe: 'GUID of target',
-                }).positional('targetUser', {
-                    type: 'string',
-                    describe: 'User on target to assume for SSM',
-                }).check((argv, opts) => {
-                    if(argv.targetType === "ssm" && ! argv.targetUser)
-                    {
-                        thoumError('targetUser must be set for SSM');
-                        return false;
-                    }
-                    if(argv.targetType === "ssh" && argv.targetUser) {
-                        thoumMessage('targetUser cannot be set for SSH, ignoring');
-                    }
-                    return true;
-                });
+                })
+                .example('connect ssm-user@ssm:95b72b50-d09c-49fa-8825-332abfeb013e', 'SSM connect example')
+                .example('connect ssh:dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
             },
             async (argv) => {
+                // Extra colon added to account for no path being passed into this command
+                const parsedTargetString = parseTargetString(argv.targetString + ':');
+
+                if(! parsedTargetString)
+                {
+                    thoumError('Invalid target string, must follow syntax:');
+                    thoumError(targetStringExampleNoPath);
+                    process.exit(1);
+                }
+
                 // call list session
                 const sessionService = new SessionService(this.configService);
                 const listSessions = await sessionService.ListSessions();
@@ -115,18 +109,16 @@ export class CliDriver
                     cliSessionId = cliSpace.pop().id;
                 }
 
-                const targetType = <TargetType> argv.targetType;
-                const targetId = argv.targetId;
                 // We do the following for ssh since we are required to pass
                 // in a user although it does not get read at any point
                 // TODO: fix how enums are parsed and compared
-                const targetUser = argv.targetType === "ssh" ? "totally-a-user" : argv.targetUser;
+                const targetUser = parsedTargetString.targetType == TargetType.SSH ? 'totally-a-user' : parsedTargetString.targetUser;
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
-                const connectionId = await connectionService.CreateConnection(targetType, targetId, cliSessionId, targetUser);
+                const connectionId = await connectionService.CreateConnection(parsedTargetString.targetType, parsedTargetString.targetId, cliSessionId, targetUser);
 
-                this.mixpanelService.TrackNewConnection(targetType);
+                this.mixpanelService.TrackNewConnection(parsedTargetString.targetType);
 
                 // run terminal
                 const queryString = `?connectionId=${connectionId}`;
@@ -160,12 +152,12 @@ export class CliDriver
                         terminal.writeString(key.sequence);
                     }
                 });
-                thoumMessage('CTRL+P to exit thoum');
+                thoumMessage('CTRL+P to escape terminal');
             }
         )
         .command(
             ['list-targets', 'lt'],
-            'List all SSM and SSH targets',
+            'List all SSM and SSH targets (filters available)',
             (yargs) => {
                 return yargs
                 .option(
@@ -246,7 +238,7 @@ export class CliDriver
         )
         .command(
             'copy <source> <destination>',
-            'Upload/download a file to target, target path syntax: [targetUser]@<ssm|ssh>:<targetId>:<targetPath>, [targetUser] only required for SSM',
+            'Upload/download a file to target',
             (yargs) => {
                 return yargs
                 .positional('source', {
@@ -280,7 +272,7 @@ export class CliDriver
                     await fileService.downloadFile(parsedTarget.targetId, parsedTarget.targetType, parsedTarget.targetPath, argv.destination, parsedTarget.targetUser);
                 } else {
                     thoumError('Invalid target string, must follow syntax:');
-                    thoumError('[targetUser]@<ssm|ssh>:<targetId>:<targetPath>');
+                    thoumError(targetStringExample);
                 }
                 process.exit(0);
             }
@@ -308,9 +300,18 @@ export class CliDriver
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message
-        .epilog(`Command arguments key: 
+        .epilog(`Note:
+ - <targetString> format: ${targetStringExample}
+ - TargetStrings only require targetUser for SSM
+ - TargetPath can be omitted
+
+For command specific help: thoum <cmd> help
+        
+Command arguments key:
  - <arg> is required
- - [arg] is optional or sometimes required`)
+ - [arg] is optional or sometimes required
+
+Need help? https://app.clunk80.com/support`)
         .argv; // returns argv of yargs
     }
 }

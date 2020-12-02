@@ -6,8 +6,12 @@ export function findSubstring(targetString: string, searchString: string) : bool
     return searchString.toLowerCase().indexOf(targetString.toLowerCase()) !== -1;
 }
 
+export const targetStringExample: string = '[targetUser@]<ssm|ssh>:<targetId>:<targetPath>';
+export const targetStringExampleNoPath : string = '[targetUser@]<ssm|ssh>:<targetId>'
+
 export function parseTargetString(targetString: string) : parsedTargetString
 {
+    // [targetUser@]<ssm|ssh>:<targetId>:[targetPath]
     const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30})@)?(ssm|ssh):([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}):/;
 
     if(! pattern.test(targetString))
@@ -29,7 +33,7 @@ export function parseTargetString(targetString: string) : parsedTargetString
     }
     
     const colonSplit = atSignSplit[0].split(':', 3);
-    result.targetType = <TargetType> colonSplit[0];
+    result.targetType = <TargetType> colonSplit[0].toUpperCase();
     result.targetId = colonSplit[1];
     result.targetPath = colonSplit[2];
 
