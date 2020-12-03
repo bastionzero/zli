@@ -1,5 +1,5 @@
 import { SessionState, TargetType } from "./types";
-import { findSubstring, parseTargetString, parseTargetType, targetStringExample, targetStringExampleNoPath, thoumError, thoumMessage, thoumWarn } from './utils';
+import { checkTargetTypeAndStringPair, findSubstring, parseTargetString, parseTargetType, targetStringExample, targetStringExampleNoPath, thoumError, thoumMessage, thoumWarn } from './utils';
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
@@ -69,24 +69,21 @@ export class CliDriver
             },
             async (argv) => {
 
+                // ssm and ssh range checking preformed by yargs via choices
                 const targetType = parseTargetType(argv.targetType);
 
                 // Extra colon added to account for no path being passed into this command
-                const parsedTargetString = parseTargetString(argv.targetString + ':');
+                const parsedTarget = parseTargetString(argv.targetString);
 
-                if(! parsedTargetString)
+                if(! parsedTarget)
                 {
                     thoumError('Invalid target string, must follow syntax:');
                     thoumError(targetStringExampleNoPath);
                     process.exit(1);
                 }
 
-                if(targetType === TargetType.SSH && parsedTargetString.targetUser)
-                {
-                    thoumWarn('Cannot specify targetUser for SSH connections');
-                    thoumWarn('Please try your previous command without the targetUser');
+                if(! checkTargetTypeAndStringPair(targetType, parsedTarget))
                     process.exit(1);
-                }
 
                 // call list session
                 const sessionService = new SessionService(this.configService);
@@ -108,11 +105,11 @@ export class CliDriver
                 // We do the following for ssh since we are required to pass
                 // in a user although it does not get read at any point
                 // TODO: fix how enums are parsed and compared
-                const targetUser = targetType == TargetType.SSH ? 'totally-a-user' : parsedTargetString.targetUser;
+                const targetUser = targetType == TargetType.SSH ? 'totally-a-user' : parsedTarget.targetUser;
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
-                const connectionId = await connectionService.CreateConnection(targetType, parsedTargetString.targetId, cliSessionId, targetUser);
+                const connectionId = await connectionService.CreateConnection(targetType, parsedTarget.targetId, cliSessionId, targetUser);
 
                 this.mixpanelService.TrackNewConnection(targetType);
 
@@ -157,9 +154,9 @@ export class CliDriver
             (yargs) => {
                 return yargs
                 .option(
-                    'targetType', 
-                    { 
-                        type: 'string', 
+                    'targetType',
+                    {
+                        type: 'string',
                         choices: ['ssm', 'ssh'],
                         demandOption: false,
                         alias: 't'
@@ -198,7 +195,7 @@ export class CliDriver
                 , colWidths: [6, 16, 16, 38]
                 });
 
-                
+
                 // find all envIds with substring search
                 // filter targets down by endIds
                 if(argv.env)
@@ -211,7 +208,7 @@ export class CliDriver
 
                 // filter targets by name/alias
                 if(argv.name)
-                {   
+                {
                     ssmList = ssmList.filter(ssm => findSubstring(argv.name, ssm.name));
                     sshList = sshList.filter(ssh => findSubstring(argv.name, ssh.alias));
                 }
@@ -255,30 +252,30 @@ export class CliDriver
                 const fileService = new FileService(this.configService);
 
                 const targetType = parseTargetType(argv.targetType);
+                const sourceParsedString = parseTargetString(argv.source);
+                const destParsedString = parseTargetString(argv.destination);
+                const parsedTarget = sourceParsedString || destParsedString; // one of these will be undefined so javascript will use the other
 
-                if(targetType === TargetType.SSH && (parseTargetString(argv.source).targetUser || parseTargetString(argv.destination).targetUser))
-                {
-                    thoumWarn('Cannot specify targetUser for SSH connections');
-                    thoumWarn('Please try your previous command without the targetUser');
+                if(! checkTargetTypeAndStringPair(targetType, parsedTarget))
                     process.exit(1);
-                }
 
-                // figure out upload or download                
+                // figure out upload or download
                 // would be undefined if not parsed properly
-                if(parseTargetString(argv.destination))
+                if(destParsedString)
                 {
                     // upload case
-                    let parsedTarget = parseTargetString(argv.destination);
-
                     const fh = fs.createReadStream(argv.source);
+                    if(fh.readableLength === 0)
+                    {
+                        thoumWarn(`File ${argv.source} does not exist or cannot be read`);
+                        process.exit(1);
+                    }
 
                     await fileService.uploadFile(parsedTarget.targetId, targetType, parsedTarget.targetPath, fh, parsedTarget.targetUser);
                     thoumMessage('File upload complete');
 
-                } else if(parseTargetString(argv.source)) {
+                } else if(sourceParsedString) {
                     // download case
-                    let parsedTarget = parseTargetString(argv.source);
-
                     await fileService.downloadFile(parsedTarget.targetId, targetType, parsedTarget.targetPath, argv.destination, parsedTarget.targetUser);
                 } else {
                     thoumError('Invalid target string, must follow syntax:');
@@ -316,7 +313,7 @@ export class CliDriver
  - TargetPath can be omitted
 
 For command specific help: thoum <cmd> help
-        
+
 Command arguments key:
  - <arg> is required
  - [arg] is optional or sometimes required
