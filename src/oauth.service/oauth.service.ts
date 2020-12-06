@@ -63,6 +63,7 @@ export class OAuthService implements IDisposable {
         this.server.on('error', () => {
             thoumError('Log in listener could not bind to port');
             thoumWarn(`Please make sure port ${this.callbackPort} is open/whitelisted`);
+            thoumWarn('To edit callback port please run: \'thoum config\'');
             process.exit(1);
         });
         // open browser after successful port binding
