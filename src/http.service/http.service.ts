@@ -6,7 +6,7 @@ import { ConfigService } from '../config.service/config.service';
 import chalk from 'chalk';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
-import { thoumMessage } from '../utils';
+import { thoumError, thoumMessage } from '../utils';
 
 export class HttpService
 {
@@ -21,6 +21,17 @@ export class HttpService
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
             headers: {authorization: this.configService.getAuthHeader()},
+            hooks: {
+                beforeRequest: [
+                    (options) => thoumMessage(`Making request to: ${options.url}`)
+                ],
+                afterResponse: [
+                    (response, _) => {
+                        thoumMessage('Request successful');
+                        return response;
+                    }
+                ]
+            }
             // throwHttpErrors: false // potentially do this if we want to check http without exceptions
         });
     }
