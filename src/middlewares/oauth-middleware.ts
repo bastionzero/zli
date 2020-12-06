@@ -29,10 +29,11 @@ export async function oauthMiddleware(configService: ConfigService) : Promise<Us
         // renew with log in flow
         await ouath.login((tokenSet, expireTime) => configService.setTokenSet(tokenSet, expireTime))
         // Catch oauth related errors
-        .catch((error: errors.OPError | errors.RPError) => {
-            thoumError(error.message);
+        .catch((error) => {
+            // TODO make part of the verbose error
+            thoumError(error);
             configService.logout();
-            thoumWarn('Log in error detected, please try your previous command again');
+            thoumWarn('Log in error detected or timed out');
         });
     }
 

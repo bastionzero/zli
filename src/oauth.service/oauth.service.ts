@@ -3,7 +3,7 @@ import open from 'open';
 import { IDisposable } from "../websocket.service/websocket.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
-import { thoumMessage } from '../utils';
+import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;
@@ -17,7 +17,13 @@ export class OAuthService implements IDisposable {
         this.callbackPort = callbackPort;
     }
 
-    private setupCallbackListener(client: Client, codeVerifier: string, callback: (tokenSet: TokenSet, expireTime: number) => void, resolve: (value?: void | PromiseLike<void>) => void): void {
+    private setupCallbackListener(
+        client: Client, 
+        codeVerifier: string, 
+        callback: (tokenSet: TokenSet, expireTime: number) => void,
+        onListen: () => void,
+        resolve: (value?: void | PromiseLike<void>) => void
+    ): void {
 
         const requestListener: RequestListener = async (req, res) => {
             res.writeHead(200);
@@ -51,9 +57,17 @@ export class OAuthService implements IDisposable {
             }
         };
 
+        thoumMessage(`Setting up callback listener at http://${this.host}:${this.callbackPort}/`);
         this.server = http.createServer(requestListener);
+        // Port binding failure will produce error event
+        this.server.on('error', () => {
+            thoumError('Log in listener could not bind to port');
+            thoumWarn(`Please make sure port ${this.callbackPort} is open/whitelisted`);
+            process.exit(1);
+        });
+        // open browser after successful port binding
+        this.server.on('listening', onListen);
         this.server.listen(this.callbackPort, this.host, () => {});
-        thoumMessage(`callback listening on http://${this.host}:${this.callbackPort}/`);
     }
 
     // The client will make the log-in requests with the following parameters
@@ -74,27 +88,31 @@ export class OAuthService implements IDisposable {
         return client;
     }
 
+    private getAuthUrl(client: Client, code_challenge: string) : string
+    {
+        const authParams: AuthorizationParameters = {
+            client_id: 'CLI',
+            code_challenge: code_challenge,
+            code_challenge_method: 'S256',
+            // both openid and offline_access must be set for refresh token
+            scope: 'openid offline_access email profile backend-api',
+        };
+
+        return client.authorizationUrl(authParams);
+    }
+
     public login(callback: (tokenSet: TokenSet, expireTime: number) => void): Promise<void>
     {
         return new Promise<void>(async (resolve, reject) => {
-            setTimeout(() => reject('Log in timeout reached'), 3 * 60 * 1000);
+            setTimeout(() => reject('Log in timeout reached'), 60 * 1000);
 
             const client = await this.getClient();
             const code_verifier = generators.codeVerifier();
             const code_challenge = generators.codeChallenge(code_verifier);
 
-            this.setupCallbackListener(client, code_verifier, callback, resolve);
-
-            // parameters that get serialized into the url
-            var authParams: AuthorizationParameters = {
-                client_id: 'CLI',
-                code_challenge: code_challenge,
-                code_challenge_method: 'S256',
-                // both openid and offline_access must be set for refresh token
-                scope: 'openid offline_access email profile backend-api',
-            };
-
-            await open(client.authorizationUrl(authParams));
+            const openBrowser = async () => await open(this.getAuthUrl(client, code_challenge));
+            
+            this.setupCallbackListener(client, code_verifier, callback, openBrowser, resolve);
         });
     }
 
@@ -128,7 +146,8 @@ export class OAuthService implements IDisposable {
             this.setupCallbackListener(
                 client, 
                 undefined, 
-                () => {}, 
+                () => {},
+                () => {},
                 resolve
             ); 
 
