@@ -262,12 +262,12 @@ export class SshTargetService extends HttpService
         super(configService, 'api/v1/ssh/');
     }
 
-    public GetSsmTarget(targetId: string) : Promise<SshTargetSummary>
+    public GetSshTarget(targetId: string) : Promise<SshTargetSummary>
     {
         return this.Get('', {id: targetId});
     }
 
-    public ListSsmTargets() : Promise<SshTargetSummary[]>
+    public ListSshTargets() : Promise<SshTargetSummary[]>
     {
         return this.Post('list', {});
     }
