@@ -25,8 +25,8 @@ export function findSubstring(targetString: string, searchString: string) : bool
     return searchString.toLowerCase().indexOf(targetString.toLowerCase()) !== -1;
 }
 
-export const targetStringExample: string = '[targetUser@]<targetId>:<targetPath>';
-export const targetStringExampleNoPath : string = '[targetUser@]<targetId>'
+export const targetStringExample: string = '[targetUser@]<targetId | targetName>:<targetPath>';
+export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targetName>'
 
 export function parseTargetType(targetType: string) : TargetType
 {
@@ -42,12 +42,8 @@ export function parseTargetString(targetTypeString: string , targetString: strin
 {
     const targetType = parseTargetType(targetTypeString);
 
-    // add a closing closing if it does not exist
-    if(last(targetString) !== ':')
-        targetString = targetString + ':';
-
-    // case sensitive check for [targetUser@]<targetId>:[targetPath]
-    const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30})@)?(([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})|([a-zA-Z0-9_.-]{0,255})):/;
+    // case sensitive check for [targetUser@]<targetId | targetName>[:targetPath]
+    const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30})@)?(([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})|([a-zA-Z0-9_.-]{0,255}))(:{1}|$)/;
 
     if(! pattern.test(targetString))
         return undefined;
@@ -123,7 +119,7 @@ export interface TargetSummary
     type: TargetType;
 }
 
-export function printTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[]) : string
+export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[]) : string
 {
     // ref: https://github.com/cli-table/cli-table3
     var table = new Table({

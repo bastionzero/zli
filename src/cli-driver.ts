@@ -1,5 +1,5 @@
 import { SessionState, TargetType } from "./types";
-import { checkTargetTypeAndStringPair, findSubstring, parsedTargetString, parseTargetString, parseTargetType, printTableOfTargets as getTableOfTargets, targetStringExample, targetStringExampleNoPath, TargetSummary, thoumError, thoumMessage, thoumWarn } from './utils';
+import { checkTargetTypeAndStringPair, findSubstring, parsedTargetString, parseTargetString, getTableOfTargets, targetStringExample, targetStringExampleNoPath, TargetSummary, thoumError, thoumMessage, thoumWarn } from './utils';
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
@@ -12,7 +12,6 @@ import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
 import { EnvironmentDetails, } from "./http.service/http.service.types";
-import { parse } from "semver";
 
 export class CliDriver
 {
@@ -55,6 +54,7 @@ export class CliDriver
             this.mixpanelService.TrackCliCall('CliCommand', { args: argv._ } );
         })
         .middleware(() => {
+            // Greedy fetch of some data that we use frequently 
             const ssmTargetService = new SsmTargetService(this.configService);
             const sshTargetService = new SshTargetService(this.configService);
             const envService = new EnvironmentService(this.configService);
@@ -246,8 +246,8 @@ export class CliDriver
                     type: 'string'
                 })
                 .example('copy ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'SSM Download example')
-                .example('copy ssm /Users/coolUser/secretFile.txt ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/newFileName', 'SSM Upload example')
-                .example('copy ssh /Users/coolUser/neatFile.txt 05c6bdea-8623-4b49-83ad-f7f301fea7e1:/home/ssm-user/newFileName.txt', 'SSH Upload example');
+                .example('copy ssm /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'SSM Upload example')
+                .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
             },
             async (argv) => {
                 const fileService = new FileService(this.configService);
@@ -319,7 +319,8 @@ Need help? https://app.clunk80.com/support`)
         .argv; // returns argv of yargs
     }
 
-    // figure out target id based on target name and target type
+    // Figure out target id based on target name and target type.
+    // Also preforms error checking on target type and target string passed in
     private async disambiguateTargetName(argvTargetType: string, argvTargetString: string) : Promise<parsedTargetString>
     {
         let parsedTarget = parseTargetString(argvTargetType, argvTargetString);
