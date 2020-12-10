@@ -43,7 +43,7 @@ export function parseTargetString(targetString: string) : parsedTargetString
         targetString = targetString + ':';
 
     // case sensitive check for [targetUser@]<targetId>:[targetPath]
-    const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30})@)?([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}):/;
+    const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30})@)?(([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})|([a-zA-Z0-9_.-]{0,255})):/;
 
     if(! pattern.test(targetString))
         return undefined;
@@ -51,6 +51,7 @@ export function parseTargetString(targetString: string) : parsedTargetString
     let result : parsedTargetString = {
         targetUser: undefined,
         targetId: undefined,
+        targetName: undefined,
         targetPath: undefined
     };
 
@@ -65,7 +66,14 @@ export function parseTargetString(targetString: string) : parsedTargetString
     
     // extract targetId and maybe targetPath
     const colonSplit = atSignSplit[0].split(':', 2);
-    result.targetId = colonSplit[0];
+    const targetSomething = colonSplit[0];
+
+    // test if targetSomething is GUID
+    const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
+    if(guidPattern.test(targetSomething))
+        result.targetId = targetSomething;
+    else
+        result.targetName = targetSomething;
 
     if(colonSplit[1] !== '')
         result.targetPath = colonSplit[1];
@@ -77,6 +85,7 @@ export interface parsedTargetString
 {
     targetUser: string;
     targetId: string;
+    targetName: string;
     targetPath: string;
 }
 
