@@ -1,6 +1,8 @@
 import chalk from "chalk";
 import { TargetType } from "./types";
 import { last } from 'lodash'
+import { EnvironmentDetails } from "./http.service/http.service.types";
+import Table from 'cli-table3';
 
 export function thoumMessage(message: string): void
 {
@@ -107,4 +109,25 @@ export function checkTargetTypeAndStringPair(targetType: TargetType, targetStrin
     }
 
     return true;
+}
+
+export interface TargetSummary
+{
+    id: string;
+    name: string;
+    environmentId: string;
+    type: TargetType;
+}
+
+export function printTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[]) : string
+{
+    // ref: https://github.com/cli-table/cli-table3
+    var table = new Table({
+        head: ['Type', 'Name', 'Environment', 'Id']
+    , colWidths: [6, 16, 16, 38]
+    });
+
+    targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));
+
+    return table.toString();
 }
