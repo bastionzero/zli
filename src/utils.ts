@@ -38,8 +38,10 @@ export function parseTargetType(targetType: string) : TargetType
     return <TargetType> targetType.toUpperCase();
 }
 
-export function parseTargetString(targetString: string) : parsedTargetString
+export function parseTargetString(targetTypeString: string , targetString: string) : parsedTargetString
 {
+    const targetType = parseTargetType(targetTypeString);
+
     // add a closing closing if it does not exist
     if(last(targetString) !== ':')
         targetString = targetString + ':';
@@ -51,10 +53,11 @@ export function parseTargetString(targetString: string) : parsedTargetString
         return undefined;
 
     let result : parsedTargetString = {
-        targetUser: undefined,
-        targetId: undefined,
-        targetName: undefined,
-        targetPath: undefined
+        type: targetType,
+        user: undefined,
+        id: undefined,
+        name: undefined,
+        path: undefined
     };
 
     let atSignSplit = targetString.split('@', 2);
@@ -62,7 +65,7 @@ export function parseTargetString(targetString: string) : parsedTargetString
     // if targetUser@ is present, extract username
     if(atSignSplit.length == 2)
     {
-        result.targetUser = atSignSplit[0];
+        result.user = atSignSplit[0];
         atSignSplit = atSignSplit.slice(1);
     }
     
@@ -73,27 +76,28 @@ export function parseTargetString(targetString: string) : parsedTargetString
     // test if targetSomething is GUID
     const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
     if(guidPattern.test(targetSomething))
-        result.targetId = targetSomething;
+        result.id = targetSomething;
     else
-        result.targetName = targetSomething;
+        result.name = targetSomething;
 
     if(colonSplit[1] !== '')
-        result.targetPath = colonSplit[1];
+        result.path = colonSplit[1];
 
     return result;
 }
 
 export interface parsedTargetString
 {
-    targetUser: string;
-    targetId: string;
-    targetName: string;
-    targetPath: string;
+    type: TargetType;
+    user: string;
+    id: string;
+    name: string;
+    path: string;
 }
 
-export function checkTargetTypeAndStringPair(targetType: TargetType, targetString: parsedTargetString) : boolean
+export function checkTargetTypeAndStringPair(parsedTarget: parsedTargetString) : boolean
 {
-    if(targetType === TargetType.SSH && targetString.targetUser)
+    if(parsedTarget.type === TargetType.SSH && parsedTarget.user)
     {
         thoumWarn('Cannot specify targetUser for SSH connections');
         thoumWarn('Please try your previous command without the targetUser');
@@ -101,7 +105,7 @@ export function checkTargetTypeAndStringPair(targetType: TargetType, targetStrin
         return false;
     }
 
-    if(targetType === TargetType.SSM && ! targetString.targetUser)
+    if(parsedTarget.type === TargetType.SSM && ! parsedTarget.user)
     {
         thoumWarn('Must specify targetUser for SSM connections');
         thoumWarn('Target string for SSM: targetUser@targetId[:path]');
