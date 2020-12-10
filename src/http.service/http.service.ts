@@ -3,7 +3,6 @@ import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
 import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
-import chalk from 'chalk';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
 import { thoumError, thoumMessage } from '../utils';
@@ -23,11 +22,11 @@ export class HttpService
             headers: {authorization: this.configService.getAuthHeader()},
             hooks: {
                 beforeRequest: [
-                    (options) => thoumMessage(`Making request to: ${options.url}`)
+                    (options) => thoumMessage(`Making request to: ${options.url}`) 
                 ],
                 afterResponse: [
                     (response, _) => {
-                        thoumMessage('Request successful');
+                        thoumMessage(`Request successful to: ${response.url}`);
                         return response;
                     }
                 ]
@@ -45,7 +44,7 @@ export class HttpService
             errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
         }
 
-        console.log(chalk.red(`HttpService Error:\n${errorMessage}`));
+        thoumError(`HttpService Error:\n${errorMessage}`);
     }
 
     protected getFormDataFromRequest(request: any): FormData {
