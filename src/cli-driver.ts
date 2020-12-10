@@ -49,6 +49,28 @@ export class CliDriver
             // TODO: capture options and flags
             this.mixpanelService.TrackCliCall('CliCommand', { args: argv._ } );
         })
+        .middleware(() => {
+            const ssmTargetService = new SsmTargetService(this.configService);
+            const sshTargetService = new SshTargetService(this.configService);
+            const envService = new EnvironmentService(this.configService);
+
+            this.ssmTargets = ssmTargetService.ListSsmTargets()
+                .then(result => 
+                    result.map<TargetSummary>((ssm, _index, _array) => {
+                        return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId};
+                    })
+                );
+
+
+            this.sshTargets = sshTargetService.ListSshTargets()
+                .then(result => 
+                    result.map<TargetSummary>((ssh, _index, _array) => {
+                        return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId};
+                })
+            );
+
+            this.envs = envService.ListEnvironments();
+        })
         // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
         // <requiredPositional>, [optionalPositional]
         .command(
