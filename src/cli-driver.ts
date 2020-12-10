@@ -1,17 +1,18 @@
 import { SessionState, TargetType } from "./types";
-import { checkTargetTypeAndStringPair, findSubstring, parseTargetString, parseTargetType, targetStringExample, targetStringExampleNoPath, thoumError, thoumMessage, thoumWarn } from './utils';
+import { checkTargetTypeAndStringPair, findSubstring, parsedTargetString, parseTargetString, parseTargetType, printTableOfTargets as getTableOfTargets, targetStringExample, targetStringExampleNoPath, TargetSummary, thoumError, thoumMessage, thoumWarn } from './utils';
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
 import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
-import Table from 'cli-table3';
 import termsize from 'term-size';
 import { UserinfoResponse } from "openid-client";
 import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
+import { EnvironmentDetails, } from "./http.service/http.service.types";
+import { parse } from "semver";
 
 export class CliDriver
 {
@@ -19,6 +20,10 @@ export class CliDriver
     private userInfo: UserinfoResponse; // sub and email
 
     private mixpanelService: MixpanelService;
+
+    private sshTargets: Promise<TargetSummary[]>;
+    private ssmTargets: Promise<TargetSummary[]>;
+    private envs: Promise<EnvironmentDetails[]>;
 
     public start()
     {
@@ -86,26 +91,12 @@ export class CliDriver
                 .positional('targetString', {
                     type: 'string',
                 })
-                .example('connect ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e', 'SSM connect example')
+                .example('connect ssm ssm-user@neat-name', 'SSM connect example')
                 .example('connect ssh dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
             },
             async (argv) => {
-
-                // ssm and ssh range checking preformed by yargs via choices
-                const targetType = parseTargetType(argv.targetType);
-
-                // Extra colon added to account for no path being passed into this command
-                const parsedTarget = parseTargetString(argv.targetString);
-
-                if(! parsedTarget)
-                {
-                    thoumError('Invalid target string, must follow syntax:');
-                    thoumError(targetStringExampleNoPath);
-                    process.exit(1);
-                }
-
-                if(! checkTargetTypeAndStringPair(targetType, parsedTarget))
-                    process.exit(1);
+                
+                const parsedTarget = await this.disambiguateTargetName(argv.targetType, argv.targetString);
 
                 // call list session
                 const sessionService = new SessionService(this.configService);
@@ -127,13 +118,13 @@ export class CliDriver
                 // We do the following for ssh since we are required to pass
                 // in a user although it does not get read at any point
                 // TODO: fix how enums are parsed and compared
-                const targetUser = targetType == TargetType.SSH ? 'totally-a-user' : parsedTarget.targetUser;
+                const targetUser = parsedTarget.type == TargetType.SSH ? 'totally-a-user' : parsedTarget.user;
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
-                const connectionId = await connectionService.CreateConnection(targetType, parsedTarget.targetId, cliSessionId, targetUser);
+                const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSessionId, targetUser);
 
-                this.mixpanelService.TrackNewConnection(targetType);
+                this.mixpanelService.TrackNewConnection(parsedTarget.type);
 
                 // run terminal
                 const queryString = `?connectionId=${connectionId}`;
@@ -202,21 +193,9 @@ export class CliDriver
                 )
             },
             async (argv) => {
-                const ssmTargetService = new SsmTargetService(this.configService);
-                let ssmList = await ssmTargetService.ListSsmTargets();
-
-                const sshTargetService = new SshTargetService(this.configService);
-                let sshList = await sshTargetService.ListSsmTargets();
-
-                const envService = new EnvironmentService(this.configService);
-                const envs = await envService.ListEnvironments();
-
-                // ref: https://github.com/cli-table/cli-table3
-                var table = new Table({
-                    head: ['Type', 'Name', 'Environment', 'Id']
-                , colWidths: [6, 16, 16, 38]
-                });
-
+                let ssmList = await this.ssmTargets;
+                let sshList = await this.sshTargets;
+                let envs = await this.envs;
 
                 // find all envIds with substring search
                 // filter targets down by endIds
@@ -232,21 +211,21 @@ export class CliDriver
                 if(argv.name)
                 {
                     ssmList = ssmList.filter(ssm => findSubstring(argv.name, ssm.name));
-                    sshList = sshList.filter(ssh => findSubstring(argv.name, ssh.alias));
+                    sshList = sshList.filter(ssh => findSubstring(argv.name, ssh.name));
                 }
+
+                let tableString: string;
 
                 // push targets to printed table, maybe filter by targetType
                 if(argv.targetType === 'ssm')
                 {
-                    ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
+                    tableString = getTableOfTargets(ssmList, envs);
                 } else if(argv.targetType === 'ssh') {
-                    sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+                    tableString = getTableOfTargets(sshList, envs);
                 } else {
-                    ssmList.forEach(ssm => table.push(['ssm', ssm.name, envs.filter(e => e.id == ssm.environmentId).pop().name, ssm.id]));
-                    sshList.forEach(ssh => table.push(['ssh', ssh.alias, envs.filter(e => e.id == ssh.environmentId).pop().name, ssh.id]));
+                    tableString = getTableOfTargets(ssmList.concat(sshList), envs);
                 }
 
-                const tableString = table.toString(); // hangs if you try to print directly to console
                 console.log(tableString);
                 process.exit(0);
             }
@@ -273,13 +252,9 @@ export class CliDriver
             async (argv) => {
                 const fileService = new FileService(this.configService);
 
-                const targetType = parseTargetType(argv.targetType);
-                const sourceParsedString = parseTargetString(argv.source);
-                const destParsedString = parseTargetString(argv.destination);
+                const sourceParsedString = parseTargetString(argv.targetType, argv.source);
+                const destParsedString = parseTargetString(argv.targetType, argv.destination);
                 const parsedTarget = sourceParsedString || destParsedString; // one of these will be undefined so javascript will use the other
-
-                if(! checkTargetTypeAndStringPair(targetType, parsedTarget))
-                    process.exit(1);
 
                 // figure out upload or download
                 // would be undefined if not parsed properly
@@ -293,12 +268,12 @@ export class CliDriver
                         process.exit(1);
                     }
 
-                    await fileService.uploadFile(parsedTarget.targetId, targetType, parsedTarget.targetPath, fh, parsedTarget.targetUser);
+                    await fileService.uploadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, fh, parsedTarget.user);
                     thoumMessage('File upload complete');
 
                 } else if(sourceParsedString) {
                     // download case
-                    await fileService.downloadFile(parsedTarget.targetId, targetType, parsedTarget.targetPath, argv.destination, parsedTarget.targetUser);
+                    await fileService.downloadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, argv.destination, parsedTarget.user);
                 } else {
                     thoumError('Invalid target string, must follow syntax:');
                     thoumError(targetStringExample);
@@ -342,5 +317,60 @@ Command arguments key:
 
 Need help? https://app.clunk80.com/support`)
         .argv; // returns argv of yargs
+    }
+
+    // figure out target id based on target name and target type
+    private async disambiguateTargetName(argvTargetType: string, argvTargetString: string) : Promise<parsedTargetString>
+    {
+        let parsedTarget = parseTargetString(argvTargetType, argvTargetString);
+
+        if(! parsedTarget)
+        {
+            thoumError('Invalid target string, must follow syntax:');
+            thoumError(targetStringExampleNoPath);
+            process.exit(1);
+        }
+
+        if(! checkTargetTypeAndStringPair(parsedTarget))
+            process.exit(1);
+
+        if(parsedTarget.name)
+        {
+            let matchedNamedTargets: TargetSummary[] = [];
+
+            switch(parsedTarget.type)
+            {
+                case TargetType.SSM:
+                    matchedNamedTargets = (await this.ssmTargets).filter(ssm => ssm.name === parsedTarget.name);
+                    break;
+                case TargetType.SSH:
+                    matchedNamedTargets = (await this.sshTargets).filter(ssh => ssh.name === parsedTarget.name);
+                    break;
+                default:
+                    thoumError(`Invalid TargetType passed ${parsedTarget.type}`);
+                    process.exit(1);
+            }
+
+            if(matchedNamedTargets.length < 1)
+            {
+                thoumError(`No ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
+                thoumWarn('Target names are case sensitive');
+                thoumWarn('To see list of all targets run: \'thoum lt\'');
+                process.exit(1);
+            } else if(matchedNamedTargets.length == 1)
+            {
+                // the rest of the flow will work as before since the targetId has now been disambiguated
+                parsedTarget.id = matchedNamedTargets.pop().id;
+            } else {
+                // ambiguous target id, warn user, exit process
+                thoumWarn(`Multiple ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
+                const tableString = getTableOfTargets(matchedNamedTargets, await this.envs);
+                console.log(tableString);
+                thoumMessage('Please connect using \'target id\' instead of target name');
+                process.exit(1);
+            }
+        }
+
+        return parsedTarget;
     }
 }
