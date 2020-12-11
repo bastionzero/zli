@@ -1,7 +1,7 @@
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
 import { ConfigService } from '../config.service/config.service';
-import { thoumError } from '../utils';
+import { ShellState } from '../websocket.service/websocket.service.types';
 
 export interface TerminalSize
 {
@@ -16,6 +16,8 @@ export class ShellTerminal implements IDisposable
     private inputSubject: BehaviorSubject<string> = new BehaviorSubject<string>(null);
     private resizeSubject: BehaviorSubject<TerminalSize> = new BehaviorSubject<TerminalSize>({rows: 0, columns: 0});
     private blockInput: boolean = true;
+    private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
+    public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
     constructor(configService: ConfigService, connectionUrl: string)
     {
@@ -32,18 +34,31 @@ export class ShellTerminal implements IDisposable
         this.websocketStream.start(termSize.rows, termSize.columns);
         
         // Pauses input on disconnected states
-        this.websocketStream.shellStateData.subscribe(newState => {
-            if(! newState.disconnected && ! newState.loading)
-                this.blockInput = false;
-            else
-            {
-                this.blockInput = true;
-                
-                // TODO: offer reconnect flow
-                if(! newState.loading)
-                    thoumError('Disconnection detected, CTRL+P to exit');
+        this.websocketStream.shellStateData.subscribe(
+            (newState: ShellState) => {
+                if(! newState.disconnected && ! newState.loading)
+                {
+                    this.blockInput = false;
+                    this.terminalRunningStream.next(true);
+                }
+                else
+                {
+                    this.blockInput = true;
+                    
+                    // TODO: offer reconnect flow
+                    if(! newState.loading)
+                    {
+                        this.terminalRunningStream.error('Disconnection detected');
+                    }
+                }    
+            },
+            (error: any) => {
+                this.terminalRunningStream.error(error);
+            },
+            () => {
+                // completed
             }
-        }); 
+        ); 
     }
 
     public resize(resizeEvent: TerminalSize)
@@ -63,7 +78,9 @@ export class ShellTerminal implements IDisposable
 
     public dispose() : void
     {
-        this.websocketStream.dispose();
+        if(this.websocketStream)
+            this.websocketStream.dispose();
+        
+        this.terminalRunningStream.complete();
     }
-    
 }
