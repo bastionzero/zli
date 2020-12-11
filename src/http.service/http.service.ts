@@ -42,6 +42,9 @@ export class HttpService
         // Handle 500 errors by printing out our custom exception message
         if(error.response.statusCode == 500) {
             errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
+        } else if(error.response.statusCode == 502)
+        {
+            thoumError('Service is offline');
         }
 
         thoumError(`HttpService Error:\n${errorMessage}`);

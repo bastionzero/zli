@@ -11,7 +11,7 @@ import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
-import { EnvironmentDetails, } from "./http.service/http.service.types";
+import { EnvironmentDetails, ConnectionState} from "./http.service/http.service.types";
 
 export class CliDriver
 {
@@ -142,23 +142,39 @@ export class CliDriver
                     const resizeEvent = termsize();
                     terminal.resize(resizeEvent);
                 });
+                
+                // If we detect a disconnection, close the connection immediately
+                terminal.terminalRunning.subscribe(
+                    (state: boolean) => {
+                        if(! state)
+                        {
+                            thoumWarn('Terminal closed state detected');
+                            terminal.dispose();
+                        }
+                    },
+                    async (error: string) => {
+                        thoumError(error);
+                        thoumWarn('Target may have gone offline or space/connection closed from another client');
+                        thoumMessage('Cleaning up connection...');
+
+                        const conn = await connectionService.GetConnection(connectionId);
+                        // if connection not already closed
+                        if(conn.state == ConnectionState.Open)
+                            await connectionService.CloseConnection(connectionId);
+
+                        thoumMessage('Connection closed');
+
+                        process.exit(0);
+                    },
+                    () => {}
+                );
 
                 // To get 'keypress' events you need the following lines
                 // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
                 const readline = require('readline');
                 readline.emitKeypressEvents(process.stdin);
                 process.stdin.setRawMode(true);
-                process.stdin.on('keypress', async (str, key) => {
-                    if (key.ctrl && key.name === 'p') {
-                        // close the session
-                        await connectionService.CloseConnection(connectionId).catch();
-                        terminal.dispose();
-                        process.exit(0);
-                    } else {
-                        terminal.writeString(key.sequence);
-                    }
-                });
-                thoumMessage('CTRL+P to escape terminal');
+                process.stdin.on('keypress', (_, key) => terminal.writeString(key.sequence));
             }
         )
         .command(

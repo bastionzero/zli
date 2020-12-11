@@ -78,10 +78,16 @@ export class WebsocketStream implements IDisposable
             ShellHubIncomingMessages.shellStart, 
             () => this.shellStateSubject.next({loading: false, disconnected: false})
         );
+
+        // Requires back end change for better state of connection/target
+        // Change the following to be a .complete() call when reconnect flow created
         this.websocket.on(
             ShellHubIncomingMessages.shellDisconnect,
             () => this.shellStateSubject.next({loading: false, disconnected: true})
         );
+
+        // won't get called at the moment since closing connection does not imply closing websocket
+        this.websocket.onclose(() => this.shellStateSubject.complete());
     }
 
     public sendShellConnect(rows: number, cols: number)
@@ -99,7 +105,7 @@ export class WebsocketStream implements IDisposable
         connectionBuilder.withUrl(
             this.connectionUrl, 
             { headers: {authorization: this.configService.getAuthHeader() } }
-        );
+        ).configureLogging(6); // log level 6 is no websocket logs
     
         return connectionBuilder.build();
     }
@@ -113,9 +119,9 @@ export class WebsocketStream implements IDisposable
 
     public dispose() : void
     {
-        this.shellStateSubject.next({loading: false, disconnected: true});
-        this.resizeSubscription.unsubscribe();
-        this.inputSubscription.unsubscribe();
         this.destroyConnection();
+        this.inputSubscription.unsubscribe();
+        this.resizeSubscription.unsubscribe();
+        this.shellStateSubject.complete();
     }
 }
