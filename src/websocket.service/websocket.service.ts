@@ -78,12 +78,22 @@ export class WebsocketStream implements IDisposable
             ShellHubIncomingMessages.shellStart, 
             () => this.shellStateSubject.next({loading: false, disconnected: false})
         );
-
-        // Requires back end change for better state of connection/target
-        // Change the following to be a .complete() call when reconnect flow created
+        
+        // TODO: reconnect flow
+        // Change the following to be a .next({loading: false, disconnected: true}) call
         this.websocket.on(
             ShellHubIncomingMessages.shellDisconnect,
-            () => this.shellStateSubject.next({loading: false, disconnected: true})
+            () => {
+                this.shellStateSubject.complete();
+            }
+        );
+        
+        // If a connection was closed via API/UI then we will see a shellDelete message
+        this.websocket.on(
+            ShellHubIncomingMessages.shellDelete,
+            () => {
+                this.shellStateSubject.complete();
+            } 
         );
 
         // won't get called at the moment since closing connection does not imply closing websocket

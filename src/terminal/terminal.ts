@@ -45,7 +45,7 @@ export class ShellTerminal implements IDisposable
                 {
                     this.blockInput = true;
                     
-                    // TODO: offer reconnect flow
+                    // TODO: offer reconnect flow here
                     if(! newState.loading)
                     {
                         this.terminalRunningStream.error('Disconnection detected');
@@ -56,7 +56,7 @@ export class ShellTerminal implements IDisposable
                 this.terminalRunningStream.error(error);
             },
             () => {
-                // completed
+                this.terminalRunningStream.error(undefined);
             }
         ); 
     }
