@@ -137,32 +137,36 @@ export class CliDriver
                 // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
                 // https://github.com/nodejs/node/issues/16194
                 // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
-                process.stdout.on('resize', () =>
-                {
-                    const resizeEvent = termsize();
-                    terminal.resize(resizeEvent);
-                });
+                process.stdout.on(
+                    'resize', 
+                    () => {
+                        const resizeEvent = termsize();
+                        terminal.resize(resizeEvent);
+                    }
+                );
                 
                 // If we detect a disconnection, close the connection immediately
                 terminal.terminalRunning.subscribe(
-                    (state: boolean) => {
-                        if(! state)
+                    () => {},
+                    async (error) => {
+                        if(error)
                         {
-                            thoumWarn('Terminal closed state detected');
-                            terminal.dispose();
+                            thoumError(error);
+                            thoumWarn('Target may have gone offline or space/connection closed from another client');
                         }
-                    },
-                    async (error: string) => {
-                        thoumError(error);
-                        thoumWarn('Target may have gone offline or space/connection closed from another client');
-                        thoumMessage('Cleaning up connection...');
 
+                        terminal.dispose();
+                        
+                        thoumMessage('Cleaning up connection...');
                         const conn = await connectionService.GetConnection(connectionId);
                         // if connection not already closed
                         if(conn.state == ConnectionState.Open)
                             await connectionService.CloseConnection(connectionId);
 
                         thoumMessage('Connection closed');
+                        
+                        if(error)
+                            process.exit(1);
 
                         process.exit(0);
                     },

@@ -1,7 +1,8 @@
 export const ShellHubIncomingMessages = {
     shellOutput: "ShellOutput",
     shellDisconnect: "ShellDisconnect",
-    shellStart: "ShellStart"
+    shellStart: "ShellStart",
+    shellDelete: "ShellDelete"
 }
     
 export const ShellHubOutgoingMessages = {
