@@ -12,6 +12,8 @@ import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
 import { EnvironmentDetails, ConnectionState} from "./http.service/http.service.types";
+import { includes } from "lodash";
+import { version } from '../package.json';
 
 export class CliDriver
 {
@@ -24,6 +26,11 @@ export class CliDriver
     private ssmTargets: Promise<TargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
 
+    // use the following to shortcut middleware according to command
+    private noOauthCommands: string[] = ['config'];
+    private noMixpanelCommands: string[] = ['config'];
+    private noFetchCommands: string[] = ['config'];
+
     public start()
     {
         yargs(process.argv.slice(2))
@@ -31,17 +38,22 @@ export class CliDriver
         .usage('$0 <cmd> [args]')
         .wrap(null)
         .middleware(checkVersionMiddleware)
-        .middleware((argv) =>
-        {
+        .middleware((argv) => {
             // Config init
             this.configService = new ConfigService(<string> argv.configName);
         })
-        .middleware(async () => {
+        .middleware(async (argv) => {
+            if(includes(this.noOauthCommands, argv._[0]))
+                return;
+
             // OAuth
             this.userInfo = await oauthMiddleware(this.configService);
             thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
         })
         .middleware(async (argv) => {
+            if(includes(this.noMixpanelCommands, argv._[0]))
+                return;
+
             // Mixpanel tracking
             this.mixpanelService = new MixpanelService(
                 this.configService.mixpanelToken(),
@@ -51,9 +63,19 @@ export class CliDriver
             // Only captures args, not options at the moment. Capturing configName flag
             // does not matter as that is handled by which mixpanel token is used
             // TODO: capture options and flags
-            this.mixpanelService.TrackCliCall('CliCommand', { args: argv._ } );
+            this.mixpanelService.TrackCliCall(
+                'CliCommand', 
+                {
+                    "cli-version": version,
+                    "command": argv._[0],
+                    args: argv._.slice(1)
+                }
+            );
         })
-        .middleware(() => {
+        .middleware((argv) => {
+            if(includes(this.noFetchCommands, argv._[0]))
+                return;
+
             // Greedy fetch of some data that we use frequently 
             const ssmTargetService = new SsmTargetService(this.configService);
             const sshTargetService = new SshTargetService(this.configService);
