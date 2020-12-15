@@ -121,8 +121,8 @@ export interface TargetSummary
 
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[]) : string
 {
-    const targetNameLength = max(targets.map(t => t.name.length));
-    const envNameLength = max(envs.map(e => e.name.length));
+    const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
+    const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
 
     // ref: https://github.com/cli-table/cli-table3
     var table = new Table({
