@@ -1,8 +1,27 @@
 import { SessionState, TargetType } from "./types";
-import { checkTargetTypeAndStringPair, findSubstring, parsedTargetString, parseTargetString, getTableOfTargets, targetStringExample, targetStringExampleNoPath, TargetSummary, thoumError, thoumMessage, thoumWarn } from './utils';
+import { 
+    checkTargetTypeAndStringPair, 
+    findSubstring, 
+    parsedTargetString, 
+    parseTargetString, 
+    getTableOfTargets, 
+    targetStringExample, 
+    targetStringExampleNoPath, 
+    TargetSummary, 
+    thoumError, 
+    thoumMessage, 
+    thoumWarn 
+} from './utils';
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
-import { ConnectionService, EnvironmentService, FileService, SessionService, SshTargetService, SsmTargetService } from "./http.service/http.service";
+import { 
+    ConnectionService, 
+    EnvironmentService, 
+    FileService, 
+    SessionService, 
+    SshTargetService, 
+    SsmTargetService 
+} from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
 import termsize from 'term-size';
@@ -125,10 +144,10 @@ export class CliDriver
                 const listSessions = await sessionService.ListSessions();
 
                 // space names are not unique, make sure to find the latest active one
-                var cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
+                const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
 
                 // maybe make a session
-                var cliSessionId: string;
+                let cliSessionId: string;
                 if(cliSpace.length === 0)
                 {
                     cliSessionId =  await sessionService.CreateSession('cli-space');
@@ -139,14 +158,30 @@ export class CliDriver
 
                 // We do the following for ssh since we are required to pass
                 // in a user although it does not get read at any point
-                // TODO: fix how enums are parsed and compared
-                const targetUser = parsedTarget.type == TargetType.SSH ? 'totally-a-user' : parsedTarget.user;
+                const targetUser = parsedTarget.type === TargetType.SSH ? 'ssh' : parsedTarget.user;
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService);
-                const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSessionId, targetUser);
+                // if SSM user does not exist then resp.connectionId will throw a 
+                // 'TypeError: Cannot read property 'connectionId' of undefined'
+                // so we need to catch and return undefined
+                const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSessionId, targetUser).catch(() => undefined);
 
-                this.mixpanelService.TrackNewConnection(parsedTarget.type);
+                if(! connectionId)
+                {
+                    thoumError('Connection creation failed');
+                    if(parsedTarget.type === TargetType.SSM)
+                    {
+                        const targetEnvId = (await this.ssmTargets).filter(ssm => ssm.id == parsedTarget.id)[0].environmentId;
+                        const targetEnvName = (await this.envs).filter(e => e.id == targetEnvId)[0].name;
+                        thoumError(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${targetEnvName}`);
+                        thoumMessage('You can find SSM user policies in the web app');
+                    } else {
+                        thoumMessage('Please check your polices in the web app for this target and/or environment');
+                    }
+
+                    process.exit(1);
+                }
 
                 // run terminal
                 const queryString = `?connectionId=${connectionId}`;
@@ -154,6 +189,8 @@ export class CliDriver
 
                 var terminal = new ShellTerminal(this.configService, connectionUrl);
                 terminal.start(termsize());
+
+                this.mixpanelService.TrackNewConnection(parsedTarget.type);
 
                 // Terminal resize event logic
                 // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH

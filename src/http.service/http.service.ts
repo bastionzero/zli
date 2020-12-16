@@ -26,7 +26,7 @@ export class HttpService
                 ],
                 afterResponse: [
                     (response, _) => {
-                        thoumMessage(`Request successful to: ${response.url}`);
+                        thoumMessage(`Request completed to: ${response.url}`);
                         return response;
                     }
                 ]
@@ -68,7 +68,7 @@ export class HttpService
                 }
             ).json();
         } catch(error) {
-            this.handleHttpException(error)
+            this.handleHttpException(error);
         }
 
         return resp;
