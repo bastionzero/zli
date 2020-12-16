@@ -8,3 +8,8 @@ export enum SessionState {
     Closed = "Closed",
     Error = "Error"
 }
+
+export enum IdP {
+    Google = "Google",
+    Microsoft = "Microsoft"
+}

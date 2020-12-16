@@ -7,13 +7,15 @@ import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
 export class OAuthService implements IDisposable {
     private authServiceUrl: string;
+    private clientId: string;
     private server: http.Server; // callback listener
     private callbackPort: number;
     private host: string = '127.0.0.1';
 
     // TODO inject configService
-    constructor(authServiceUrl: string, callbackPort: number = 3000) {
+    constructor(authServiceUrl: string, clientId: string ,callbackPort: number = 3000) {
         this.authServiceUrl = authServiceUrl;
+        this.clientId = clientId;
         this.callbackPort = callbackPort;
     }
 
@@ -76,7 +78,7 @@ export class OAuthService implements IDisposable {
     {
         const clunk80Auth = await Issuer.discover(this.authServiceUrl);
         var client = new clunk80Auth.Client({
-            client_id: 'CLI',
+            client_id: this.clientId, // NOT SURE WHAT THIS ID IS REALLY
             redirect_uris: [`http://${this.host}:${this.callbackPort}/login-callback`],
             response_types: ['code'],
             token_endpoint_auth_method: 'none',
@@ -92,11 +94,11 @@ export class OAuthService implements IDisposable {
     private getAuthUrl(client: Client, code_challenge: string) : string
     {
         const authParams: AuthorizationParameters = {
-            client_id: 'CLI',
+            client_id: this.clientId, // This one gets put in the queryParams
             code_challenge: code_challenge,
             code_challenge_method: 'S256',
             // both openid and offline_access must be set for refresh token
-            scope: 'openid offline_access email profile backend-api',
+            scope: 'openid offline_access email profile',
         };
 
         return client.authorizationUrl(authParams);

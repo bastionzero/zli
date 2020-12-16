@@ -5,7 +5,7 @@ import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
 export async function oauthMiddleware(configService: ConfigService) : Promise<UserinfoResponse> {
 
-    let ouath = new OAuthService(configService.authUrl(), configService.callbackListenerPort());
+    let ouath = new OAuthService(configService.authUrl(), configService.clientId(), configService.callbackListenerPort());
 
     // All times related to oauth are in epoch second
     const now: number = Math.floor(Date.now() / 1000);

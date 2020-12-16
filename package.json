@@ -38,6 +38,7 @@
     "mixpanel": "^0.13.0",
     "open": "^7.3.0",
     "openid-client": "^4.2.1",
+    "readline-sync": "^1.4.10",
     "rxjs": "^6.6.3",
     "semver": "^7.3.2",
     "term-size": "^2.2.1",

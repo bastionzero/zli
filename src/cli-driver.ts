@@ -336,7 +336,7 @@ export class CliDriver
             'Deauthenticate the client',
             () => {},
             async () => {
-                var ouath = new OAuthService(this.configService.authUrl(), this.configService.callbackListenerPort());
+                var ouath = new OAuthService(this.configService.authUrl(), this.configService.clientId(), this.configService.callbackListenerPort());
                 await ouath.logout(this.configService.tokenSet());
                 this.configService.logout();
                 process.exit(0);
