@@ -1,6 +1,6 @@
 {
   "name": "thoum",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "clunk80 cli",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
