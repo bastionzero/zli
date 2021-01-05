@@ -5,39 +5,33 @@ import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
 export async function oauthMiddleware(configService: ConfigService) : Promise<UserinfoResponse> {
 
-    let ouath = new OAuthService(configService.authUrl(), configService.callbackListenerPort());
+    let ouath = new OAuthService(configService);
 
-    // All times related to oauth are in epoch second
-    const now: number = Math.floor(Date.now() / 1000);
+    let tokenSet = configService.tokenSet();
 
-    // decide if we need to refresh, login, or use existing token
-    if(configService.tokenSet() && configService.tokenSet().expires_at < now && configService.tokenSetExpireTime() > now)
+    // decide if we need to refresh or prompt user for login
+    if(tokenSet)
     {
-        thoumMessage('Refreshing oauth');
-        // refresh using existing creds
-        await ouath.refresh(configService.tokenSet())
-        .then((newTokenSet) => configService.setTokenSet(newTokenSet))
-        // Catch oauth related errors
-        .catch((error: errors.OPError | errors.RPError) => {
-            thoumError(error.message);
-            configService.logout();
-        });
-    }
+        if(configService.tokenSet().expired())
+        {
+            thoumMessage('Refreshing oauth');
 
-    if(! configService.tokenSet() || configService.tokenSetExpireTime() < now) {
-        thoumMessage('Log in required, opening browser');
-        // renew with log in flow
-        await ouath.login((tokenSet, expireTime) => configService.setTokenSet(tokenSet, expireTime))
-        // Catch oauth related errors
-        .catch((error) => {
-            // TODO make part of the verbose error
-            thoumError(error);
-            configService.logout();
-            thoumWarn('Log in error detected or timed out');
-        });
+            // refresh using existing creds
+            await ouath.refresh()
+            .then((newTokenSet) => configService.setTokenSet(newTokenSet))
+            // Catch oauth related errors
+            .catch((error: errors.OPError | errors.RPError) => {
+                thoumError('Stale log in detected');
+                thoumMessage('You need to log in, please run \'thoum login --help\'')
+                configService.logout();
+            });
+        }
+    } else {
+        thoumWarn('You need to log in, please run \'thoum login --help\'');
+        process.exit(0);
     }
 
     // Get user info from IdP
-    let userInfo = await ouath.userInfo(configService.tokenSet());
+    let userInfo = await ouath.userInfo();
     return userInfo;
 }

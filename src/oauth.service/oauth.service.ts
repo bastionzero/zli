@@ -1,26 +1,22 @@
 import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, TokenSetParameters, UserinfoResponse } from "openid-client";
 import open from 'open';
 import { IDisposable } from "../websocket.service/websocket.service";
+import { ConfigService } from "../config.service/config.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
 import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
 export class OAuthService implements IDisposable {
-    private authServiceUrl: string;
     private server: http.Server; // callback listener
-    private callbackPort: number;
-    private host: string = '127.0.0.1';
+    private host: string = 'localhost';
 
-    // TODO inject configService
-    constructor(authServiceUrl: string, callbackPort: number = 3000) {
-        this.authServiceUrl = authServiceUrl;
-        this.callbackPort = callbackPort;
+    constructor(private configService: ConfigService) {
     }
 
     private setupCallbackListener(
         client: Client, 
         codeVerifier: string, 
-        callback: (tokenSet: TokenSet, expireTime: number) => void,
+        callback: (tokenSet: TokenSet) => void,
         onListen: () => void,
         resolve: (value?: void | PromiseLike<void>) => void
     ): void {
@@ -32,22 +28,22 @@ export class OAuthService implements IDisposable {
                 case "/login-callback":
                     const params = client.callbackParams(req);
 
-                    const tokenSet = await client.callback(`http://${this.host}:${this.callbackPort}/login-callback`, params, { code_verifier: codeVerifier });
-                    const tokenSetExpireTime: number = (Math.floor(Date.now() / 1000)) + (12 * 60 * 60); // 12 hours from now (epoch time in seconds) to SSO again
+                    const tokenSet = await client.callback(`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`, params, { code_verifier: codeVerifier });
+
                     thoumMessage(`log in successful`);
                     thoumMessage(`callback listener closed`);
 
                     // write to config with callback
-                    callback(tokenSet, tokenSetExpireTime);
+                    callback(tokenSet);
                     this.server.close();
-                    res.end('Log in successful. You may close this window'); // TODO: serve HTML here
+                    res.end('Log in successful. You may close this window.'); // TODO: serve HTML here
                     resolve();
                     break;
 
                 case '/logout-callback':
                     thoumMessage(`log in successful`);
                     thoumMessage(`callback listener closed`);
-                    res.end('Log out successful. You may close this window'); // TODO: serve HTML here
+                    res.end('Log out successful. You may close this window.'); // TODO: serve HTML here
                     resolve();
                     break;
 
@@ -57,29 +53,30 @@ export class OAuthService implements IDisposable {
             }
         };
 
-        thoumMessage(`Setting up callback listener at http://${this.host}:${this.callbackPort}/`);
+        thoumMessage(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
         this.server = http.createServer(requestListener);
         // Port binding failure will produce error event
         this.server.on('error', () => {
             thoumError('Log in listener could not bind to port');
-            thoumWarn(`Please make sure port ${this.callbackPort} is open/whitelisted`);
+            thoumWarn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
             thoumWarn('To edit callback port please run: \'thoum config\'');
             process.exit(1);
         });
         // open browser after successful port binding
         this.server.on('listening', onListen);
-        this.server.listen(this.callbackPort, this.host, () => {});
+        this.server.listen(this.configService.callbackListenerPort(), this.host, () => {});
     }
 
     // The client will make the log-in requests with the following parameters
     private async getClient(): Promise<Client>
     {
-        const clunk80Auth = await Issuer.discover(this.authServiceUrl);
+        const clunk80Auth = await Issuer.discover(this.configService.authUrl());
         var client = new clunk80Auth.Client({
-            client_id: 'CLI',
-            redirect_uris: [`http://${this.host}:${this.callbackPort}/login-callback`],
+            client_id: this.configService.clientId(),
+            redirect_uris: [`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`],
             response_types: ['code'],
-            token_endpoint_auth_method: 'none',
+            token_endpoint_auth_method: 'client_secret_basic',
+            client_secret: this.configService.clientSecret()
         });
 
         // set clock skew
@@ -92,17 +89,30 @@ export class OAuthService implements IDisposable {
     private getAuthUrl(client: Client, code_challenge: string) : string
     {
         const authParams: AuthorizationParameters = {
-            client_id: 'CLI',
+            client_id: this.configService.clientId(), // This one gets put in the queryParams
+            response_type: 'code',
             code_challenge: code_challenge,
             code_challenge_method: 'S256',
-            // both openid and offline_access must be set for refresh token
-            scope: 'openid offline_access email profile backend-api',
+            scope: this.configService.authScopes(),
+            // required for google refresh token
+            prompt: 'consent',
+            access_type: 'offline'
         };
 
         return client.authorizationUrl(authParams);
     }
 
-    public login(callback: (tokenSet: TokenSet, expireTime: number) => void): Promise<void>
+    public isAuthenticated(): boolean
+    {
+        const tokenSet = this.configService.tokenSet();
+
+        if(tokenSet === undefined)
+            return false;
+
+        return tokenSet.expired();
+    }
+
+    public login(callback: (tokenSet: TokenSet) => void): Promise<void>
     {
         return new Promise<void>(async (resolve, reject) => {
             setTimeout(() => reject('Log in timeout reached'), 60 * 1000);
@@ -117,45 +127,27 @@ export class OAuthService implements IDisposable {
         });
     }
 
-    public async refresh(tokenSetParams: TokenSetParameters): Promise<TokenSet>
+    public async refresh(): Promise<TokenSet>
     {
         const client = await this.getClient();
-        const tokenSet = new TokenSet(tokenSetParams);
+        const tokenSet = this.configService.tokenSet();
+        const refreshToken = tokenSet.refresh_token;
         const refreshedTokenSet = await client.refresh(tokenSet);
+        
+        // In case of google the refreshed token is not returned in the refresh
+        // response so we set it from the previous value
+        if(! refreshedTokenSet.refresh_token)
+            refreshedTokenSet.refresh_token = refreshToken;
 
         return refreshedTokenSet;
     }
 
-    public async userInfo(tokenSetParams: TokenSetParameters): Promise<UserinfoResponse>
+    public async userInfo(): Promise<UserinfoResponse>
     {
         const client = await this.getClient();
-        const tokenSet = new TokenSet(tokenSetParams);
+        const tokenSet = this.configService.tokenSet();
         const userInfo = await client.userinfo(tokenSet);
         return userInfo;
-    }
-
-    public logout(tokenSetParams: TokenSetParameters): Promise<void>
-    {
-        return new Promise<void>(async (resolve, reject) => 
-        {
-            setTimeout(() => reject('Log out timeout reached'), 3 * 60 * 1000);
-
-            const client = await this.getClient();
-            const tokenSet = new TokenSet(tokenSetParams);
-            
-            // TODO: come up with better callback listener flow for login and logout flows
-            this.setupCallbackListener(
-                client, 
-                undefined, 
-                () => {},
-                () => {},
-                resolve
-            ); 
-
-            const endSessionUrl = client.endSessionUrl({post_logout_redirect_uri: `http://${this.host}:${this.callbackPort}/logout-callback`, id_token_hint: tokenSet});
-
-            await open(endSessionUrl);
-        });
     }
 
     dispose(): void {

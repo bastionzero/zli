@@ -1,4 +1,4 @@
-import { SessionState, TargetType } from "./types";
+import { IdP, SessionState, TargetType } from "./types";
 import { 
     checkTargetTypeAndStringPair, 
     findSubstring, 
@@ -46,9 +46,9 @@ export class CliDriver
     private envs: Promise<EnvironmentDetails[]>;
 
     // use the following to shortcut middleware according to command
-    private noOauthCommands: string[] = ['config'];
-    private noMixpanelCommands: string[] = ['config'];
-    private noFetchCommands: string[] = ['config'];
+    private noOauthCommands: string[] = ['config', 'login', 'logout'];
+    private noMixpanelCommands: string[] = ['config', 'login', 'logout'];
+    private noFetchCommands: string[] = ['config', 'login', 'logout'];
 
     public start()
     {
@@ -117,6 +117,36 @@ export class CliDriver
 
             this.envs = envService.ListEnvironments();
         })
+        .command(
+            'login <provider>',
+            'Login through a specific provider',
+            (yargs) => {
+                return yargs
+                .positional('provider', {
+                    type: 'string',
+                    choices: [IdP.Google, IdP.Microsoft]
+                })
+                .example('login Google', 'Login with Google');
+            },
+            async (argv) => {
+                const provider = <IdP> argv.provider;
+                await this.configService.loginSetup(provider);
+                
+                // Can only create oauth service after loginSetup completes
+                const oAuthService = new OAuthService(this.configService);
+                if(! oAuthService.isAuthenticated())
+                {
+                    thoumMessage('Log in required, opening browser');
+                    await oAuthService.login((t) => this.configService.setTokenSet(t));
+                    this.userInfo = await oAuthService.userInfo();
+                    console.log()
+                }
+
+                thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+                
+                process.exit(0);
+            }
+        )
         // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
         // <requiredPositional>, [optionalPositional]
         .command(
@@ -373,8 +403,8 @@ export class CliDriver
             'Deauthenticate the client',
             () => {},
             async () => {
-                var ouath = new OAuthService(this.configService.authUrl(), this.configService.callbackListenerPort());
-                await ouath.logout(this.configService.tokenSet());
+                // Deletes the auth tokens from the config which will force the
+                // user to login again before running another command
                 this.configService.logout();
                 process.exit(0);
             }
