@@ -1,40 +1,53 @@
-import Conf from "conf/dist/source";
-import { TokenSet, TokenSetParameters } from "openid-client";
+import Conf from 'conf/dist/source';
+import { TokenSet, TokenSetParameters } from 'openid-client';
+import { ClientSecretResponse, MixpanelTokenResponse } from '../http.service/http.service.types';
+import { TokenService } from '../http.service/http.service';
+import { IdP } from '../types';
+import { thoumError, thoumWarn } from '../utils';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type ThoumConfigSchema = {
     authUrl: string,
+    clientId: string,
+    clientSecret: string,
     serviceUrl: string,
     tokenSet: TokenSetParameters,
-    tokenSetExpireTime: number, // TODO: remove this when federated id server is gone
     callbackListenerPort: number,
-    mixpanelToken: string
+    mixpanelToken: string,
+    idp: IdP
 }
 
 export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
+    private configName: string;
+    private tokenService: TokenService;
 
     constructor(configName: string) {
+        this.configName = configName;
         var appName = this.getAppName(configName);
         this.config = new Conf<ThoumConfigSchema>({
             projectName: 'thoum-cli',
             configName: configName, // prod, stage, dev
             defaults: {
-                authUrl: appName ? this.getAuthUrl(appName) : undefined,
+                authUrl: undefined,
+                clientId: undefined,
+                clientSecret: undefined,
                 serviceUrl:  appName ? this.getServiceUrl(appName) : undefined,
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
-                tokenSetExpireTime: 0, // Seconds
                 callbackListenerPort: 3000,
-                mixpanelToken: this.getMixpanelToken(configName)
+                mixpanelToken: undefined,
+                idp: undefined
             },
             accessPropertiesByDotNotation: true,
-            clearInvalidConfig: false
+            clearInvalidConfig: true    // if config is invalid, delete
         });
 
-        if(configName == "dev" && ! this.config.get('serviceUrl')) {
-            let errorMessage = `Config not initialized (or is invalid) for dev environment: Must add serviceUrl and authUrl in: ${this.config.path}`;
-            throw new Error(errorMessage);
+        if(configName == 'dev' && ! this.config.get('serviceUrl')) {
+            thoumError(`Config not initialized (or is invalid) for dev environment: Must set serviceUrl in: ${this.config.path}`);
+            process.exit(1);
         }
+
+        this.tokenService = new TokenService(this);
     }
 
     public configPath(): string {
@@ -57,37 +70,69 @@ export class ConfigService {
         return this.config.get('authUrl');
     }
 
-    public tokenSet(): TokenSetParameters {
-        return this.config.get('tokenSet');
+    public tokenSet(): TokenSet {
+        let tokenSet = this.config.get('tokenSet');
+        return tokenSet && new TokenSet(tokenSet);
+    }
+
+    // private until we have a reason to expose to app
+    public idp(): IdP {
+        return this.config.get('idp');
+    }
+
+    public clientId(): string {
+        return this.config.get('clientId');
+    }
+
+    public clientSecret(): string {
+        return this.config.get('clientSecret');
+    }
+
+    public authScopes(): string {
+        return this.config.get('authScopes');
     }
 
     public getAuthHeader(): string {
-        return `${this.tokenSet().token_type} ${this.tokenSet().access_token}`
+        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`
     }
 
-    public tokenSetExpireTime(): number
-    {
-        return this.config.get('tokenSetExpireTime');
-    }
-
-    public setTokenSet(tokenSet?: TokenSet, tokenSetExpireTime?: number) {
+    public setTokenSet(tokenSet: TokenSet) {
         // TokenSet implements TokenSetParameters, makes saving it like
         // this safe to do.
         if(tokenSet)
             this.config.set('tokenSet', tokenSet);
-
-        if(tokenSetExpireTime)
-            this.config.set('tokenSetExpireTime', tokenSetExpireTime);
     }
 
-    public logout()
+    public logout(): void
     {
         this.config.delete('tokenSet');
-        this.config.delete('tokenSetExpireTime');
     }
 
-    private getAuthUrl(appName: string) {
-        return `https://auth-${appName}.clunk80.com:5003/`;
+    public async loginSetup(idp: IdP): Promise<void>
+    {
+        this.config.set('idp', idp);
+        this.config.set('authUrl', this.getAuthUrl(idp));
+        this.config.set('authScopes', this.getAuthScopes(idp));
+
+        // fetch oauth details and mixpanel token from backend on login
+        const clientSecret = await this.getOAuthClient(idp);
+        this.config.set('clientId', clientSecret.clientId);
+        this.config.set('clientSecret', clientSecret.clientSecret);
+        
+        const mixpanelToken = await this.getMixpanelToken();
+        this.config.set('mixpanelToken', mixpanelToken);
+    }
+
+    private getAppName(configName: string) {
+        switch(configName)
+        {
+            case 'prod':
+                return 'app';
+            case 'stage':
+                return 'app-stage-4329423';
+            default:
+                return undefined;
+        }
     }
 
     private getServiceUrl(appName: string) {
@@ -95,25 +140,36 @@ export class ConfigService {
         return `https://${appName}.clunk80.com/`;
     }
 
-    private getAppName(configName: string) {
-        switch(configName)
+    private getAuthUrl(idp: IdP) {
+        switch(idp)
         {
-            case "prod":
-                return "app";
-            case "stage":
-                return "app-stage-4329423";
+            case IdP.Google:
+                return 'https://accounts.google.com';
+            case IdP.Microsoft:
+                return 'https://login.microsoftonline.com/common/v2.0';
             default:
-                return undefined;
+                throw new Error(`Unknown idp ${idp}`);
         }
     }
 
-    private getMixpanelToken(configName: string) {
-        switch(configName)
+    private getAuthScopes(idp: IdP) {
+        switch(idp)
         {
-            case "prod":
-                return "3036a28cd1d9878a0f605bd1c76cdf96";
+            case IdP.Google:
+                return 'openid email profile'
+            case IdP.Microsoft:
+                // both openid and offline_access must be set for refresh token
+                return 'offline_access openid email profile'
             default:
-                return "aef09ae2b274f4cccf33587a9c6552f0";
+                throw new Error(`Unknown idp ${idp}`);
         }
+    }
+
+    private getOAuthClient(idp: IdP): Promise<ClientSecretResponse> {
+        return this.tokenService.GetClientSecret(idp);
+    }
+
+    private async getMixpanelToken(): Promise<string> {
+        return (await this.tokenService.GetMixpanelToken()).token
     }
 }
