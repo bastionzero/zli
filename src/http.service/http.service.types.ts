@@ -152,3 +152,13 @@ export enum FileServiceErrors {
 export interface ScpErrorMsg {
     reason: string;
 }
+
+export interface MixpanelTokenResponse
+{
+    token: string;
+}
+
+export interface ClientSecretResponse {
+    clientId: string;
+    clientSecret: string;
+}

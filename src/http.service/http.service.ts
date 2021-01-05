@@ -1,11 +1,12 @@
-import { TargetType } from '../types';
+import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
 import { thoumError, thoumMessage } from '../utils';
+import { config } from 'process';
 
 export class HttpService
 {
@@ -13,13 +14,13 @@ export class HttpService
     protected httpClient: Got;
     private configService: ConfigService;
 
-    constructor(configService: ConfigService, serviceRoute: string)
+    constructor(configService: ConfigService, serviceRoute: string, authorized: boolean = true)
     {
         this.configService = configService;
 
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
-            headers: {authorization: this.configService.getAuthHeader()},
+            headers: (authorized) ? {authorization: this.configService.getAuthHeader()} : undefined,
             hooks: {
                 beforeRequest: [
                     (options) => thoumMessage(`Making request to: ${options.url}`) 
@@ -38,6 +39,10 @@ export class HttpService
     private handleHttpException(error: HTTPError) : void
     {
         let errorMessage = error.message;
+        
+        if(error.response.statusCode == 401) {
+            thoumMessage(`Authentication Error ${error.response.headers}`);
+        }
 
         // Handle 500 errors by printing out our custom exception message
         if(error.response.statusCode == 500) {
@@ -322,5 +327,22 @@ export class FileService extends HttpService
         await this.FormStream('download', request, localPath);
 
         return;
+    }
+}
+export class TokenService extends HttpService
+{
+    constructor(configService: ConfigService)
+    {
+        super(configService, 'api/v1/token/', false);
+    }
+
+    public GetMixpanelToken(): Promise<MixpanelTokenResponse>
+    {
+        return this.Get('mixpanel-token', {});
+    }
+
+    public GetClientSecret(idp: IdP) : Promise<ClientSecretResponse>
+    {
+        return this.Get(`${idp.toLowerCase()}-client`, {});
     }
 }
