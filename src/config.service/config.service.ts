@@ -14,7 +14,8 @@ type ThoumConfigSchema = {
     tokenSet: TokenSetParameters,
     callbackListenerPort: number,
     mixpanelToken: string,
-    idp: IdP
+    idp: IdP,
+    sessionId: string
 }
 
 export class ConfigService {
@@ -36,7 +37,8 @@ export class ConfigService {
                 tokenSet: undefined, // tokenSet.expires_in is Seconds
                 callbackListenerPort: 3000,
                 mixpanelToken: undefined,
-                idp: undefined
+                idp: undefined,
+                sessionId: undefined
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true    // if config is invalid, delete
@@ -96,7 +98,15 @@ export class ConfigService {
         return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`
     }
 
-    public setTokenSet(tokenSet: TokenSet) {
+    public sessionId(): string {
+        return this.config.get('sessionId');
+    }
+
+    public setSessionId(sessionId: string): void {
+        this.config.set('sessionId', sessionId);
+    }
+
+    public setTokenSet(tokenSet: TokenSet): void {
         // TokenSet implements TokenSetParameters, makes saving it like
         // this safe to do.
         if(tokenSet)
@@ -121,6 +131,9 @@ export class ConfigService {
         
         const mixpanelToken = await this.getMixpanelToken();
         this.config.set('mixpanelToken', mixpanelToken);
+        
+        // Clear previous sessionId
+        this.config.delete('sessionId');
     }
 
     private getAppName(configName: string) {
