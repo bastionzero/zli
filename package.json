@@ -10,8 +10,7 @@
     "build": "tsc",
     "package": "pkg . --out-path bin",
     "release": "npm run build && npm run package",
-    "clean": "rm -rf dist bin",
-    "proto": "ts-node src/test.ts"
+    "clean": "rm -rf dist bin"
   },
   "author": "nabeelperson",
   "license": "ISC",
