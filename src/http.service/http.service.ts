@@ -1,12 +1,12 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
-import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse } from './http.service.types';
+import { Dictionary, head } from 'lodash';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
 import { thoumError, thoumMessage } from '../utils';
-import { config } from 'process';
+import { createJSDocAuthorTag } from 'typescript';
 
 export class HttpService
 {
@@ -18,9 +18,14 @@ export class HttpService
     {
         this.configService = configService;
 
+        let headers: Dictionary<string> =  {};
+
+        if(authorized) headers['Authorization'] = this.configService.getAuthHeader();
+        if(authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
+
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
-            headers: (authorized) ? {authorization: this.configService.getAuthHeader()} : undefined,
+            headers: headers,
             hooks: {
                 beforeRequest: [
                     (options) => thoumMessage(`Making request to: ${options.url}`) 
@@ -234,7 +239,7 @@ export class ConnectionService extends HttpService
         return resp.connectionId;
     }
 
-    public CloseConnection(connectionId: string) : Promise<any>
+    public CloseConnection(connectionId: string) : Promise<void>
     {
         var req : CloseConnectionRequest = {
             connectionId: connectionId
@@ -344,5 +349,49 @@ export class TokenService extends HttpService
     public GetClientSecret(idp: IdP) : Promise<ClientSecretResponse>
     {
         return this.Get(`${idp.toLowerCase()}-client`, {});
+    }
+}
+
+export class MfaService extends HttpService
+{
+    constructor(configService: ConfigService)
+    {
+        super(configService, 'api/v1/mfa/');
+    }
+
+    public SendTotp(token: string): Promise<void>
+    {
+        const request : MfaTokenRequest = {
+            token: token
+        };
+
+        return this.Post('totp', request);
+    }
+
+    public ResetSecret(): Promise<MfaResetResponse>
+    {   
+        return this.Post('reset', {});
+    }
+
+    public ClearSecret(userId: string): Promise<void>
+    {
+        const request: MfaClearRequest = {
+            userId: userId
+        };
+
+        return this.Post('clear', request);
+    }
+}
+
+export class UserService extends HttpService
+{
+    constructor(configService: ConfigService)
+    {
+        super(configService, 'api/v1/user/');
+    }
+
+    public Register(): Promise<UserRegisterResponse>
+    {
+        return this.Post('register', {});
     }
 }

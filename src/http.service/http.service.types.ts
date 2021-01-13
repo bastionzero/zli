@@ -162,3 +162,31 @@ export interface ClientSecretResponse {
     clientId: string;
     clientSecret: string;
 }
+
+export class MfaTokenRequest
+{
+    token: string;
+}
+
+export class MfaClearRequest
+{
+    userId: string;
+}
+
+export class MfaResetResponse
+{
+    mfaSecretUrl: string;
+}
+
+export class UserRegisterResponse
+{
+    userSessionId: string;
+    mfaActionRequired: MfaActionRequired;
+}
+
+export enum MfaActionRequired
+{
+    NONE = 'NONE',
+    TOTP = 'TOTP',
+    RESET ='RESET'
+}
