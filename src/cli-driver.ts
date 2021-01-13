@@ -18,9 +18,11 @@ import {
     ConnectionService, 
     EnvironmentService, 
     FileService, 
+    MfaService, 
     SessionService, 
     SshTargetService, 
-    SsmTargetService 
+    SsmTargetService, 
+    UserService
 } from "./http.service/http.service";
 import { OAuthService } from "./oauth.service/oauth.service";
 import { ShellTerminal } from "./terminal/terminal";
@@ -30,9 +32,10 @@ import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
-import { EnvironmentDetails, ConnectionState} from "./http.service/http.service.types";
+import { EnvironmentDetails, ConnectionState, MfaActionRequired} from "./http.service/http.service.types";
 import { includes } from "lodash";
 import { version } from '../package.json';
+import qrcode from 'qrcode';
 
 export class CliDriver
 {
@@ -126,6 +129,14 @@ export class CliDriver
                     type: 'string',
                     choices: [IdP.Google, IdP.Microsoft]
                 })
+                .option(
+                    'mfa', 
+                    {
+                        type: 'string',
+                        demandOption: false,
+                        alias: 'm'
+                    }
+                )
                 .example('login Google', 'Login with Google');
             },
             async (argv) => {
@@ -139,7 +150,45 @@ export class CliDriver
                     thoumMessage('Log in required, opening browser');
                     await oAuthService.login((t) => this.configService.setTokenSet(t));
                     this.userInfo = await oAuthService.userInfo();
-                    console.log()
+                }
+                
+                // Register user log in and get User Session Id
+                const userService = new UserService(this.configService);
+                const registerResponse = await userService.Register();
+                this.configService.setSessionId(registerResponse.userSessionId);
+                
+                // Check if we must MFA and act upon it
+                const mfaService = new MfaService(this.configService);
+                switch(registerResponse.mfaActionRequired)
+                {
+                    case MfaActionRequired.NONE:
+                        break;
+                    case MfaActionRequired.TOTP:
+                        if(! argv.mfa)
+                        {
+                            thoumError('MFA token required for this account');
+                            thoumError('Please try logging in again with \'--mfa <token\' flag');
+                            this.configService.logout();
+                            process.exit(1);
+                        }
+
+                        await mfaService.SendTotp(argv.mfa);
+                        
+                        break;
+                    case MfaActionRequired.RESET:
+                        thoumMessage('MFA reset detected, requesting new MFA token');
+                        thoumMessage('Please scan the following QR code with your device (Google Authenticator recommended)');
+
+                        const resp = await mfaService.ResetSecret();
+                        var data = await qrcode.toString(resp.mfaSecretUrl, {type: 'terminal', scale: 2});
+                        console.log(data);
+
+                        thoumMessage('Please log in again with \'--mfa token\'');
+                        
+                        break;
+                    default:
+                        thoumWarn(`Unexpected MFA response ${registerResponse.mfaActionRequired}`);
+                        break;
                 }
 
                 thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
