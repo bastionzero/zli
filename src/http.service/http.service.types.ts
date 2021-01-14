@@ -190,3 +190,13 @@ export enum MfaActionRequired
     TOTP = 'TOTP',
     RESET ='RESET'
 }
+
+export class UserSummary
+{
+    id: string;
+    organizationId: string;
+    fullName: string;
+    email: string;
+    isAdmin: boolean;
+    timeCreated: Date;
+}

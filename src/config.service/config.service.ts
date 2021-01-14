@@ -1,6 +1,6 @@
 import Conf from 'conf/dist/source';
 import { TokenSet, TokenSetParameters } from 'openid-client';
-import { ClientSecretResponse, MixpanelTokenResponse } from '../http.service/http.service.types';
+import { ClientSecretResponse, MixpanelTokenResponse, UserSummary } from '../http.service/http.service.types';
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { thoumError, thoumWarn } from '../utils';
@@ -15,16 +15,15 @@ type ThoumConfigSchema = {
     callbackListenerPort: number,
     mixpanelToken: string,
     idp: IdP,
-    sessionId: string
+    sessionId: string,
+    whoami: UserSummary
 }
 
 export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
-    private configName: string;
     private tokenService: TokenService;
 
     constructor(configName: string) {
-        this.configName = configName;
         var appName = this.getAppName(configName);
         this.config = new Conf<ThoumConfigSchema>({
             projectName: 'thoum-cli',
@@ -38,7 +37,8 @@ export class ConfigService {
                 callbackListenerPort: 3000,
                 mixpanelToken: undefined,
                 idp: undefined,
-                sessionId: undefined
+                sessionId: undefined,
+                whoami: undefined
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true    // if config is invalid, delete
@@ -113,6 +113,15 @@ export class ConfigService {
             this.config.set('tokenSet', tokenSet);
     }
 
+    public me(): UserSummary
+    {
+        return this.config.get('whoami');
+    }
+
+    public setMe(me: UserSummary): void {
+        this.config.set('whoami', me);
+    }
+
     public logout(): void
     {
         this.config.delete('tokenSet');
@@ -134,6 +143,7 @@ export class ConfigService {
         
         // Clear previous sessionId
         this.config.delete('sessionId');
+        this.config.delete('whoami');
     }
 
     private getAppName(configName: string) {

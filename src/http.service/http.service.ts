@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary, head } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
@@ -13,19 +13,16 @@ export class HttpService
     // ref for got: https://github.com/sindresorhus/got
     protected httpClient: Got;
     private configService: ConfigService;
+    private authorized: boolean;
 
     constructor(configService: ConfigService, serviceRoute: string, authorized: boolean = true)
     {
         this.configService = configService;
-
-        let headers: Dictionary<string> =  {};
-
-        if(authorized) headers['Authorization'] = this.configService.getAuthHeader();
-        if(authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
+        this.authorized = authorized;
 
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
-            headers: headers,
+            // Remember to set headers before calling API
             hooks: {
                 beforeRequest: [
                     (options) => thoumMessage(`Making request to: ${options.url}`) 
@@ -39,6 +36,17 @@ export class HttpService
             }
             // throwHttpErrors: false // potentially do this if we want to check http without exceptions
         });
+    }
+
+    private setHeaders()
+    {
+        let headers: Dictionary<string> = {};
+
+        if(this.authorized) headers['Authorization'] = this.configService.getAuthHeader();
+        if(this.authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
+        
+        // append headers
+        this.httpClient = this.httpClient.extend({ headers: headers });
     }
 
     private handleHttpException(error: HTTPError) : void
@@ -69,6 +77,8 @@ export class HttpService
 
     protected async Get<TResp>(route: string, queryParams: Dictionary<string>) : Promise<TResp>
     {
+        this.setHeaders();
+
         try {
             var resp : TResp = await this.httpClient.get(
                 route,
@@ -86,6 +96,8 @@ export class HttpService
 
     protected async Post<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
     {
+        this.setHeaders();
+
         try {
             var resp : TResp = await this.httpClient.post(
                 route,
@@ -393,5 +405,10 @@ export class UserService extends HttpService
     public Register(): Promise<UserRegisterResponse>
     {
         return this.Post('register', {});
+    }
+
+    public Me(): Promise<UserSummary>
+    {
+        return this.Get('me', {});
     }
 }

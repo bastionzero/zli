@@ -24,11 +24,18 @@ export async function oauthMiddleware(configService: ConfigService) : Promise<Us
                 thoumError('Stale log in detected');
                 thoumMessage('You need to log in, please run \'thoum login --help\'')
                 configService.logout();
+                process.exit(1);
+            })
+            .catch((error: any) => {
+                thoumError('Unexpected error during oauth refresh');
+                thoumMessage('Please log in again');
+                configService.logout();
+                process.exit(1);
             });
         }
     } else {
         thoumWarn('You need to log in, please run \'thoum login --help\'');
-        process.exit(0);
+        process.exit(1);
     }
 
     // Get user info from IdP

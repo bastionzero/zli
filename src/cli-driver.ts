@@ -32,7 +32,7 @@ import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
-import { EnvironmentDetails, ConnectionState, MfaActionRequired} from "./http.service/http.service.types";
+import { EnvironmentDetails, ConnectionState, MfaActionRequired, UserSummary} from "./http.service/http.service.types";
 import { includes } from "lodash";
 import { version } from '../package.json';
 import qrcode from 'qrcode';
@@ -70,7 +70,9 @@ export class CliDriver
 
             // OAuth
             this.userInfo = await oauthMiddleware(this.configService);
-            thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+            const me = this.configService.me(); // if you have logged in, this should be set
+            const sessionId = this.configService.sessionId();
+            thoumMessage(`Logged in as: ${me.email}, clunk80-id:${me.id}, session-id:${sessionId}`);
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
@@ -191,7 +193,9 @@ export class CliDriver
                         break;
                 }
 
-                thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+                const me = await userService.Me();
+                this.configService.setMe(me);
+                thoumMessage(`Logged in as: ${me.email}, clunk80-id:${me.id}, session-id:${registerResponse.userSessionId}`);
                 
                 process.exit(0);
             }
