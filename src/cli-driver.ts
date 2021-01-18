@@ -420,7 +420,7 @@ export class CliDriver
             }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
-        .option('debug', {type: 'boolean', default: false})
+        .option('debug', {type: 'boolean', default: false, describe: 'Flag to enable debug logs'})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message
