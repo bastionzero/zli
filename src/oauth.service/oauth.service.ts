@@ -9,8 +9,10 @@ import { thoumError, thoumMessage, thoumWarn } from '../utils';
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
     private host: string = 'localhost';
+    private debug: boolean; 
 
-    constructor(private configService: ConfigService) {
+    constructor(private configService: ConfigService, debug: boolean) {
+        this.debug = debug;
     }
 
     private setupCallbackListener(
@@ -30,8 +32,11 @@ export class OAuthService implements IDisposable {
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`, params, { code_verifier: codeVerifier });
 
-                    thoumMessage(`log in successful`);
-                    thoumMessage(`callback listener closed`);
+                    
+                    thoumMessage(`Log in successful`);
+                    if (this.debug){
+                        thoumMessage(`Callback listener closed`);  
+                    }
 
                     // write to config with callback
                     callback(tokenSet);
@@ -41,8 +46,10 @@ export class OAuthService implements IDisposable {
                     break;
 
                 case '/logout-callback':
-                    thoumMessage(`log in successful`);
-                    thoumMessage(`callback listener closed`);
+                    thoumMessage(`Log in successful`);
+                    if (this.debug){
+                        thoumMessage(`Callback listener closed`);  
+                    }
                     res.end('Log out successful. You may close this window.'); // TODO: serve HTML here
                     resolve();
                     break;
@@ -53,7 +60,8 @@ export class OAuthService implements IDisposable {
             }
         };
 
-        thoumMessage(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
+        if (this.debug)
+            thoumMessage(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
         this.server = http.createServer(requestListener);
         // Port binding failure will produce error event
         this.server.on('error', () => {

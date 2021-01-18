@@ -75,7 +75,7 @@ export class CliDriver
                 return;
 
             // OAuth
-            this.userInfo = await oauthMiddleware(this.configService);
+            this.userInfo = await oauthMiddleware(this.configService, !!argv.debug);
             if (argv.debug)
                 thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
         })
@@ -143,7 +143,7 @@ export class CliDriver
                 await this.configService.loginSetup(provider);
                 
                 // Can only create oauth service after loginSetup completes
-                const oAuthService = new OAuthService(this.configService);
+                const oAuthService = new OAuthService(this.configService, !!argv.debug);
                 if(! oAuthService.isAuthenticated())
                 {
                     thoumMessage('Log in required, opening browser');
@@ -152,7 +152,8 @@ export class CliDriver
                     console.log()
                 }
 
-                thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+                if (argv.debug)
+                    thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
                 
                 process.exit(0);
             }

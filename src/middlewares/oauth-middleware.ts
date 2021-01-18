@@ -3,9 +3,9 @@ import { OAuthService } from "../oauth.service/oauth.service";
 import { ConfigService } from "../config.service/config.service";
 import { thoumError, thoumMessage, thoumWarn } from '../utils';
 
-export async function oauthMiddleware(configService: ConfigService) : Promise<UserinfoResponse> {
+export async function oauthMiddleware(configService: ConfigService, debug: boolean) : Promise<UserinfoResponse> {
 
-    let ouath = new OAuthService(configService);
+    let ouath = new OAuthService(configService, debug);
 
     let tokenSet = configService.tokenSet();
 
@@ -14,7 +14,8 @@ export async function oauthMiddleware(configService: ConfigService) : Promise<Us
     {
         if(configService.tokenSet().expired())
         {
-            thoumMessage('Refreshing oauth');
+            if (debug)
+                thoumMessage('Refreshing oauth');
 
             // refresh using existing creds
             await ouath.refresh()
