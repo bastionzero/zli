@@ -33,6 +33,8 @@ import fs from 'fs'
 import { EnvironmentDetails, ConnectionState} from "./http.service/http.service.types";
 import { includes } from "lodash";
 import { version } from '../package.json';
+import chalk from 'chalk';
+import figlet from "figlet";
 
 export class CliDriver
 {
@@ -58,8 +60,15 @@ export class CliDriver
         .wrap(null)
         .middleware(checkVersionMiddleware)
         .middleware((argv) => {
+            if (argv.debug)
+                console.log(
+                    chalk.magentaBright(
+                        figlet.textSync('clunk80 cli', { horizontalLayout: 'full' })
+                    )
+                );
+
             // Config init
-            this.configService = new ConfigService(<string> argv.configName);
+            this.configService = new ConfigService(<string> argv.configName, !!argv.debug);
         })
         .middleware(async (argv) => {
             if(includes(this.noOauthCommands, argv._[0]))
@@ -67,7 +76,8 @@ export class CliDriver
 
             // OAuth
             this.userInfo = await oauthMiddleware(this.configService);
-            thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
+            if (argv.debug)
+                thoumMessage(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`);
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
@@ -96,9 +106,9 @@ export class CliDriver
                 return;
 
             // Greedy fetch of some data that we use frequently 
-            const ssmTargetService = new SsmTargetService(this.configService);
-            const sshTargetService = new SshTargetService(this.configService);
-            const envService = new EnvironmentService(this.configService);
+            const ssmTargetService = new SsmTargetService(this.configService, !!argv.debug);
+            const sshTargetService = new SshTargetService(this.configService, !!argv.debug);
+            const envService = new EnvironmentService(this.configService, !!argv.debug);
 
             this.ssmTargets = ssmTargetService.ListSsmTargets()
                 .then(result => 
@@ -170,7 +180,7 @@ export class CliDriver
                 const parsedTarget = await this.disambiguateTargetName(argv.targetType, argv.targetString);
 
                 // call list session
-                const sessionService = new SessionService(this.configService);
+                const sessionService = new SessionService(this.configService, !!argv.debug);
                 const listSessions = await sessionService.ListSessions();
 
                 // space names are not unique, make sure to find the latest active one
@@ -191,7 +201,7 @@ export class CliDriver
                 const targetUser = parsedTarget.type === TargetType.SSH ? 'ssh' : parsedTarget.user;
 
                 // make a new connection
-                const connectionService = new ConnectionService(this.configService);
+                const connectionService = new ConnectionService(this.configService, !!argv.debug);
                 // if SSM user does not exist then resp.connectionId will throw a 
                 // 'TypeError: Cannot read property 'connectionId' of undefined'
                 // so we need to catch and return undefined
@@ -359,7 +369,7 @@ export class CliDriver
                 .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
             },
             async (argv) => {
-                const fileService = new FileService(this.configService);
+                const fileService = new FileService(this.configService, !!argv.debug);
 
                 const sourceParsedString = parseTargetString(argv.targetType, argv.source);
                 const destParsedString = parseTargetString(argv.targetType, argv.destination);
@@ -410,6 +420,7 @@ export class CliDriver
             }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
+        .option('debug', {type: 'boolean', default: false})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message

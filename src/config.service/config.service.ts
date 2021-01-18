@@ -21,8 +21,9 @@ export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
     private configName: string;
     private tokenService: TokenService;
+    private debug: boolean;
 
-    constructor(configName: string) {
+    constructor(configName: string, debug: boolean) {
         this.configName = configName;
         var appName = this.getAppName(configName);
         this.config = new Conf<ThoumConfigSchema>({
@@ -47,7 +48,7 @@ export class ConfigService {
             process.exit(1);
         }
 
-        this.tokenService = new TokenService(this);
+        this.tokenService = new TokenService(this, this.debug);
     }
 
     public configPath(): string {

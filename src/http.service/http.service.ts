@@ -13,21 +13,27 @@ export class HttpService
     // ref for got: https://github.com/sindresorhus/got
     protected httpClient: Got;
     private configService: ConfigService;
+    private debug: boolean;
 
-    constructor(configService: ConfigService, serviceRoute: string, authorized: boolean = true)
+    constructor(configService: ConfigService, serviceRoute: string, debug: boolean, authorized: boolean = true)
     {
         this.configService = configService;
+        this.debug = debug;
 
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
             headers: (authorized) ? {authorization: this.configService.getAuthHeader()} : undefined,
             hooks: {
                 beforeRequest: [
-                    (options) => thoumMessage(`Making request to: ${options.url}`) 
+                    (options) => {
+                        if (this.debug)
+                            thoumMessage(`Making request to: ${options.url}`) 
+                    }
                 ],
                 afterResponse: [
                     (response, _) => {
-                        thoumMessage(`Request completed to: ${response.url}`);
+                        if (this.debug)
+                            thoumMessage(`Request completed to: ${response.url}`);
                         return response;
                     }
                 ]
@@ -174,9 +180,9 @@ export class HttpService
 
 export class SessionService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/session/');
+        super(configService, 'api/v1/session/', debug);
     }
 
     public GetSession(sessionId: string) : Promise<SessionDetails>
@@ -210,9 +216,9 @@ export class SessionService extends HttpService
 
 export class ConnectionService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/connection/');
+        super(configService, 'api/v1/connection/', debug);
     }
 
     public GetConnection(connectionId: string) : Promise<ConnectionSummary>
@@ -246,9 +252,9 @@ export class ConnectionService extends HttpService
 
 export class SsmTargetService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/ssm/');
+        super(configService, 'api/v1/ssm/', debug);
     }
 
     public GetSsmTarget(targetId: string) : Promise<SsmTargetSummary>
@@ -264,9 +270,9 @@ export class SsmTargetService extends HttpService
 
 export class SshTargetService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/ssh/');
+        super(configService, 'api/v1/ssh/', debug);
     }
 
     public GetSshTarget(targetId: string) : Promise<SshTargetSummary>
@@ -283,9 +289,9 @@ export class SshTargetService extends HttpService
 
 export class EnvironmentService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/environment/');
+        super(configService, 'api/v1/environment/', debug);
     }
 
     public ListEnvironments() : Promise<EnvironmentDetails[]>
@@ -296,9 +302,9 @@ export class EnvironmentService extends HttpService
 
 export class FileService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/file/');
+        super(configService, 'api/v1/file/', debug);
     }
 
     public async uploadFile(targetId: string, targetType: TargetType, path: string, file: ReadStream, targetUser?: string): Promise<void> {
@@ -331,9 +337,9 @@ export class FileService extends HttpService
 }
 export class TokenService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, debug: boolean)
     {
-        super(configService, 'api/v1/token/', false);
+        super(configService, 'api/v1/token/', debug, false);
     }
 
     public GetMixpanelToken(): Promise<MixpanelTokenResponse>
