@@ -22,23 +22,33 @@ export class Logger {
         this.debugFlag = debug;
 
         // Build our logger
-        this.logger = winston.createLogger({
-            levels: thoumLoggingLevel,
-            format: winston.format.combine(
-                winston.format.timestamp({
-                format: 'YYYY-MM-DD HH:mm:ss'
-              }),
-              winston.format.errors({ stack: true }),
-              winston.format.splat(),
-              winston.format.json()
-            ),
-            transports: [
-                new winston.transports.File({
-                    filename: path.join(LOG_PATH),
-                  })
-            ]
-          });
-
+        try {
+            this.logger = winston.createLogger({
+                levels: thoumLoggingLevel,
+                format: winston.format.combine(
+                    winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss'
+                  }),
+                  winston.format.errors({ stack: true }),
+                  winston.format.splat(),
+                  winston.format.json()
+                ),
+                transports: [
+                    new winston.transports.File({
+                        filename: path.join(LOG_PATH),
+                      })
+                ]
+              });
+        } catch (error) {
+            if (error.code == 'EACCES') {
+                // This would happen if the user does not have access to create dirs in /var/log/
+                thoumError(`Please ensure that you have access to ${LOG_PATH}`)
+            } else {
+                // Else it's an unknown error
+                thoumError(`${error.message}`)
+            }
+            process.exit(1);
+        }
 
         if (this.debugFlag) {
             // Display our title
