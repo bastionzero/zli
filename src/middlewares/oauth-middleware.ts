@@ -1,11 +1,11 @@
 import { errors, UserinfoResponse } from "openid-client";
 import { OAuthService } from "../oauth.service/oauth.service";
 import { ConfigService } from "../config.service/config.service";
-import { thoumError, thoumMessage, thoumWarn } from '../utils';
+import { Logger } from "../../src/logger.service/logger";
 
-export async function oauthMiddleware(configService: ConfigService) : Promise<UserinfoResponse> {
+export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<UserinfoResponse> {
 
-    let ouath = new OAuthService(configService);
+    let ouath = new OAuthService(configService, logger);
 
     let tokenSet = configService.tokenSet();
 
@@ -14,27 +14,28 @@ export async function oauthMiddleware(configService: ConfigService) : Promise<Us
     {
         if(configService.tokenSet().expired())
         {
-            thoumMessage('Refreshing oauth');
+            logger.debug('Refreshing oauth');
 
             // refresh using existing creds
             await ouath.refresh()
             .then((newTokenSet) => configService.setTokenSet(newTokenSet))
             // Catch oauth related errors
             .catch((error: errors.OPError | errors.RPError) => {
-                thoumError('Stale log in detected');
-                thoumMessage('You need to log in, please run \'thoum login --help\'')
+                logger.error('Stale log in detected');
+                logger.error('You need to log in, please run \'thoum login --help\'')
+                // TODO trade of exception
                 configService.logout();
                 process.exit(1);
             })
             .catch((error: any) => {
-                thoumError('Unexpected error during oauth refresh');
-                thoumMessage('Please log in again');
+                logger.error('Unexpected error during oauth refresh');
+                logger.info('Please log in again');
                 configService.logout();
                 process.exit(1);
             });
         }
     } else {
-        thoumWarn('You need to log in, please run \'thoum login --help\'');
+        logger.warn('You need to log in, please run \'thoum login --help\'');
         process.exit(1);
     }
 

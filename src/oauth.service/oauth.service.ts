@@ -4,13 +4,15 @@ import { IDisposable } from "../websocket.service/websocket.service";
 import { ConfigService } from "../config.service/config.service";
 import http, { RequestListener } from "http";
 import { setTimeout } from "timers";
-import { thoumError, thoumMessage, thoumWarn } from '../utils';
+import { Logger } from "../../src/logger.service/logger";
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
     private host: string = 'localhost';
+    private logger: Logger;
 
-    constructor(private configService: ConfigService) {
+    constructor(private configService: ConfigService, logger: Logger) {
+        this.logger = logger;
     }
 
     private setupCallbackListener(
@@ -30,8 +32,8 @@ export class OAuthService implements IDisposable {
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`, params, { code_verifier: codeVerifier });
 
-                    thoumMessage(`log in successful`);
-                    thoumMessage(`callback listener closed`);
+                    this.logger.info(`Login successful`);
+                    this.logger.debug(`callback listener closed`);
 
                     // write to config with callback
                     callback(tokenSet);
@@ -41,8 +43,8 @@ export class OAuthService implements IDisposable {
                     break;
 
                 case '/logout-callback':
-                    thoumMessage(`log in successful`);
-                    thoumMessage(`callback listener closed`);
+                    this.logger.info(`Login successful`);
+                    this.logger.debug(`callback listener closed`);
                     res.end('Log out successful. You may close this window.'); // TODO: serve HTML here
                     resolve();
                     break;
@@ -53,13 +55,13 @@ export class OAuthService implements IDisposable {
             }
         };
 
-        thoumMessage(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
+        this.logger.debug(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
         this.server = http.createServer(requestListener);
         // Port binding failure will produce error event
         this.server.on('error', () => {
-            thoumError('Log in listener could not bind to port');
-            thoumWarn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
-            thoumWarn('To edit callback port please run: \'thoum config\'');
+            this.logger.error('Log in listener could not bind to port');
+            this.logger.warn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
+            this.logger.warn('To edit callback port please run: \'thoum config\'');
             process.exit(1);
         });
         // open browser after successful port binding

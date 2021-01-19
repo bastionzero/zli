@@ -1,9 +1,9 @@
 import Conf from 'conf/dist/source';
 import { TokenSet, TokenSetParameters } from 'openid-client';
-import { ClientSecretResponse, MixpanelTokenResponse, UserSummary } from '../http.service/http.service.types';
+import { ClientSecretResponse, UserSummary } from '../http.service/http.service.types';
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
-import { thoumError, thoumWarn } from '../utils';
+import { Logger } from '../../src/logger.service/logger';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type ThoumConfigSchema = {
@@ -23,7 +23,7 @@ export class ConfigService {
     private config: Conf<ThoumConfigSchema>;
     private tokenService: TokenService;
 
-    constructor(configName: string) {
+    constructor(configName: string, logger: Logger) {
         var appName = this.getAppName(configName);
         this.config = new Conf<ThoumConfigSchema>({
             projectName: 'thoum-cli',
@@ -45,11 +45,11 @@ export class ConfigService {
         });
 
         if(configName == 'dev' && ! this.config.get('serviceUrl')) {
-            thoumError(`Config not initialized (or is invalid) for dev environment: Must set serviceUrl in: ${this.config.path}`);
+            logger.error(`Config not initialized (or is invalid) for dev environment: Must set serviceUrl in: ${this.config.path}`);
             process.exit(1);
         }
 
-        this.tokenService = new TokenService(this);
+        this.tokenService = new TokenService(this, logger);
     }
 
     public configPath(): string {

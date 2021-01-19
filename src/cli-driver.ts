@@ -7,10 +7,7 @@ import {
     getTableOfTargets, 
     targetStringExample, 
     targetStringExampleNoPath, 
-    TargetSummary, 
-    thoumError, 
-    thoumMessage, 
-    thoumWarn 
+    TargetSummary
 } from './utils';
 import yargs from "yargs";
 import { ConfigService } from "./config.service/config.service";
@@ -36,11 +33,13 @@ import { EnvironmentDetails, ConnectionState, MfaActionRequired, UserSummary} fr
 import { includes } from "lodash";
 import { version } from '../package.json';
 import qrcode from 'qrcode';
+import { Logger } from './logger.service/logger'
 
 export class CliDriver
 {
     private configService: ConfigService;
     private userInfo: UserinfoResponse; // sub and email
+    private logger: Logger;
 
     private mixpanelService: MixpanelService;
 
@@ -61,18 +60,21 @@ export class CliDriver
         .wrap(null)
         .middleware(checkVersionMiddleware)
         .middleware((argv) => {
+            // Configure our logger
+            this.logger = new Logger(!!argv.debug);
+
             // Config init
-            this.configService = new ConfigService(<string> argv.configName);
+            this.configService = new ConfigService(<string> argv.configName, this.logger);
         })
         .middleware(async (argv) => {
             if(includes(this.noOauthCommands, argv._[0]))
                 return;
 
             // OAuth
-            this.userInfo = await oauthMiddleware(this.configService);
+            this.userInfo = await oauthMiddleware(this.configService, this.logger);
             const me = this.configService.me(); // if you have logged in, this should be set
             const sessionId = this.configService.sessionId();
-            thoumMessage(`Logged in as: ${me.email}, clunk80-id:${me.id}, session-id:${sessionId}`);
+            this.logger.info(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`)
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
@@ -101,9 +103,9 @@ export class CliDriver
                 return;
 
             // Greedy fetch of some data that we use frequently 
-            const ssmTargetService = new SsmTargetService(this.configService);
-            const sshTargetService = new SshTargetService(this.configService);
-            const envService = new EnvironmentService(this.configService);
+            const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+            const sshTargetService = new SshTargetService(this.configService, this.logger);
+            const envService = new EnvironmentService(this.configService, this.logger);
 
             this.ssmTargets = ssmTargetService.ListSsmTargets()
                 .then(result => 
@@ -149,21 +151,21 @@ export class CliDriver
                 await this.configService.loginSetup(provider);
                 
                 // Can only create oauth service after loginSetup completes
-                const oAuthService = new OAuthService(this.configService);
+                const oAuthService = new OAuthService(this.configService, this.logger);
                 if(! oAuthService.isAuthenticated())
                 {
-                    thoumMessage('Log in required, opening browser');
+                    this.logger.info('Log in required, opening browser');
                     await oAuthService.login((t) => this.configService.setTokenSet(t));
                     this.userInfo = await oAuthService.userInfo();
                 }
                 
                 // Register user log in and get User Session Id
-                const userService = new UserService(this.configService);
+                const userService = new UserService(this.configService, this.logger);
                 const registerResponse = await userService.Register();
                 this.configService.setSessionId(registerResponse.userSessionId);
                 
                 // Check if we must MFA and act upon it
-                const mfaService = new MfaService(this.configService);
+                const mfaService = new MfaService(this.configService, this.logger);
                 switch(registerResponse.mfaActionRequired)
                 {
                     case MfaActionRequired.NONE:
@@ -171,8 +173,8 @@ export class CliDriver
                     case MfaActionRequired.TOTP:
                         if(! argv.mfa)
                         {
-                            thoumError('MFA token required for this account');
-                            thoumError('Please try logging in again with \'--mfa <token\' flag');
+                            this.logger.warn('MFA token required for this account');
+                            this.logger.info('Please try logging in again with \'--mfa <token\' flag');
                             this.configService.logout();
                             process.exit(1);
                         }
@@ -181,24 +183,24 @@ export class CliDriver
                         
                         break;
                     case MfaActionRequired.RESET:
-                        thoumMessage('MFA reset detected, requesting new MFA token');
-                        thoumMessage('Please scan the following QR code with your device (Google Authenticator recommended)');
+                        this.logger.info('MFA reset detected, requesting new MFA token');
+                        this.logger.info('Please scan the following QR code with your device (Google Authenticator recommended)');
 
                         const resp = await mfaService.ResetSecret();
                         var data = await qrcode.toString(resp.mfaSecretUrl, {type: 'terminal', scale: 2});
                         console.log(data);
 
-                        thoumMessage('Please log in again with \'--mfa token\'');
+                        this.logger.info('Please log in again with \'--mfa token\'');
                         
                         break;
                     default:
-                        thoumWarn(`Unexpected MFA response ${registerResponse.mfaActionRequired}`);
+                        this.logger.warn(`Unexpected MFA response ${registerResponse.mfaActionRequired}`);
                         break;
                 }
 
                 const me = await userService.Me();
                 this.configService.setMe(me);
-                thoumMessage(`Logged in as: ${me.email}, clunk80-id:${me.id}, session-id:${registerResponse.userSessionId}`);
+                this.logger.info(`Logged in as: ${this.userInfo.email}, clunk80-id:${me.id}, session-id:${registerResponse.userSessionId}`)
                 
                 process.exit(0);
             }
@@ -226,7 +228,7 @@ export class CliDriver
                 const parsedTarget = await this.disambiguateTargetName(argv.targetType, argv.targetString);
 
                 // call list session
-                const sessionService = new SessionService(this.configService);
+                const sessionService = new SessionService(this.configService, this.logger);
                 const listSessions = await sessionService.ListSessions();
 
                 // space names are not unique, make sure to find the latest active one
@@ -247,7 +249,7 @@ export class CliDriver
                 const targetUser = parsedTarget.type === TargetType.SSH ? 'ssh' : parsedTarget.user;
 
                 // make a new connection
-                const connectionService = new ConnectionService(this.configService);
+                const connectionService = new ConnectionService(this.configService, this.logger);
                 // if SSM user does not exist then resp.connectionId will throw a 
                 // 'TypeError: Cannot read property 'connectionId' of undefined'
                 // so we need to catch and return undefined
@@ -255,15 +257,15 @@ export class CliDriver
 
                 if(! connectionId)
                 {
-                    thoumError('Connection creation failed');
+                    this.logger.error('Connection creation failed');
                     if(parsedTarget.type === TargetType.SSM)
                     {
                         const targetEnvId = (await this.ssmTargets).filter(ssm => ssm.id == parsedTarget.id)[0].environmentId;
                         const targetEnvName = (await this.envs).filter(e => e.id == targetEnvId)[0].name;
-                        thoumError(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${targetEnvName}`);
-                        thoumMessage('You can find SSM user policies in the web app');
+                        this.logger.error(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${targetEnvName}`);
+                        this.logger.info('You can find SSM user policies in the web app');
                     } else {
-                        thoumMessage('Please check your polices in the web app for this target and/or environment');
+                        this.logger.info('Please check your polices in the web app for this target and/or environment');
                     }
 
                     process.exit(1);
@@ -296,19 +298,19 @@ export class CliDriver
                     async (error) => {
                         if(error)
                         {
-                            thoumError(error);
-                            thoumWarn('Target may have gone offline or space/connection closed from another client');
+                            this.logger.error(error);
+                            this.logger.warn('Target may have gone offline or space/connection closed from another client');
                         }
 
                         terminal.dispose();
                         
-                        thoumMessage('Cleaning up connection...');
+                        this.logger.debug('Cleaning up connection...');
                         const conn = await connectionService.GetConnection(connectionId);
                         // if connection not already closed
                         if(conn.state == ConnectionState.Open)
                             await connectionService.CloseConnection(connectionId);
 
-                        thoumMessage('Connection closed');
+                        this.logger.debug('Connection closed');
                         
                         if(error)
                             process.exit(1);
@@ -415,7 +417,7 @@ export class CliDriver
                 .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
             },
             async (argv) => {
-                const fileService = new FileService(this.configService);
+                const fileService = new FileService(this.configService, this.logger);
 
                 const sourceParsedString = parseTargetString(argv.targetType, argv.source);
                 const destParsedString = parseTargetString(argv.targetType, argv.destination);
@@ -429,19 +431,19 @@ export class CliDriver
                     const fh = fs.createReadStream(argv.source);
                     if(fh.readableLength === 0)
                     {
-                        thoumWarn(`File ${argv.source} does not exist or cannot be read`);
+                        this.logger.warn(`File ${argv.source} does not exist or cannot be read`);
                         process.exit(1);
                     }
 
                     await fileService.uploadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, fh, parsedTarget.user);
-                    thoumMessage('File upload complete');
+                    this.logger.info('File upload complete');
 
                 } else if(sourceParsedString) {
                     // download case
                     await fileService.downloadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, argv.destination, parsedTarget.user);
                 } else {
-                    thoumError('Invalid target string, must follow syntax:');
-                    thoumError(targetStringExample);
+                    this.logger.error('Invalid target string, must follow syntax:');
+                    this.logger.error(targetStringExample);
                 }
                 process.exit(0);
             }
@@ -451,7 +453,7 @@ export class CliDriver
             'Returns config file path',
             () => {},
             () => {
-                thoumMessage(`You can edit your config here: ${this.configService.configPath()}`);
+                this.logger.info(`You can edit your config here: ${this.configService.configPath()}`);
                 process.exit(0);
             }
         ).command(
@@ -466,6 +468,7 @@ export class CliDriver
             }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
+        .option('debug', {type: 'boolean', default: false, describe: 'Flag to enable debug logs'})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message
@@ -492,8 +495,8 @@ Need help? https://app.clunk80.com/support`)
 
         if(! parsedTarget)
         {
-            thoumError('Invalid target string, must follow syntax:');
-            thoumError(targetStringExampleNoPath);
+            this.logger.error('Invalid target string, must follow syntax:');
+            this.logger.error(targetStringExampleNoPath);
             process.exit(1);
         }
 
@@ -513,15 +516,15 @@ Need help? https://app.clunk80.com/support`)
                     matchedNamedTargets = (await this.sshTargets).filter(ssh => ssh.name === parsedTarget.name);
                     break;
                 default:
-                    thoumError(`Invalid TargetType passed ${parsedTarget.type}`);
+                    this.logger.error(`Invalid TargetType passed ${parsedTarget.type}`);
                     process.exit(1);
             }
 
             if(matchedNamedTargets.length < 1)
             {
-                thoumError(`No ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
-                thoumWarn('Target names are case sensitive');
-                thoumWarn('To see list of all targets run: \'thoum lt\'');
+                this.logger.error(`No ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
+                this.logger.warn('Target names are case sensitive');
+                this.logger.warn('To see list of all targets run: \'thoum lt\'');
                 process.exit(1);
             } else if(matchedNamedTargets.length == 1)
             {
@@ -529,10 +532,10 @@ Need help? https://app.clunk80.com/support`)
                 parsedTarget.id = matchedNamedTargets.pop().id;
             } else {
                 // ambiguous target id, warn user, exit process
-                thoumWarn(`Multiple ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
+                this.logger.warn(`Multiple ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
                 const tableString = getTableOfTargets(matchedNamedTargets, await this.envs);
                 console.log(tableString);
-                thoumMessage('Please connect using \'target id\' instead of target name');
+                this.logger.info('Please connect using \'target id\' instead of target name');
                 process.exit(1);
             }
         }
