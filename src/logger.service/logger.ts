@@ -1,20 +1,15 @@
 import { thoumError, thoumMessage, thoumWarn } from './../utils';
-
-import { Logger as WinstonLogger } from 'winston';
 import chalk from 'chalk';
 import figlet from 'figlet';
-import Conf from 'conf/dist/source';
+import winston, { Logger as WinstonLogger } from 'winston';
+import path from 'path';
 
-
-const winston = require('winston');
-const path = require('path');
-
-const thoumLoggingLevels = {
-    error: 3,
-    warn: 2,
-    info: 1,
-    debug: 0
-  };
+const thoumLoggingLevel = {
+    error:  3,
+    warn:   2,
+    info:   1,
+    debug:  0
+};
 
 export class Logger {
     private debugFlag: boolean;
@@ -26,7 +21,7 @@ export class Logger {
 
         // Build our logger
         this.logger = winston.createLogger({
-            levels: thoumLoggingLevels,
+            levels: thoumLoggingLevel,
             format: winston.format.combine(
                 winston.format.timestamp({
                 format: 'YYYY-MM-DD HH:mm:ss'
@@ -50,8 +45,7 @@ export class Logger {
 
             // If we're debugging, ensure that all levels are being streamed to the console
             this.logger.add(new winston.transports.Console({
-              format: winston.format.simple(),
-              levels: thoumLoggingLevels,
+              format: winston.format.simple()
             }));
         }
     }
