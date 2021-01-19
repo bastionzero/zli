@@ -11,6 +11,8 @@ const thoumLoggingLevel = {
     debug:  0
 };
 
+const LOG_PATH = '/var/log/thoum.log'
+
 export class Logger {
     private debugFlag: boolean;
     private logger: WinstonLogger;
@@ -33,7 +35,7 @@ export class Logger {
             defaultMeta: { service: 'thoum' },
             transports: [
                 new winston.transports.File({
-                    filename: path.join('/var/log/thoum.log'),
+                    filename: path.join(LOG_PATH),
                   })
             ]
           });
@@ -87,6 +89,7 @@ export class Logger {
                 figlet.textSync('clunk80 cli', { horizontalLayout: 'full' })
             )
         );
+        thoumMessage(`You can find all logs here: ${LOG_PATH}`)
     }
 
 }
