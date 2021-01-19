@@ -32,7 +32,6 @@ export class Logger {
               winston.format.splat(),
               winston.format.json()
             ),
-            defaultMeta: { service: 'thoum' },
             transports: [
                 new winston.transports.File({
                     filename: path.join(LOG_PATH),
