@@ -1,12 +1,11 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
-import { Dictionary, head } from 'lodash';
+import { Dictionary } from 'lodash';
 import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
-import { thoumError, thoumMessage } from '../utils';
-import { createJSDocAuthorTag } from 'typescript';
+import { Logger } from '../../src/logger.service/logger';
 
 export class HttpService
 {
@@ -14,22 +13,24 @@ export class HttpService
     protected httpClient: Got;
     private configService: ConfigService;
     private authorized: boolean;
+    private logger: Logger;
 
-    constructor(configService: ConfigService, serviceRoute: string, authorized: boolean = true)
+    constructor(configService: ConfigService, serviceRoute: string, logger: Logger, authorized: boolean = true)
     {
         this.configService = configService;
         this.authorized = authorized;
+        this.logger = logger;
 
         this.httpClient = got.extend({
             prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
             // Remember to set headers before calling API
             hooks: {
                 beforeRequest: [
-                    (options) => thoumMessage(`Making request to: ${options.url}`) 
+                    (options) => this.logger.debug(`Making request to: ${options.url}`) 
                 ],
                 afterResponse: [
                     (response, _) => {
-                        thoumMessage(`Request completed to: ${response.url}`);
+                        this.logger.debug(`Request completed to: ${response.url}`);
                         return response;
                     }
                 ]
@@ -54,7 +55,7 @@ export class HttpService
         let errorMessage = error.message;
         
         if(error.response.statusCode == 401) {
-            thoumMessage(`Authentication Error ${error.response.headers}`);
+            this.logger.error(`Authentication Error ${error.response.headers}`);
         }
 
         // Handle 500 errors by printing out our custom exception message
@@ -62,10 +63,10 @@ export class HttpService
             errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
         } else if(error.response.statusCode == 502)
         {
-            thoumError('Service is offline');
+            this.logger.error('Service is offline');
         }
 
-        thoumError(`HttpService Error:\n${errorMessage}`);
+        this.logger.error(`HttpService Error:\n${errorMessage}`);
     }
 
     protected getFormDataFromRequest(request: any): FormData {
@@ -177,8 +178,8 @@ export class HttpService
                     })
             
                     requestStream.on('end', () => {
-                        thoumMessage('File download complete');
-                        thoumMessage(whereToSave);
+                        this.logger.info('File download complete');
+                        this.logger.info(whereToSave);
                         resolve();
                     });
                 } catch (error) {
@@ -191,9 +192,9 @@ export class HttpService
 
 export class SessionService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/session/');
+        super(configService, 'api/v1/session/', logger);
     }
 
     public GetSession(sessionId: string) : Promise<SessionDetails>
@@ -227,9 +228,9 @@ export class SessionService extends HttpService
 
 export class ConnectionService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/connection/');
+        super(configService, 'api/v1/connection/', logger);
     }
 
     public GetConnection(connectionId: string) : Promise<ConnectionSummary>
@@ -263,9 +264,9 @@ export class ConnectionService extends HttpService
 
 export class SsmTargetService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/ssm/');
+        super(configService, 'api/v1/ssm/', logger);
     }
 
     public GetSsmTarget(targetId: string) : Promise<SsmTargetSummary>
@@ -281,9 +282,9 @@ export class SsmTargetService extends HttpService
 
 export class SshTargetService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/ssh/');
+        super(configService, 'api/v1/ssh/', logger);
     }
 
     public GetSshTarget(targetId: string) : Promise<SshTargetSummary>
@@ -300,9 +301,9 @@ export class SshTargetService extends HttpService
 
 export class EnvironmentService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/environment/');
+        super(configService, 'api/v1/environment/', logger);
     }
 
     public ListEnvironments() : Promise<EnvironmentDetails[]>
@@ -313,9 +314,9 @@ export class EnvironmentService extends HttpService
 
 export class FileService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/file/');
+        super(configService, 'api/v1/file/', logger);
     }
 
     public async uploadFile(targetId: string, targetType: TargetType, path: string, file: ReadStream, targetUser?: string): Promise<void> {
@@ -348,9 +349,9 @@ export class FileService extends HttpService
 }
 export class TokenService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/token/', false);
+        super(configService, 'api/v1/token/', logger, false);
     }
 
     public GetMixpanelToken(): Promise<MixpanelTokenResponse>
@@ -366,9 +367,9 @@ export class TokenService extends HttpService
 
 export class MfaService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/mfa/');
+        super(configService, 'api/v1/mfa/', logger);
     }
 
     public SendTotp(token: string): Promise<void>
@@ -397,9 +398,9 @@ export class MfaService extends HttpService
 
 export class UserService extends HttpService
 {
-    constructor(configService: ConfigService)
+    constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/user/');
+        super(configService, 'api/v1/user/', logger);
     }
 
     public Register(): Promise<UserRegisterResponse>
