@@ -74,7 +74,7 @@ export class CliDriver
             this.userInfo = await oauthMiddleware(this.configService, this.logger);
             const me = this.configService.me(); // if you have logged in, this should be set
             const sessionId = this.configService.sessionId();
-            this.logger.info(`Logged in as: ${this.userInfo.email}, clunk80-id:${this.userInfo.sub}`)
+            this.logger.info(`Logged in as: ${this.userInfo.email}, clunk80-id:${me.id}, session-id:${sessionId}`);
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
@@ -468,7 +468,7 @@ export class CliDriver
             }
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
-        .option('debug', {type: 'boolean', default: false, describe: 'Flag to enable debug logs'})
+        .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message
