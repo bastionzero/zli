@@ -23,6 +23,11 @@ export class Logger {
         this.config = config
 
         // Build our logger
+        this.buildLogger();
+    }
+
+    private buildLogger(): void {
+        // Helper function to build our logger
         try {
             this.logger = winston.createLogger({
                 levels: thoumLoggingLevels,
