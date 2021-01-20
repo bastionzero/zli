@@ -26,11 +26,11 @@ export class HttpService
             // Remember to set headers before calling API
             hooks: {
                 beforeRequest: [
-                    (options) => this.logger.debug(`Making request to: ${options.url}`) 
+                    (options) => this.logger.trace(`Making request to: ${options.url}`)
                 ],
                 afterResponse: [
                     (response, _) => {
-                        this.logger.debug(`Request completed to: ${response.url}`);
+                        this.logger.trace(`Request completed to: ${response.url}`);
                         return response;
                     }
                 ]

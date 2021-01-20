@@ -34,10 +34,12 @@ import { includes } from "lodash";
 import { version } from '../package.json';
 import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
+import { LoggerConfigService } from "./logger-config.service/logger-config.service";
 
 export class CliDriver
 {
     private configService: ConfigService;
+    private loggerConfigService: LoggerConfigService;
     private userInfo: UserinfoResponse; // sub and email
     private logger: Logger;
 
@@ -61,7 +63,8 @@ export class CliDriver
         .middleware(checkVersionMiddleware)
         .middleware((argv) => {
             // Configure our logger
-            this.logger = new Logger(!!argv.debug);
+            this.loggerConfigService = new LoggerConfigService(<string> argv.configName);
+            this.logger = new Logger(this.loggerConfigService, !!argv.debug);
 
             // Config init
             this.configService = new ConfigService(<string> argv.configName, this.logger);
