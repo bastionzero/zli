@@ -2,29 +2,30 @@ import { thoumError, thoumMessage, thoumWarn } from './../utils';
 import chalk from 'chalk';
 import figlet from 'figlet';
 import winston, { Logger as WinstonLogger } from 'winston';
-import path from 'path';
+import { LoggerConfigService } from '../logger-config.service/logger-config.service';
 
-const thoumLoggingLevel = {
-    error:  3,
-    warn:   2,
-    info:   1,
-    debug:  0
+// Not an enum, must be dictionary for winston
+const thoumLoggingLevels = {
+    error:  4,
+    warn:   3,
+    info:   2,
+    debug:  1,
+    trace:  0
 };
-
-const LOG_PATH = '/var/log/thoum.log'
 
 export class Logger {
     private debugFlag: boolean;
     private logger: WinstonLogger;
+    private config: LoggerConfigService;
 
-    constructor(debug: boolean){
-        // Set our debug flag
+    constructor(config: LoggerConfigService, debug: boolean){
         this.debugFlag = debug;
+        this.config = config
 
         // Build our logger
         try {
             this.logger = winston.createLogger({
-                levels: thoumLoggingLevel,
+                levels: thoumLoggingLevels,
                 format: winston.format.combine(
                     winston.format.timestamp({
                     format: 'YYYY-MM-DD HH:mm:ss'
@@ -35,14 +36,14 @@ export class Logger {
                 ),
                 transports: [
                     new winston.transports.File({
-                        filename: path.join(LOG_PATH),
+                        filename: this.config.logPath(),
                       })
                 ]
               });
         } catch (error) {
             if (error.code == 'EACCES') {
                 // This would happen if the user does not have access to create dirs in /var/log/
-                thoumError(`Please ensure that you have access to ${LOG_PATH}`)
+                thoumError(`Please ensure that you have access to ${this.config.logPath()}`)
             } else {
                 // Else it's an unknown error
                 thoumError(`${error.message}`)
@@ -92,13 +93,17 @@ export class Logger {
         }
     }
 
+    public trace(message: string): void {
+        this.logger.log('trace', message);
+    }
+
     public displayTitle(): void {
         console.log(
             chalk.magentaBright(
                 figlet.textSync('clunk80 cli', { horizontalLayout: 'full' })
             )
         );
-        thoumMessage(`You can find all logs here: ${LOG_PATH}`)
+        thoumMessage(`You can find all logs here: ${this.config.logPath()}`)
     }
 
 }
