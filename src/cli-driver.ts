@@ -142,6 +142,9 @@ export class CliDriver
                 .example('login Google', 'Login with Google');
             },
             async (argv) => {
+                // Clear previous log in info
+                this.configService.logout();
+
                 const provider = <IdP> argv.provider;
                 await this.configService.loginSetup(provider);
                 
