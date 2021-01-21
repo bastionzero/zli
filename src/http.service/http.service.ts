@@ -55,7 +55,9 @@ export class HttpService
         let errorMessage = error.message;
         
         if(error.response.statusCode == 401) {
-            this.logger.error(`Authentication Error ${error.response.headers}`);
+            errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
+            this.logger.error(`Authentication Error:\n${errorMessage}`);
+            process.exit(1);
         }
 
         // Handle 500 errors by printing out our custom exception message

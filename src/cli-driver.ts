@@ -157,7 +157,7 @@ export class CliDriver
                 const oAuthService = new OAuthService(this.configService, this.logger);
                 if(! oAuthService.isAuthenticated())
                 {
-                    this.logger.info('Log in required, opening browser');
+                    this.logger.info('Login required, opening browser');
                     await oAuthService.login((t) => this.configService.setTokenSet(t));
                     this.userInfo = await oAuthService.userInfo();
                 }

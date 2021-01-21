@@ -16,9 +16,12 @@ export class LoggerConfigService {
             projectName: 'thoum-logger',
             configName: configName,
             defaults: {
-                logPath: this.generateLogPath(configName)
+                logPath: undefined
             }
         });
+
+        if(! this.config.get('logPath'))
+            this.config.set('logPath', this.generateLogPath(configName));
     }
 
     private generateLogPath(configName: string): string {
