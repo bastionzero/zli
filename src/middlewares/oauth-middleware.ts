@@ -24,7 +24,6 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
                 logger.error('Stale log in detected');
                 logger.info('You need to log in, please run \'thoum login --help\'')
                 // TODO trade of exception
-                logger.info('You need to log in, please run \'thoum login --help\'')
                 configService.logout();
                 process.exit(1);
             })
