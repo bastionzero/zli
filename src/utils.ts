@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { TargetType } from "./types";
-import { last, max } from 'lodash'
+import { max } from 'lodash'
 import { EnvironmentDetails } from "./http.service/http.service.types";
 import Table from 'cli-table3';
 
@@ -30,7 +30,7 @@ export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targ
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const targetTypePattern = /^(ssm|ssh)/i; // case insensitive check for ssm or ssh
+    const targetTypePattern = /^(ssm|ssh)$/i; // case insensitive check for ssm or ssh
 
     if(! targetTypePattern.test(targetType))
         return undefined;
@@ -43,7 +43,7 @@ export function parseTargetString(targetTypeString: string , targetString: strin
     const targetType = parseTargetType(targetTypeString);
 
     // case sensitive check for [targetUser@]<targetId | targetName>[:targetPath]
-    const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30})@)?(([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})|([a-zA-Z0-9_.-]{0,255}))(:{1}|$)/;
+    const pattern = /^([a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)@)?(([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})|([a-zA-Z0-9_.-]{1,255}))(:{1}|$)/;
 
     if(! pattern.test(targetString))
         return undefined;
@@ -94,19 +94,10 @@ export interface parsedTargetString
 export function checkTargetTypeAndStringPair(parsedTarget: parsedTargetString) : boolean
 {
     if(parsedTarget.type === TargetType.SSH && parsedTarget.user)
-    {
-        thoumWarn('Cannot specify targetUser for SSH connections');
-        thoumWarn('Please try your previous command without the targetUser');
-        thoumWarn('Target string for SSH: targetId[:path]');
         return false;
-    }
 
     if(parsedTarget.type === TargetType.SSM && ! parsedTarget.user)
-    {
-        thoumWarn('Must specify targetUser for SSM connections');
-        thoumWarn('Target string for SSM: targetUser@targetId[:path]');
         return false;
-    }
 
     return true;
 }

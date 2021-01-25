@@ -505,7 +505,21 @@ Need help? https://app.clunk80.com/support`)
         }
 
         if(! checkTargetTypeAndStringPair(parsedTarget))
+        {   
+            // print warning
+            if(parsedTarget.type === TargetType.SSH)
+            {
+                this.logger.warn('Cannot specify targetUser for SSH connections');
+                this.logger.warn('Please try your previous command without the targetUser');
+                this.logger.warn('Target string for SSH: targetId[:path]');
+            } else {
+                this.logger.warn('Must specify targetUser for SSM connections');
+                this.logger.warn('Target string for SSM: targetUser@targetId[:path]');
+            }
+
             process.exit(1);
+        }
+            
 
         if(parsedTarget.name)
         {
