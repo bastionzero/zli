@@ -29,7 +29,7 @@ import { MixpanelService } from "./mixpanel.service/mixpanel.service";
 import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
 import { oauthMiddleware } from "./middlewares/oauth-middleware";
 import fs from 'fs'
-import { EnvironmentDetails, ConnectionState, MfaActionRequired, UserSummary} from "./http.service/http.service.types";
+import { EnvironmentDetails, ConnectionState, MfaActionRequired } from "./http.service/http.service.types";
 import { includes } from "lodash";
 import { version } from '../package.json';
 import qrcode from 'qrcode';
@@ -274,11 +274,8 @@ export class CliDriver
                     process.exit(1);
                 }
 
-                // run terminal
-                const queryString = `?connectionId=${connectionId}`;
-                const connectionUrl = `${this.configService.serviceUrl()}api/v1/hub/ssh/${queryString}`;
-
-                var terminal = new ShellTerminal(this.configService, connectionUrl);
+                // connect to target and run terminal
+                var terminal = new ShellTerminal(this.configService, connectionId);
                 terminal.start(termsize());
 
                 this.mixpanelService.TrackNewConnection(parsedTarget.type);

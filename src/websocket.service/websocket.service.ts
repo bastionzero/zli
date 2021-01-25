@@ -14,7 +14,7 @@ export interface IDisposable
 // Reflects the IShell interface
 export class WebsocketStream implements IDisposable
 {
-    private connectionUrl : string;
+    private connectionId : string;
     private websocket : HubConnection;
 
     // stdout
@@ -29,9 +29,9 @@ export class WebsocketStream implements IDisposable
     private shellStateSubject: BehaviorSubject<ShellState> = new BehaviorSubject<ShellState>({loading: true, disconnected: false});
     public shellStateData: Observable<ShellState> = this.shellStateSubject.asObservable();
 
-    constructor(private configService: ConfigService, connectionUrl: string, inputStream: BehaviorSubject<string>, resizeStream: BehaviorSubject<TerminalSize>)
+    constructor(private configService: ConfigService, connectionId: string, inputStream: BehaviorSubject<string>, resizeStream: BehaviorSubject<TerminalSize>)
     {
-        this.connectionUrl = connectionUrl;
+        this.connectionId = connectionId;
 
         this.inputSubscription = inputStream.asObservable().subscribe(
             async (data) => 
@@ -111,10 +111,16 @@ export class WebsocketStream implements IDisposable
 
 
     private createConnection(): HubConnection {
+        // connectionId is related to terminal session
+        // sessionId is for user authentication
+        const queryString = `?connectionId=${this.connectionId}&session_id=${this.configService.sessionId()}`;
+        
+        const connectionUrl = `${this.configService.serviceUrl()}api/v1/hub/ssh/${queryString}`;
+        
         const connectionBuilder = new HubConnectionBuilder();
         connectionBuilder.withUrl(
-            this.connectionUrl, 
-            { headers: {authorization: this.configService.getAuthHeader() } }
+            connectionUrl, 
+            { headers: { authorization: this.configService.getAuthHeader() } }
         ).configureLogging(6); // log level 6 is no websocket logs
     
         return connectionBuilder.build();

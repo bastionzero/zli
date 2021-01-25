@@ -19,9 +19,9 @@ export class ShellTerminal implements IDisposable
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(configService: ConfigService, connectionUrl: string)
+    constructor(configService: ConfigService, connectionId: string)
     {
-        this.websocketStream = new WebsocketStream(configService, connectionUrl, this.inputSubject, this.resizeSubject);
+        this.websocketStream = new WebsocketStream(configService, connectionId, this.inputSubject, this.resizeSubject);
     }
 
     public start(termSize: TerminalSize)
