@@ -1,21 +1,24 @@
 import { TargetType } from '../types';
 import { Dictionary } from 'lodash';
-import mixpanel, { Mixpanel, track } from 'mixpanel';
+import mixpanel, { Mixpanel } from 'mixpanel';
 import { TrackNewConnection } from './mixpanel.service.types';
+import { ConfigService } from '../config.service/config.service';
 
 
 export class MixpanelService
 {
     private mixpanelClient: Mixpanel;
     private userId: string;
+    private sessionId: string;
 
-    constructor(mixpanelToken: string, userId: string)
+    constructor(private configService: ConfigService, userId: string)
     {
-        this.mixpanelClient = mixpanel.init(mixpanelToken, {
+        this.mixpanelClient = mixpanel.init(this.configService.mixpanelToken(), {
             protocol: 'https',
         });
 
         this.userId = userId;
+        this.sessionId = this.configService.sessionId();
     }
 
 
@@ -25,7 +28,8 @@ export class MixpanelService
         const trackMessage : TrackNewConnection = {
             distinct_id: this.userId,
             client_type: "CLI",
-            ConnectionType: targetType
+            UserSessionId: this.sessionId,
+            ConnectionType: targetType,
         };
 
         this.mixpanelClient.track('ConnectionOpened', trackMessage);
@@ -33,8 +37,10 @@ export class MixpanelService
 
     public TrackCliCall(eventName: string, properties: Dictionary<string | string[] | unknown>)
     {
+        // append the following properties
         properties.distinct_id = this.userId;
         properties.client_type = "CLI";
+        properties.UserSessionId = this.sessionId;
 
         this.mixpanelClient.track(eventName, properties);
     }

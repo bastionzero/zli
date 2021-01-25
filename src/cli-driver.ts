@@ -85,7 +85,7 @@ export class CliDriver
 
             // Mixpanel tracking
             this.mixpanelService = new MixpanelService(
-                this.configService.mixpanelToken(),
+                this.configService,
                 this.userInfo.sub
             );
 
