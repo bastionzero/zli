@@ -457,6 +457,7 @@ export class CliDriver
             () => {},
             () => {
                 this.logger.info(`You can edit your config here: ${this.configService.configPath()}`);
+                this.logger.info(`You can find your log files here: ${this.loggerConfigService.logPath()}`);
                 process.exit(0);
             }
         ).command(
