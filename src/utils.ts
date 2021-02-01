@@ -1,23 +1,7 @@
-import chalk from "chalk";
 import { TargetType } from "./types";
 import { max } from 'lodash'
 import { EnvironmentDetails } from "./http.service/http.service.types";
 import Table from 'cli-table3';
-
-export function thoumMessage(message: string): void
-{
-    console.log(chalk.magenta(`thoum >>> ${message}`));
-}
-
-export function thoumWarn(message: string): void
-{
-    console.log(chalk.yellowBright(`thoum >>> ${message}`));
-}
-
-export function thoumError(message: string): void
-{
-    console.log(chalk.red(`thoum >>> ${message}`));
-}
 
 // case insensitive substring search, "find targetString in searchString"
 export function findSubstring(targetString: string, searchString: string) : boolean

@@ -60,14 +60,16 @@ export class CliDriver
         .scriptName("thoum")
         .usage('$0 <cmd> [args]')
         .wrap(null)
-        .middleware(checkVersionMiddleware)
         .middleware((argv) => {
             // Configure our logger
             this.loggerConfigService = new LoggerConfigService(<string> argv.configName);
-            this.logger = new Logger(this.loggerConfigService, !!argv.debug);
+            this.logger = new Logger(this.loggerConfigService, !!argv.debug, !!argv.silent);
 
             // Config init
             this.configService = new ConfigService(<string> argv.configName, this.logger);
+        })
+        .middleware(() => {
+            checkVersionMiddleware(this.logger);
         })
         .middleware(async (argv) => {
             if(includes(this.noOauthCommands, argv._[0]))
@@ -470,6 +472,7 @@ export class CliDriver
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
+        .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all thoum messages'})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message

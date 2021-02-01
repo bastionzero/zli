@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import got from "got/dist/source";
 import { SemVer } from "semver";
-import { thoumError, thoumWarn } from '../utils';
 
 import { name as appName, version } from '../../package.json';
+import { Logger } from '../../src/logger.service/logger';
 
-export async function checkVersionMiddleware() {
-    await new CheckVersionMiddleware().checkNewVersion();
+export async function checkVersionMiddleware(logger: Logger) {
+    await new CheckVersionMiddleware().checkNewVersion(logger);
 }
 
 interface ManifestFile {
@@ -21,18 +21,18 @@ Windows:    https://download-cli.clunk80.com/release/latest/bin/thoum-win.exe`;
 class CheckVersionMiddleware {
     constructor() {}
 
-    public async checkNewVersion() {
+    public async checkNewVersion(logger: Logger) {
         let manifestFile = await this.getManifestFile();
 
         let latestVersion = new SemVer(manifestFile.version);
         let currentVersion = new SemVer(version);
 
         if (latestVersion > currentVersion) {
-            thoumWarn(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`);
+            logger.warn(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`);
         }
 
         if(latestVersion.major > currentVersion.major) {
-            thoumError(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`);
+            logger.error(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`);
             console.log(chalk.bold(downloadLinks));
 
             process.exit(1);
