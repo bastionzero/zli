@@ -14,7 +14,7 @@ def getToken(thoumPath, config_name):
 
     # Run our thoum command to get the configPath
     configInfo = str(subprocess.check_output(f"{thoumPath} config --configName {config_name}", shell=True).strip())
-    matcher = r"thoum >>> You can edit your config here: ((?:[^/]*/)*(.*)[^\"])\\n"
+    matcher = r"\\x1b\[35mYou can edit your config here: ((?:[^/]*/)*(.*)[^\"])\\x1b\[0m\\n\\x1b\[35m"
     configPath = re.search(matcher, configInfo).group(1)
 
     # Load in the information from the configPath
