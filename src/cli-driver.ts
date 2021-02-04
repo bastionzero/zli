@@ -1,4 +1,4 @@
-import { IdP, SessionState, TargetType } from "./types";
+import { IdP, SessionState, TargetType } from './types';
 import { 
     checkTargetTypeAndStringPair, 
     findSubstring, 
@@ -9,10 +9,11 @@ import {
     targetStringExampleNoPath, 
     TargetSummary
 } from './utils';
-import yargs from "yargs";
-import { ConfigService } from "./config.service/config.service";
+import yargs from 'yargs';
+import { ConfigService } from './config.service/config.service';
 import { 
     ConnectionService, 
+    DynamicAccessConfigService, 
     EnvironmentService, 
     FileService, 
     MfaService, 
@@ -20,22 +21,22 @@ import {
     SshTargetService, 
     SsmTargetService, 
     UserService
-} from "./http.service/http.service";
-import { OAuthService } from "./oauth.service/oauth.service";
-import { ShellTerminal } from "./terminal/terminal";
+} from './http.service/http.service';
+import { OAuthService } from './oauth.service/oauth.service';
+import { ShellTerminal } from './terminal/terminal';
 import termsize from 'term-size';
-import { UserinfoResponse } from "openid-client";
-import { MixpanelService } from "./mixpanel.service/mixpanel.service";
-import { checkVersionMiddleware } from "./middlewares/check-version-middleware";
-import { oauthMiddleware } from "./middlewares/oauth-middleware";
+import { UserinfoResponse } from 'openid-client';
+import { MixpanelService } from './mixpanel.service/mixpanel.service';
+import { checkVersionMiddleware } from './middlewares/check-version-middleware';
+import { oauthMiddleware } from './middlewares/oauth-middleware';
 import fs from 'fs'
-import { EnvironmentDetails, ConnectionState, MfaActionRequired } from "./http.service/http.service.types";
-import { includes } from "lodash";
+import { EnvironmentDetails, ConnectionState, MfaActionRequired } from './http.service/http.service.types';
+import { includes } from 'lodash';
 import { version } from '../package.json';
 import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
-import { LoggerConfigService } from "./logger-config.service/logger-config.service";
-import { SsmTunnelService } from "./ssm-tunnel/ssm-tunnel.service";
+import { LoggerConfigService } from './logger-config.service/logger-config.service';
+import { SsmTunnelService } from './ssm-tunnel/ssm-tunnel.service';
 
 export class CliDriver
 {
@@ -49,6 +50,7 @@ export class CliDriver
 
     private sshTargets: Promise<TargetSummary[]>;
     private ssmTargets: Promise<TargetSummary[]>;
+    private dynamicConfigs: Promise<TargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
 
     // use the following to shortcut middleware according to command
@@ -101,8 +103,8 @@ export class CliDriver
             this.mixpanelService.TrackCliCall(
                 'CliCommand', 
                 {
-                    "cli-version": version,
-                    "command": argv._[0],
+                    'cli-version': version,
+                    'command': argv._[0],
                     args: argv._.slice(1)
                 }
             );
@@ -114,7 +116,15 @@ export class CliDriver
             // Greedy fetch of some data that we use frequently 
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
             const sshTargetService = new SshTargetService(this.configService, this.logger);
+            const dynamicConfigService = new DynamicAccessConfigService(this.configService, this.logger);
             const envService = new EnvironmentService(this.configService, this.logger);
+
+            this.dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
+                .then(result => 
+                    result.map<TargetSummary>((config, _index, _array) => {
+                        return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId};
+                    })
+                );
 
             this.ssmTargets = ssmTargetService.ListSsmTargets()
                 .then(result => 
@@ -283,13 +293,14 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 return yargs
                 .positional('targetType', {
                     type: 'string',
-                    choices: ['ssm', 'ssh']
+                    choices: ['ssm', 'ssh', 'dynamic']
                 })
                 .positional('targetString', {
                     type: 'string',
                 })
                 .example('connect ssm ssm-user@neat-name', 'SSM connect example')
-                .example('connect ssh dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
+                .example('connect ssh dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example')
+                .example('connect dynamic science@big-science-container-config', 'Connect to a dynamic target example');
             },
             async (argv) => {
                 
@@ -326,9 +337,10 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 if(! connectionId)
                 {
                     this.logger.error('Connection creation failed');
-                    if(parsedTarget.type === TargetType.SSM)
+                    if(parsedTarget.type !== TargetType.SSH)
                     {
-                        const targetEnvId = (await this.ssmTargets).filter(ssm => ssm.id == parsedTarget.id)[0].environmentId;
+                        const allSsmBasedTargets = (await this.ssmTargets).concat(await this.dynamicConfigs);
+                        const targetEnvId = allSsmBasedTargets.filter(ssm => ssm.id == parsedTarget.id)[0].environmentId;
                         const targetEnvName = (await this.envs).filter(e => e.id == targetEnvId)[0].name;
                         this.logger.error(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${targetEnvName}`);
                         this.logger.info('You can find SSM user policies in the web app');
@@ -569,20 +581,25 @@ Need help? https://app.bastionzero.com/support`)
 
         if(! checkTargetTypeAndStringPair(parsedTarget))
         {   
-            // print warning
-            if(parsedTarget.type === TargetType.SSH)
-            {
-                this.logger.warn('Cannot specify targetUser for SSH connections');
-                this.logger.warn('Please try your previous command without the targetUser');
-                this.logger.warn('Target string for SSH: targetId[:path]');
-            } else {
-                this.logger.warn('Must specify targetUser for SSM connections');
-                this.logger.warn('Target string for SSM: targetUser@targetId[:path]');
-            }
 
+            switch(parsedTarget.type)
+            {
+                case TargetType.SSH:
+                    this.logger.warn('Cannot specify targetUser for SSH connections');
+                    this.logger.warn('Please try your previous command without the targetUser');
+                    this.logger.warn('Target string for SSH: targetId[:path]');
+                    break;
+                case TargetType.SSM:
+                case TargetType.DYNAMIC:
+                    this.logger.warn('Must specify targetUser for SSM and DYNAMIC connections');
+                    this.logger.warn('Target string for SSM: targetUser@targetId[:path]');
+                    break;
+                default:
+                    throw new Error('Unhandled TargetType');
+            }
             process.exit(1);
         }
-            
+
 
         if(parsedTarget.name)
         {
@@ -596,6 +613,8 @@ Need help? https://app.bastionzero.com/support`)
                 case TargetType.SSH:
                     matchedNamedTargets = (await this.sshTargets).filter(ssh => ssh.name === parsedTarget.name);
                     break;
+                case TargetType.DYNAMIC:
+                    matchedNamedTargets = (await this.dynamicConfigs).filter(config => config.name === parsedTarget.name);
                 default:
                     this.logger.error(`Invalid TargetType passed ${parsedTarget.type}`);
                     process.exit(1);

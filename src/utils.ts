@@ -1,9 +1,9 @@
-import { TargetType } from "./types";
+import { TargetType } from './types';
 import { max } from 'lodash'
-import { EnvironmentDetails } from "./http.service/http.service.types";
+import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 
-// case insensitive substring search, "find targetString in searchString"
+// case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
 {
     return searchString.toLowerCase().indexOf(targetString.toLowerCase()) !== -1;
@@ -14,7 +14,7 @@ export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targ
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const targetTypePattern = /^(ssm|ssh)$/i; // case insensitive check for ssm or ssh
+    const targetTypePattern = /^(ssm|ssh|dynamic)$/i; // case insensitive check for targetType
 
     if(! targetTypePattern.test(targetType))
         return undefined;
@@ -80,7 +80,7 @@ export function checkTargetTypeAndStringPair(parsedTarget: parsedTargetString) :
     if(parsedTarget.type === TargetType.SSH && parsedTarget.user)
         return false;
 
-    if(parsedTarget.type === TargetType.SSM && ! parsedTarget.user)
+    if((parsedTarget.type === TargetType.SSM || parsedTarget.type === TargetType.DYNAMIC) && ! parsedTarget.user)
         return false;
 
     return true;
@@ -102,7 +102,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     // ref: https://github.com/cli-table/cli-table3
     var table = new Table({
         head: ['Type', 'Name', 'Environment', 'Id']
-    , colWidths: [6, targetNameLength + 2, envNameLength + 2, 38]
+    , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
     });
 
     targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));

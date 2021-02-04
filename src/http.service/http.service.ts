@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
@@ -389,5 +389,18 @@ export class UserService extends HttpService
     public Me(): Promise<UserSummary>
     {
         return this.Get('me', {});
+    }
+}
+
+export class DynamicAccessConfigService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/dynamic-access/', logger);
+    }
+
+    public ListDynamicAccessConfigs(): Promise<DynamicAccessConfigSummary[]>
+    {
+        return this.Post('list', {});
     }
 }

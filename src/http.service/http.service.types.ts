@@ -1,5 +1,5 @@
-import { ReadStream } from "fs";
-import { SessionState, TargetType } from "../types";
+import { ReadStream } from 'fs';
+import { SessionState, TargetType } from '../types';
 
 export interface CreateSessionRequest {
     displayName?: string;
@@ -39,9 +39,9 @@ export interface ConnectionsToOpen {
 }
 
 export enum ConnectionState {
-    Open = "Open",
-    Closed = "Closed",
-    Error = "Error"
+    Open = 'Open',
+    Closed = 'Closed',
+    Error = 'Error'
 }
 
 export interface CreateConnectionRequest {
@@ -79,14 +79,14 @@ export interface SsmTargetSummary {
 }
 
 export enum SsmTargetStatus {
-    Online = "Online",
-    Offline = "Offline"
+    Online = 'Online',
+    Offline = 'Offline'
 }
 
 export enum AuthenticationType {
-    Password = "Password",
-    PrivateKey = "PrivateKey",
-    UseExisting = "UseExisting"
+    Password = 'Password',
+    PrivateKey = 'PrivateKey',
+    UseExisting = 'UseExisting'
 }
 
 export interface SshTargetSummary {
@@ -145,8 +145,8 @@ export interface DownloadFileResponse {
 }
 
 export enum FileServiceErrors {
-    UnknownError = "UnknownError",
-    ScpException = "ScpException"
+    UnknownError = 'UnknownError',
+    ScpException = 'ScpException'
 }
 
 export interface ScpErrorMsg {
@@ -163,22 +163,22 @@ export interface ClientSecretResponse {
     clientSecret: string;
 }
 
-export class MfaTokenRequest
+export interface MfaTokenRequest
 {
     token: string;
 }
 
-export class MfaClearRequest
+export interface MfaClearRequest
 {
     userId: string;
 }
 
-export class MfaResetResponse
+export interface MfaResetResponse
 {
     mfaSecretUrl: string;
 }
 
-export class UserRegisterResponse
+export interface UserRegisterResponse
 {
     userSessionId: string;
     mfaActionRequired: MfaActionRequired;
@@ -191,7 +191,7 @@ export enum MfaActionRequired
     RESET ='RESET'
 }
 
-export class UserSummary
+export interface UserSummary
 {
     id: string;
     organizationId: string;
@@ -199,4 +199,11 @@ export class UserSummary
     email: string;
     isAdmin: boolean;
     timeCreated: Date;
+}
+
+export interface DynamicAccessConfigSummary
+{
+    id: string;
+    name: string;
+    environmentId: string;
 }

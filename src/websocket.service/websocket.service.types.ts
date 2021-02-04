@@ -1,14 +1,15 @@
 export const ShellHubIncomingMessages = {
-    shellOutput: "ShellOutput",
-    shellDisconnect: "ShellDisconnect",
-    shellStart: "ShellStart",
-    shellDelete: "ShellDelete"
+    shellOutput: 'ShellOutput',
+    shellDisconnect: 'ShellDisconnect',
+    shellStart: 'ShellStart',
+    shellDelete: 'ShellDelete',
+    connectionReady: 'ConnectionReady'
 }
     
 export const ShellHubOutgoingMessages = {
-    shellConnect: "ShellConnect",
-    shellInput: "ShellInput",
-    shellGeometry: "ShellGeometry"
+    shellConnect: 'ShellConnect',
+    shellInput: 'ShellInput',
+    shellGeometry: 'ShellGeometry'
 }
 
 export interface ShellState {

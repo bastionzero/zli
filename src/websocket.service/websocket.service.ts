@@ -59,11 +59,16 @@ export class WebsocketStream implements IDisposable
     {
         this.websocket = this.createConnection();
 
-        this.websocket.start().then(_ => {
-            // start the shell terminal on the backend, use current terminal dimensions
-            // to setup the terminal size
-            this.sendShellConnect(rows, cols);
-        });
+        this.websocket.start();
+
+        this.websocket.on(
+            ShellHubIncomingMessages.connectionReady,
+            _ => {
+                // start the shell terminal on the backend, use current terminal dimensions
+                // to setup the terminal size
+                this.sendShellConnect(rows, cols);
+            }
+        )
 
         this.websocket.on(
             ShellHubIncomingMessages.shellOutput,
@@ -74,6 +79,7 @@ export class WebsocketStream implements IDisposable
                 this.outputSubject.next(decodedOutput);
             }
         );
+
         this.websocket.on(
             ShellHubIncomingMessages.shellStart, 
             () => this.shellStateSubject.next({loading: false, disconnected: false})
