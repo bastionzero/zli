@@ -13,9 +13,10 @@ def getToken(thoumPath, config_name):
         thoumPath = 'thoum'
 
     # Run our thoum command to get the configPath
-    configInfo = str(subprocess.check_output(f"{thoumPath} config --configName {config_name}", shell=True).strip())
-    matcher = r"\\x1b\[35mYou can edit your config here: ((?:[^/]*/)*(.*)[^\"])\\x1b\[0m\\n\\x1b\[35m"
-    configPath = re.search(matcher, configInfo).group(1)
+    # get the first line only since we also print the log file config path as well
+    configInfo = str(subprocess.check_output(f"{thoumPath} config --configName {config_name}", shell=True).strip().splitlines()[0])
+    pattern = r"You can edit your config here: ((?:[^/]*/)*(.*)[^\"])"
+    configPath = re.search(pattern, configInfo).group(1)[:-1] # there is some ' at the end, drop it
 
     # Load in the information from the configPath
     try:
