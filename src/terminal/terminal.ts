@@ -73,7 +73,7 @@ export class ShellTerminal implements IDisposable
     }
 
     public writeBytes(input: Uint8Array) : void {
-        this.writeString(new TextDecoder("utf-8").decode(input));
+        this.writeString(new TextDecoder('utf-8').decode(input));
     }
 
     public dispose() : void

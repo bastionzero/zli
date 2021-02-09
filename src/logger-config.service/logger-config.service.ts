@@ -13,7 +13,7 @@ export class LoggerConfigService {
 
     constructor(configName: string) {
         this.config = new Conf<LoggerConfigSchema>({
-            projectName: 'thoum-logger',
+            projectName: 'bastionzero-logger',
             configName: configName,
             defaults: {
                 logPath: undefined
@@ -28,13 +28,13 @@ export class LoggerConfigService {
 
         switch (configName) {
             case 'prod':
-                return path.join(path.dirname(this.config.path), `thoum.log`);
+                return path.join(path.dirname(this.config.path), `bastionzero-zli.log`);
 
             case 'stage':
-                return path.join(path.dirname(this.config.path), 'thoum-stage.log');
+                return path.join(path.dirname(this.config.path), 'bastionzero-zli-stage.log');
 
             case 'dev':
-                return path.join(path.dirname(this.config.path), 'thoum-dev.log');
+                return path.join(path.dirname(this.config.path), 'bastionzero-zli-dev.log');
             default:
                 throw error('Unrecognized configName');
         }

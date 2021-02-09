@@ -1,4 +1,4 @@
-# thoum
+# zli
 
 ## Developer processes
 
@@ -18,7 +18,7 @@ npm run proto
 The following command is hidden from the help menu:
 ```
 npm run start -- <cmd> [args] --configName <prod | stage | dev>
-thoum --configName <prod | stage | dev>
+zli --configName <prod | stage | dev>
 ```
 
 ### Known bugs as of 1.2.0
@@ -46,16 +46,16 @@ Where {version} is the version that is defined in the `package.json` file. This 
 
 The latest releases can be found here:
 ```
-Mac:        download-cli.clunk80.com/release/latest/bin/thoum-macos
-Linux:      download-cli.clunk80.com/release/latest/bin/thoum-linux
-Windows:    download-cli.clunk80.com/release/latest/bin/thoum-win.exe
+Mac:        download-cli.clunk80.com/release/latest/bin/zli-macos
+Linux:      download-cli.clunk80.com/release/latest/bin/zli-linux
+Windows:    download-cli.clunk80.com/release/latest/bin/zli-win.exe
 ```
 
 ### Mac users:
  - download the executable
  - `chmod +x` the exectuable
  - Run the program once and see a warning from Apple
- - Go to `System Preferences > Security & Privacy > General > Allow thoum`
+ - Go to `System Preferences > Security & Privacy > General > Allow zli`
  - Run the executable again and confirm for Apple
 
 ### Linux users:
@@ -65,8 +65,8 @@ Windows:    download-cli.clunk80.com/release/latest/bin/thoum-win.exe
 ### Windows users:
  - Run the executable from the command line, even though you can technically click it
 
-## Running thoum
+## Running zli
 
 ```
-thoum help  # auto-gen help menu
+zli help  # auto-gen help menu
 ```

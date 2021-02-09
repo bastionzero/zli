@@ -1,7 +1,7 @@
-import { errors, UserinfoResponse } from "openid-client";
-import { OAuthService } from "../oauth.service/oauth.service";
-import { ConfigService } from "../config.service/config.service";
-import { Logger } from "../../src/logger.service/logger";
+import { errors, UserinfoResponse } from 'openid-client';
+import { OAuthService } from '../oauth.service/oauth.service';
+import { ConfigService } from '../config.service/config.service';
+import { Logger } from '../../src/logger.service/logger';
 
 export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<UserinfoResponse> {
 
@@ -22,7 +22,7 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
             // Catch oauth related errors
             .catch((error: errors.OPError | errors.RPError) => {
                 logger.error('Stale log in detected');
-                logger.info('You need to log in, please run \'thoum login --help\'')
+                logger.info('You need to log in, please run \'zli login --help\'')
                 // TODO trade of exception
                 configService.logout();
                 process.exit(1);
@@ -35,7 +35,7 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
             });
         }
     } else {
-        logger.warn('You need to log in, please run \'thoum login --help\'');
+        logger.warn('You need to log in, please run \'zli login --help\'');
         process.exit(1);
     }
 

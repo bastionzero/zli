@@ -5,25 +5,25 @@ import { LoggerConfigService } from '../logger-config.service/logger-config.serv
 const { printf } = format;
 
 // Not an enum, must be dictionary for winston
-const thoumLoggingLevels = {
+const loggingLevels = {
     Error: 0,
     Warn: 1,
     Info: 2,
     Debug: 3,
     Trace: 4
 };
-const thoumLoggingColors: { [level: string]: string; } = {
-    Error: "\x1b[31m",
-    Warn: "\x1b[33m",
-    Info: "\x1b[35m",
-    Debug: "\x1b[36m",
-    Trace: "\x1b[37m"
+const loggingColors: { [level: string]: string; } = {
+    Error: '\x1b[31m',
+    Warn: '\x1b[33m',
+    Info: '\x1b[35m',
+    Debug: '\x1b[36m',
+    Trace: '\x1b[37m'
 };
-const thoumLoggingDefaultFormat = printf(info => {
-    return `${thoumLoggingColors[info.level]}${info.message}\x1b[0m`;
+const loggingDefaultFormat = printf(info => {
+    return `${loggingColors[info.level]}${info.message}\x1b[0m`;
 });
-const thoumLoggingDebugFormat = printf(info => {
-    return `${thoumLoggingColors[info.level]}[${[info.level]}][${info.timestamp}] ${info.message}\x1b[0m`;
+const loggingDebugFormat = printf(info => {
+    return `${loggingColors[info.level]}[${[info.level]}][${info.timestamp}] ${info.message}\x1b[0m`;
 });
 
 
@@ -46,7 +46,7 @@ export class Logger {
         // Helper function to build our logger
         try {
             this.logger = winston.createLogger({
-                levels: thoumLoggingLevels,
+                levels: loggingLevels,
                 format: winston.format.combine(
                     winston.format.timestamp({
                         format: 'YYYY-MM-DD HH:mm:ss'
@@ -57,7 +57,7 @@ export class Logger {
                 ),
                 transports: [
                     new winston.transports.File({
-                        level: "Trace",
+                        level: 'Trace',
                         filename: this.config.logPath(),
                     })
                 ]
@@ -80,16 +80,16 @@ export class Logger {
             if (this.debugFlag) {
                 // If we're debugging, ensure that all levels are being streamed to the console
                 this.logger.add(new winston.transports.Console({
-                    level: "Trace",
-                    format: thoumLoggingDebugFormat
+                    level: 'Trace',
+                    format: loggingDebugFormat
                 }));
                 // Display our title if we are debugging
                 this.displayTitle();
             } else {
                 // If we are not debugging, we want info and above to transport to the console with our custom format
                 this.logger.add(new winston.transports.Console({
-                    level: "Info",
-                    format: thoumLoggingDefaultFormat
+                    level: 'Info',
+                    format: loggingDefaultFormat
                 }));
             }
         }
@@ -119,7 +119,7 @@ export class Logger {
     public displayTitle(): void {
         console.log(
             chalk.magentaBright(
-                figlet.textSync('clunk80 cli', { horizontalLayout: 'full' })
+                figlet.textSync('bzero', { horizontalLayout: 'full' })
             )
         );
         this.info(`You can find all logs here: ${this.config.logPath()}`);

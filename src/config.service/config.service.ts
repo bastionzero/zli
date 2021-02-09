@@ -7,7 +7,7 @@ import { Logger } from '../../src/logger.service/logger';
 import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
-type ThoumConfigSchema = {
+type BastionZeroConfigSchema = {
     authUrl: string,
     clientId: string,
     clientSecret: string,
@@ -22,15 +22,15 @@ type ThoumConfigSchema = {
 }
 
 export class ConfigService {
-    private config: Conf<ThoumConfigSchema>;
+    private config: Conf<BastionZeroConfigSchema>;
     private configName: string;
     private tokenService: TokenService;
 
     constructor(configName: string, logger: Logger) {
         var appName = this.getAppName(configName);
         this.configName = configName;
-        this.config = new Conf<ThoumConfigSchema>({
-            projectName: 'thoum-cli',
+        this.config = new Conf<BastionZeroConfigSchema>({
+            projectName: 'bastionzero-zli',
             configName: configName, // prod, stage, dev
             defaults: {
                 authUrl: undefined,
@@ -168,7 +168,7 @@ export class ConfigService {
             case 'prod':
                 return 'app';
             case 'stage':
-                return 'app-stage-4329423';
+                return 'app-stage';
             default:
                 return undefined;
         }
@@ -176,7 +176,7 @@ export class ConfigService {
 
     private getServiceUrl(appName: string) {
 
-        return `https://${appName}.clunk80.com/`;
+        return `https://${appName}.bastionzero.com/`;
     }
 
     private getAuthUrl(idp: IdP) {

@@ -138,31 +138,7 @@ export class HttpService
     protected FormStream<TReq>(route: string, body: TReq, localPath: string) : Promise<void>
     {
         const formBody = this.getFormDataFromRequest(body);
-        const whereToSave = localPath.endsWith('/') ? localPath + `thoum-download-${Math.floor(Date.now() / 1000)}` : localPath;
-
-        // TODO: bring the handlers up a level by returning the request stream to the caller?
-
-            /* Example headers response
-            {
-                'content-type': 'application/octet-stream',
-                'content-length': '17',
-                connection: 'close',
-                date: 'Tue, 01 Dec 2020 18:37:13 GMT',
-                server: 'Kestrel',
-                'strict-transport-security': 'max-age=2592000',
-                'content-disposition': "attachment; filename=test.txt; filename*=UTF-8''test.txt",
-                'x-robots-tag': 'none',
-                'x-cache': 'Miss from cloudfront',
-                via: '1.1 e6fc68fd040718147cda2e3ef6f63637.cloudfront.net (CloudFront)',
-                'x-amz-cf-pop': 'EWR50-C1',
-                'x-amz-cf-id': '4kpHjhXXK3Erk91ApPrr9Lvt9EEzCP5EjtHdkqbPobXhA9dPdxqv6g=='
-            }
-            */
-            // TODO: something with these headers?
-            // TODO: read filename from header and save if not specified
-            // requestStream.on('response', (response) => {
-            //     console.log(response.headers);
-            // });
+        const whereToSave = localPath.endsWith('/') ? localPath + `bzero-download-${Math.floor(Date.now() / 1000)}` : localPath;
 
             return new Promise((resolve, reject) => {
                 try {

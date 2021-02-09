@@ -23,11 +23,11 @@ export interface TunnelDataMessage {
 }
 
 export enum SsmTunnelHubIncomingMessages {
-    ReceiveData = "ReceiveData"
+    ReceiveData = 'ReceiveData'
 }
 
 export enum SsmTunnelHubOutgoingMessages {
-    StartTunnel = "StartTunnel",
-    AddSshPubKey = "AddSshPubKey",
-    SendData = "SendData"
+    StartTunnel = 'StartTunnel',
+    AddSshPubKey = 'AddSshPubKey',
+    SendData = 'SendData'
 }

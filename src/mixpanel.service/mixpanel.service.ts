@@ -27,7 +27,7 @@ export class MixpanelService
     {
         const trackMessage : TrackNewConnection = {
             distinct_id: this.userId,
-            client_type: "CLI",
+            client_type: 'CLI',
             UserSessionId: this.sessionId,
             ConnectionType: targetType,
         };
@@ -39,7 +39,7 @@ export class MixpanelService
     {
         // append the following properties
         properties.distinct_id = this.userId;
-        properties.client_type = "CLI";
+        properties.client_type = 'CLI';
         properties.UserSessionId = this.sessionId;
 
         this.mixpanelClient.track(eventName, properties);

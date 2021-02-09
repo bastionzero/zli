@@ -1,10 +1,10 @@
-import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, TokenSetParameters, UserinfoResponse } from "openid-client";
+import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
 import open from 'open';
-import { IDisposable } from "../websocket.service/websocket.service";
-import { ConfigService } from "../config.service/config.service";
-import http, { RequestListener } from "http";
-import { setTimeout } from "timers";
-import { Logger } from "../../src/logger.service/logger";
+import { IDisposable } from '../websocket.service/websocket.service';
+import { ConfigService } from '../config.service/config.service';
+import http, { RequestListener } from 'http';
+import { setTimeout } from 'timers';
+import { Logger } from '../../src/logger.service/logger';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -27,7 +27,7 @@ export class OAuthService implements IDisposable {
             res.writeHead(200);
 
             switch (req.url.split('?')[0]) {
-                case "/login-callback":
+                case '/login-callback':
                     const params = client.callbackParams(req);
 
                     const tokenSet = await client.callback(`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`, params, { code_verifier: codeVerifier });
@@ -61,7 +61,7 @@ export class OAuthService implements IDisposable {
         this.server.on('error', () => {
             this.logger.error('Log in listener could not bind to port');
             this.logger.warn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
-            this.logger.warn('To edit callback port please run: \'thoum config\'');
+            this.logger.warn('To edit callback port please run: \'zli config\'');
             process.exit(1);
         });
         // open browser after successful port binding
@@ -72,8 +72,8 @@ export class OAuthService implements IDisposable {
     // The client will make the log-in requests with the following parameters
     private async getClient(): Promise<Client>
     {
-        const clunk80Auth = await Issuer.discover(this.configService.authUrl());
-        var client = new clunk80Auth.Client({
+        const authority = await Issuer.discover(this.configService.authUrl());
+        var client = new authority.Client({
             client_id: this.configService.clientId(),
             redirect_uris: [`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`],
             response_types: ['code'],

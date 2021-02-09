@@ -20,5 +20,5 @@ phases:
   post_build:
     commands:
       - echo Run unit tests started on `date`
-      - echo "Running thoum Unit Tests"
+      - echo "Running zli Unit Tests"
       - npm run test

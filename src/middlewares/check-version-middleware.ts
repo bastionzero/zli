@@ -1,6 +1,6 @@
-import chalk from "chalk";
-import got from "got/dist/source";
-import { SemVer } from "semver";
+import chalk from 'chalk';
+import got from 'got/dist/source';
+import { SemVer } from 'semver';
 
 import { name as appName, version } from '../../package.json';
 import { Logger } from '../../src/logger.service/logger';
@@ -14,9 +14,9 @@ interface ManifestFile {
 }
 
 const downloadLinks = `
-MacOS:      https://download-cli.clunk80.com/release/latest/bin/thoum-macos
-Linux:      https://download-cli.clunk80.com/release/latest/bin/thoum-linux
-Windows:    https://download-cli.clunk80.com/release/latest/bin/thoum-win.exe`;
+MacOS:      https://download-cli.clunk80.com/release/latest/bin/zli-macos
+Linux:      https://download-cli.clunk80.com/release/latest/bin/zli-linux
+Windows:    https://download-cli.clunk80.com/release/latest/bin/zli-win.exe`;
 
 class CheckVersionMiddleware {
     constructor() {}
@@ -41,7 +41,7 @@ class CheckVersionMiddleware {
     }
 
     private async getManifestFile() : Promise<ManifestFile> {
-        var resp: ManifestFile = await got.get("https://download-cli.clunk80.com/release/latest/MANIFEST").json();
+        var resp: ManifestFile = await got.get('https://download-cli.clunk80.com/release/latest/MANIFEST').json();
         return resp;
     }
 }

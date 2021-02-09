@@ -61,7 +61,7 @@ export class CliDriver
         this.processName = process.argv[0];
 
         yargs(process.argv.slice(2))
-        .scriptName("thoum")
+        .scriptName('zli')
         .usage('$0 <cmd> [args]')
         .wrap(null)
         .middleware((argv) => {
@@ -83,7 +83,7 @@ export class CliDriver
             this.userInfo = await oauthMiddleware(this.configService, this.logger);
             const me = this.configService.me(); // if you have logged in, this should be set
             const sessionId = this.configService.sessionId();
-            this.logger.info(`Logged in as: ${this.userInfo.email}, clunk80-id:${me.id}, session-id:${sessionId}`);
+            this.logger.info(`Logged in as: ${this.userInfo.email}, bzero-id:${me.id}, session-id:${sessionId}`);
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
@@ -268,7 +268,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 const me = await userService.Me();
                 this.configService.setMe(me);
-                this.logger.info(`Logged in as: ${this.userInfo.email}, clunk80-id:${me.id}, session-id:${registerResponse.userSessionId}`)
+                this.logger.info(`Logged in as: ${this.userInfo.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
                 
                 process.exit(0);
             }
@@ -535,7 +535,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
         )
         .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: 'prod', hidden: true})
         .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
-        .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all thoum messages'})
+        .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all zli messages'})
         .strict() // if unknown command, show help
         .demandCommand() // if no command, show help
         .help() // auto gen help message
@@ -544,13 +544,13 @@ ssh <user>@bzero-<ssm-target-id-or-name>
  - TargetStrings only require targetUser for SSM
  - TargetPath can be omitted
 
-For command specific help: thoum <cmd> help
+For command specific help: zli <cmd> help
 
 Command arguments key:
  - <arg> is required
  - [arg] is optional or sometimes required
 
-Need help? https://app.clunk80.com/support`)
+Need help? https://app.bastionzero.com/support`)
         .argv; // returns argv of yargs
     }
 
@@ -605,7 +605,7 @@ Need help? https://app.clunk80.com/support`)
             {
                 this.logger.error(`No ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
                 this.logger.warn('Target names are case sensitive');
-                this.logger.warn('To see list of all targets run: \'thoum lt\'');
+                this.logger.warn('To see list of all targets run: \'zli lt\'');
                 process.exit(1);
             } else if(matchedNamedTargets.length == 1)
             {
