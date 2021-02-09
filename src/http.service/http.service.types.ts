@@ -71,6 +71,11 @@ export interface ConnectionSummary {
     serverType: TargetType
 }
 
+export interface ListSsmTargetsRequest
+{
+    showDynamicAccessTargets: boolean;
+}
+
 export interface SsmTargetSummary {
     id: string;
     name: string;

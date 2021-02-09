@@ -130,7 +130,7 @@ export class CliDriver
                     })
                 );
 
-            this.ssmTargets = ssmTargetService.ListSsmTargets()
+            this.ssmTargets = ssmTargetService.ListSsmTargets(false)
                 .then(result => 
                     result.map<TargetSummary>((ssm, _index, _array) => {
                         return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId};

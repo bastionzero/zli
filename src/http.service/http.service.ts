@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, ListSessionsResponse, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
@@ -252,9 +252,13 @@ export class SsmTargetService extends HttpService
         return this.Get('', {id: targetId});
     }
 
-    public ListSsmTargets() : Promise<SsmTargetSummary[]>
+    public ListSsmTargets(showDynamic: boolean) : Promise<SsmTargetSummary[]>
     {
-        return this.Post('list', {});
+        const req: ListSsmTargetsRequest = {
+            showDynamicAccessTargets: showDynamic
+        };
+
+        return this.Post<ListSsmTargetsRequest, SsmTargetSummary[]>('list', req);
     }
 }
 

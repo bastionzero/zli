@@ -245,7 +245,7 @@ export class SsmTunnelService
         let targetString = host.substr(prefix.length);
 
         const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-        let ssmTargets = await ssmTargetService.ListSsmTargets();
+        let ssmTargets = await ssmTargetService.ListSsmTargets(true);
 
         const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
         if(guidPattern.test(targetString)) {
