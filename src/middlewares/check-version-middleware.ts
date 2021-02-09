@@ -14,9 +14,9 @@ interface ManifestFile {
 }
 
 const downloadLinks = `
-MacOS:      https://download-cli.clunk80.com/release/latest/bin/zli-macos
-Linux:      https://download-cli.clunk80.com/release/latest/bin/zli-linux
-Windows:    https://download-cli.clunk80.com/release/latest/bin/zli-win.exe`;
+MacOS:      https://download-zli.bastionzero.com/release/latest/bin/zli-macos
+Linux:      https://download-zli.bastionzero.com/release/latest/bin/zli-linux
+Windows:    https://download-zli.bastionzero.com/release/latest/bin/zli-win.exe`;
 
 class CheckVersionMiddleware {
     constructor() {}
@@ -41,7 +41,7 @@ class CheckVersionMiddleware {
     }
 
     private async getManifestFile() : Promise<ManifestFile> {
-        var resp: ManifestFile = await got.get('https://download-cli.clunk80.com/release/latest/MANIFEST').json();
+        var resp: ManifestFile = await got.get('https://download-zli.bastionzero.com/release/latest/MANIFEST').json();
         return resp;
     }
 }
