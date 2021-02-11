@@ -15,8 +15,8 @@ def getToken(zliPath, config_name):
     # Run our zli command to get the configPath
     # get the first line only since we also print the log file config path as well
     configInfo = str(subprocess.check_output(f"{zliPath} config --configName {config_name}", shell=True).strip().splitlines()[0])
-    pattern = r"You can edit your config here: ((?:[^/]*/)*(.*)[^\"])"
-    configPath = re.search(pattern, configInfo).group(1)[:-1] # there is some ' at the end, drop it
+    pattern = r"You can edit your config here: ((?:[^/]*/)*(.*)[^\"])\\"
+    configPath = re.search(pattern, configInfo).group(1)
 
     # Load in the information from the configPath
     try:
