@@ -1,0 +1,3 @@
+[submodule "webshell-common-ts"]
+	path = webshell-common-ts
+	url = git@github.com:cwcrypto/webshell-common-ts.git

@@ -110,6 +110,10 @@ export class ConfigService {
         return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`
     }
 
+    public getAuth(): string {
+        return this.tokenSet().id_token;
+    }
+
     public sessionId(): string {
         return this.config.get('sessionId');
     }

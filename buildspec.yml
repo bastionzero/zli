@@ -6,6 +6,9 @@ env:
     TZ: "America/New_York date"
     # The remote origin that will be used if building through CodePipeline
     remote_origin: "git@github.com:cwcrypto/thoum.git"
+  parameter-store:
+    GITHUB_KEY_PATH: "/github/sshkey/path"
+    SSH_KEY_PATH: "/webshell/sshkey/path"
 phases:
   install:
     runtime-versions:
@@ -13,9 +16,21 @@ phases:
     commands:
       - echo Install started on `date`
       - npm i
+  pre_build:
+    commands:
+      - echo Pre-Build phase...
+      - mkdir -p ~/.ssh
+      - chmod 700 ~/.ssh
+      - aws s3 cp $(dirname $GITHUB_KEY_PATH) ~/.ssh --recursive --include ".pem"
+      - aws s3 cp $(dirname $SSH_KEY_PATH) ~/.ssh --recursive --include ".pem"
+      - chmod 600 ~/.ssh/*
+      - ls -als ~/.ssh/*
+      - eval `ssh-agent -s`
+      - ssh-add ~/.ssh/*.pem
   build:
     commands:
       - echo Build started on `date`
+      - git submodule update --init --recursive --depth 50
       - npm run build
   post_build:
     commands:

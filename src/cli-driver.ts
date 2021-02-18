@@ -362,7 +362,12 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 // connect to target and run terminal
                 var terminal = new ShellTerminal(this.configService, connectionId);
-                terminal.start(termsize());
+                try {   
+                    await terminal.start(termsize());
+                } catch (err) {
+                    this.logger.error(`Error connecting to terminal: ${err.stack}`);
+                    process.exit(1);
+                }
 
                 this.mixpanelService.TrackNewConnection(parsedTarget.type);
 

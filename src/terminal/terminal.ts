@@ -1,12 +1,26 @@
 import { BehaviorSubject, Observable } from 'rxjs';
-import { IDisposable, WebsocketStream } from '../websocket.service/websocket.service';
+import { IDisposable, WebsocketStream, AuthConfigService, TerminalSize } from '../../webshell-common-ts/websocket.service/websocket.service';
 import { ConfigService } from '../config.service/config.service';
-import { ShellState } from '../websocket.service/websocket.service.types';
+import { ShellState } from '../../webshell-common-ts/websocket.service/websocket.service.types';
 
-export interface TerminalSize
-{
-    rows: number;
-    columns: number;
+class ZliAuthConfigService implements AuthConfigService {
+
+    constructor(
+        private configService: ConfigService
+    )
+    {}
+
+    getServiceUrl() {
+        return this.configService.serviceUrl() + "api/v1/";
+    }
+
+    getSessionId() {
+        return this.configService.sessionId();
+    }
+
+    async getIdToken() {
+        return this.configService.getAuth();
+    }
 }
 
 export class ShellTerminal implements IDisposable
@@ -21,36 +35,30 @@ export class ShellTerminal implements IDisposable
 
     constructor(configService: ConfigService, connectionId: string)
     {
-        this.websocketStream = new WebsocketStream(configService, connectionId, this.inputSubject, this.resizeSubject);
+        this.websocketStream = new WebsocketStream(new ZliAuthConfigService(configService), connectionId, this.inputSubject, this.resizeSubject);
     }
 
-    public start(termSize: TerminalSize)
+    public async start(termSize: TerminalSize)
     {
         // Handle writing to stdout
         // TODO: bring this up a level
-        this.websocketStream.outputData.subscribe(data => process.stdout.write(data));
+        this.websocketStream.outputData.subscribe(data => {
+            process.stdout.write(Buffer.from(data, 'base64'));
+        });
 
         // initial terminal size
-        this.websocketStream.start(termSize.rows, termSize.columns);
-        
-        // Pauses input on disconnected states
+        await this.websocketStream.start();
+
         this.websocketStream.shellStateData.subscribe(
             (newState: ShellState) => {
-                if(! newState.disconnected && ! newState.loading)
-                {
+                if (newState.start) {
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
+                } else if (newState.ready) {
+                    this.websocketStream.sendShellConnect(termSize.rows, termSize.columns);
+                } else if (newState.disconnect || newState.delete ) {
+                    this.dispose();
                 }
-                else
-                {
-                    this.blockInput = true;
-                    
-                    // TODO: offer reconnect flow here
-                    if(! newState.loading)
-                    {
-                        this.terminalRunningStream.error('Disconnection detected');
-                    }
-                }    
             },
             (error: any) => {
                 this.terminalRunningStream.error(error);
