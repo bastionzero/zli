@@ -44,7 +44,7 @@ export interface SynAckPayload extends KeySplittingPayload {
 
 export interface DataAckPayload extends KeySplittingPayload {
     HPointer: string, 
-    Nonce: string, 
+    Payload: string, 
     TargetPublicKey: string
 }
 
