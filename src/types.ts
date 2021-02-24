@@ -14,3 +14,11 @@ export enum IdP {
     Google = 'Google',
     Microsoft = 'Microsoft'
 }
+
+export interface SynMessage {
+    
+}
+
+export interface DataMessage {
+    
+}

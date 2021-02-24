@@ -10,6 +10,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
+import { SynMessage, DataMessage } from '../types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -272,4 +273,22 @@ export class SsmTunnelService
             return matchedTarget[0].id;
         }
     }
+
+    public async sendSynMessage(synMessage: SynMessage): Promise<void> {
+        this.logger.debug(`Sending syn message...`);
+        await this.sendWebsocketMessage<SynMessage>(
+            SsmTunnelHubOutgoingMessages.SendData,
+            synMessage
+        );
+    }
+
+    public async sendDataMessage(dataMessage: DataMessage): Promise<void> {
+        this.logger.debug(`Sending data message...`);
+        await this.sendWebsocketMessage<DataMessage>(
+            SsmTunnelHubOutgoingMessages.SendData,
+            dataMessage
+        );
+    }
+
+
 }
