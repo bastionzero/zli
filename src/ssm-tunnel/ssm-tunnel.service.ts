@@ -10,7 +10,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessage, DataMessage } from '../types';
+import { SynMessage, DataMessage, SynAckMessage, DataAckMessage } from '../types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -112,6 +112,7 @@ export class SsmTunnelService
             this.handleError(`Websocket was closed by server: ${error}`);
         });
 
+        // Set up ReceiveData handler
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveData, (dataMessage: TunnelDataMessage) => {
             try {
                 let buf = Buffer.from(dataMessage.data, 'base64');
@@ -124,6 +125,24 @@ export class SsmTunnelService
                 this.logger.error(`Error in ReceiveData: ${e}`);
             }
         });
+
+        // Set up our SynAck and DataAck message handlers
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessage) => {
+            try {
+                this.logger.debug(`Received SynAck message`);
+            } catch (e) {
+                this.logger.error(`Error in ReceiveSynAck: ${e}`);
+            }
+        })
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessage) => {
+            try {
+                this.logger.debug(`Received DataAck message`);
+            } catch (e) {
+                this.logger.error(`Error in ReceiveDataAck: ${e}`);
+            }
+        })
+
+
     }
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
