@@ -296,7 +296,7 @@ export class SsmTunnelService
     public async sendSynMessage(synMessage: SynMessage): Promise<void> {
         this.logger.debug(`Sending syn message...`);
         await this.sendWebsocketMessage<SynMessage>(
-            SsmTunnelHubOutgoingMessages.SendData,
+            SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
         );
     }
@@ -304,7 +304,7 @@ export class SsmTunnelService
     public async sendDataMessage(dataMessage: DataMessage): Promise<void> {
         this.logger.debug(`Sending data message...`);
         await this.sendWebsocketMessage<DataMessage>(
-            SsmTunnelHubOutgoingMessages.SendData,
+            SsmTunnelHubOutgoingMessages.DataMessage,
             dataMessage
         );
     }

@@ -20,18 +20,18 @@ export interface KeySplittingPayload {
     Action: string
 }
 
-export interface KeySplittingMessage {
-    Payload: KeySplittingPayload,
+export interface KeySplittingMessage<TPayload> {
+    Payload: TPayload,
     Signature: string
 }
 export interface SynMessagePayload extends KeySplittingPayload {
     Nonce: string, 
-    TargetID: string, 
+    TargetId: string, 
     BZECert: string
 }
 
 export interface DataMessagePayload extends KeySplittingPayload {
-    TargetID: string, 
+    TargetId: string, 
     HPointer: string,
     Payload: string, 
     BZECert: string
@@ -48,10 +48,10 @@ export interface DataAckPayload extends KeySplittingPayload {
     TargetPublicKey: string
 }
 
-export interface DataAckMessage extends KeySplittingMessage { }
+export interface DataAckMessage extends KeySplittingMessage<DataAckPayload> { }
 
-export interface SynMessage extends KeySplittingMessage { }
+export interface SynMessage extends KeySplittingMessage<SynMessagePayload> { }
 
-export interface SynAckMessage extends KeySplittingMessage { }
+export interface SynAckMessage extends KeySplittingMessage<SynAckPayload> { }
 
-export interface DataMessage extends KeySplittingMessage { }
+export interface DataMessage extends KeySplittingMessage<DataMessagePayload> { }
