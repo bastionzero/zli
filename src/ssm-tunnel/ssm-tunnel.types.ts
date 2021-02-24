@@ -22,8 +22,18 @@ export interface TunnelDataMessage {
     sequenceNumber: number;
 }
 
+export interface DataAckMessage {
+
+}
+
+export interface SynAckMessage {
+    
+}
+
 export enum SsmTunnelHubIncomingMessages {
-    ReceiveData = 'ReceiveData'
+    ReceiveData = 'ReceiveData',
+    ReceiveSynAck = 'ReceiveSynAck',
+    ReceiveDataAck = 'ReceiveDataAck'
 }
 
 export enum SsmTunnelHubOutgoingMessages {
