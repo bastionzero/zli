@@ -10,7 +10,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessage, DataMessage, SynAckMessage, DataAckMessage } from '../keysplitting-types';
+import { SynMessage, DataMessage, SynAckMessage, DataAckMessage, SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper } from '../keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -127,14 +127,14 @@ export class SsmTunnelService
         });
 
         // Set up our SynAck and DataAck message handlers
-        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessage) => {
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
             }
         })
-        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessage) => {
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
             } catch (e) {
@@ -293,17 +293,17 @@ export class SsmTunnelService
         }
     }
 
-    public async sendSynMessage(synMessage: SynMessage): Promise<void> {
+    public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug(`Sending syn message...`);
-        await this.sendWebsocketMessage<SynMessage>(
+        await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
         );
     }
 
-    public async sendDataMessage(dataMessage: DataMessage): Promise<void> {
+    public async sendDataMessage(dataMessage: DataMessageWrapper): Promise<void> {
         this.logger.debug(`Sending data message...`);
-        await this.sendWebsocketMessage<DataMessage>(
+        await this.sendWebsocketMessage<DataMessageWrapper>(
             SsmTunnelHubOutgoingMessages.DataMessage,
             dataMessage
         );

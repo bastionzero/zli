@@ -38,3 +38,19 @@ export interface SynMessage extends KeySplittingMessage<SynMessagePayload> { }
 export interface SynAckMessage extends KeySplittingMessage<SynAckPayload> { }
 
 export interface DataMessage extends KeySplittingMessage<DataMessagePayload> { }
+
+export interface SynMessageWrapper {
+    SynPayload: SynMessage
+}
+
+export interface DataMessageWrapper {
+    DataPayload: DataMessage
+}
+
+export interface DataAckMessageWrapper {
+    DataAckPayload: DataAckMessage
+}
+
+export interface SynAckMessageWrapper {
+    SynAckPayload: SynAckMessage
+}
