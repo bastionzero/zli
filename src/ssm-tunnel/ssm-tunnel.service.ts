@@ -10,7 +10,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessage, DataMessage, SynAckMessage, DataAckMessage } from '../types';
+import { SynMessage, DataMessage, SynAckMessage, DataAckMessage } from '../keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -129,14 +129,14 @@ export class SsmTunnelService
         // Set up our SynAck and DataAck message handlers
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessage) => {
             try {
-                this.logger.debug(`Received SynAck message`);
+                this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
             }
         })
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessage) => {
             try {
-                this.logger.debug(`Received DataAck message`);
+                this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
             } catch (e) {
                 this.logger.error(`Error in ReceiveDataAck: ${e}`);
             }
