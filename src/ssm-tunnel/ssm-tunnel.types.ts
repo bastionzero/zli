@@ -29,5 +29,7 @@ export enum SsmTunnelHubIncomingMessages {
 export enum SsmTunnelHubOutgoingMessages {
     StartTunnel = 'StartTunnel',
     AddSshPubKey = 'AddSshPubKey',
-    SendData = 'SendData'
+    SendData = 'SendData',
+    SynMessage = 'SendSynMessage',
+    DataMessage = 'SendDataMessage'
 }
