@@ -551,6 +551,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 // Deletes the auth tokens from the config which will force the
                 // user to login again before running another command
                 this.configService.logout();
+                this.logger.info('Logout successful')
                 process.exit(0);
             }
         )
