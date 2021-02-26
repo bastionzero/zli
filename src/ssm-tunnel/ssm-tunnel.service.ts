@@ -10,7 +10,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessage, DataMessage, SynAckMessage, DataAckMessage, SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper } from '../keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper } from '../keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -55,11 +55,44 @@ export class SsmTunnelService
 
             await this.sendPubKeyFromIdentityFile(identityFile);
 
+            await this.sendOpenShellSynMessage();
+
             return true;
         } catch(err) {
             this.handleError(`Failed to setup tunnel: ${err.message}`);
             return false;
         }
+    }
+
+    public async sendOpenShellSynMessage() {
+        await this.sendSynMessage({
+            SynPayload: {
+                Signature: "",
+                Payload: {
+                    Type: "SYN",
+                    Action: "ssh/open",
+                    Nonce: "testnonce",
+                    TargetId: "testtargetid",
+                    BZECert: "thisisabzecert"
+                }
+            }
+        });
+    }
+
+    public async sendOpenShellDataMessage() {
+        await this.sendDataMessage({
+            DataPayload: {
+                Signature: "",
+                Payload: {
+                    Type: "DATA",
+                    Action: "ssh/open",
+                    HPointer: "placeholder",
+                    TargetId: "testtargetid",
+                    BZECert: "thisisabzecert",
+                    Payload: "payload"
+                }
+            }
+        });
     }
 
     public sendData(data: Buffer) {
@@ -130,6 +163,8 @@ export class SsmTunnelService
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
+
+                this.sendOpenShellDataMessage();
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
             }
