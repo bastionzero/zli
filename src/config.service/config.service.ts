@@ -46,7 +46,14 @@ export class ConfigService {
                 sshKeyPath: undefined
             },
             accessPropertiesByDotNotation: true,
-            clearInvalidConfig: true    // if config is invalid, delete
+            clearInvalidConfig: true,    // if config is invalid, delete
+            migrations: {
+                // migrate old configs to have new serviceUrl
+                '>4.3.0': (config: Conf<BastionZeroConfigSchema>) => {
+                    if(appName)
+                        config.set('serviceUrl', this.getServiceUrl(appName));
+                }
+            }
         });
 
         if(configName == 'dev' && ! this.config.get('serviceUrl')) {
@@ -170,9 +177,9 @@ export class ConfigService {
         switch(configName)
         {
             case 'prod':
-                return 'app';
+                return 'cloud';
             case 'stage':
-                return 'app-stage';
+                return 'cloud-staging';
             default:
                 return undefined;
         }
