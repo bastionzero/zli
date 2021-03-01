@@ -1,6 +1,6 @@
 {
   "name": "zli",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "description": "BastionZero cli",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -12,9 +12,10 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc",
-    "package": "pkg . --out-path bin",
+    "package": "npm run copy-files && pkg . --out-path bin",
     "release": "npm run build && npm run package",
-    "clean": "rm -rf dist bin",
+    "copy-files": "copyfiles src/**/*.html src/**/*.css dist/",
+    "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest"
   },
   "author": "nabeelperson",
@@ -25,8 +26,10 @@
     "@types/qrcode": "^1.3.5",
     "@types/sshpk": "^1.10.5",
     "async": "^3.2.0",
+    "copyfiles": "^2.4.1",
     "jest": "^26.6.3",
     "pkg": "^4.4.9",
+    "rimraf": "^3.0.2",
     "sshpk": "^1.16.1",
     "ts-jest": "^26.4.4",
     "typescript": "^4.0.5"
