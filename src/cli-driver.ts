@@ -37,11 +37,13 @@ import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
 import { LoggerConfigService } from './logger-config.service/logger-config.service';
 import { SsmTunnelService } from './ssm-tunnel/ssm-tunnel.service';
+import { KeySplittingService } from './keysplitting.service/keysplitting.service';
 
 export class CliDriver
 {
     private processName: string;
     private configService: ConfigService;
+    private keySplittingService: KeySplittingService
     private loggerConfigService: LoggerConfigService;
     private logger: Logger;
 
@@ -79,7 +81,10 @@ export class CliDriver
             this.logger = new Logger(this.loggerConfigService, !!argv.debug, !!argv.silent);
 
             // Config init
-            this.configService = new ConfigService(<string> argv.configName, this.logger);
+            this.configService = new ConfigService(<string>argv.configName, this.logger);
+            
+            // KeySplittingService init
+            this.keySplittingService = new KeySplittingService(<string>argv.configName, this.logger);
         })
         .middleware(() => {
             checkVersionMiddleware(this.logger);
@@ -93,6 +98,9 @@ export class CliDriver
             const me = this.configService.me(); // if you have logged in, this should be set
             const sessionId = this.configService.sessionId();
             this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
+
+            // Update our KeySplittingService
+            this.keySplittingService.updateId(this.configService.getAuth());
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
