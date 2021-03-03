@@ -2,9 +2,12 @@
 # https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
 version: 0.2
 env:
-    variables:
-      TZ: "America/New_York date"
-      ReleaseDir: "release"
+  variables:
+    TZ: "America/New_York date"
+    ReleaseDir: "release"
+  parameter-store:
+    GITHUB_KEY_PATH: "/github/sshkey/path"
+    SSH_KEY_PATH: "/webshell/sshkey/path"
 phases:
   install:
     runtime-versions:
@@ -12,9 +15,21 @@ phases:
     commands:
       - echo Install started `date`
       - npm i
+  pre_build:
+    commands:
+      - echo Pre-Build phase...
+      - mkdir -p ~/.ssh
+      - chmod 700 ~/.ssh
+      - aws s3 cp $(dirname $GITHUB_KEY_PATH) ~/.ssh --recursive --include ".pem"
+      - aws s3 cp $(dirname $SSH_KEY_PATH) ~/.ssh --recursive --include ".pem"
+      - chmod 600 ~/.ssh/*
+      - ls -als ~/.ssh/*
+      - eval `ssh-agent -s`
+      - ssh-add ~/.ssh/*.pem
   build:
     commands:
       - echo Build started `date`
+      - git submodule update --init --recursive --depth 50
       - npm run release
   post_build:
     commands:
@@ -27,6 +42,6 @@ phases:
       - aws cloudfront create-invalidation --distribution-id=EI221CXMRD3VL --paths '/release/latest/*'
 artifacts:
   files:
-    - '**/*'
+    - "**/*"
   base-directory: $ReleaseDir
   name: release
