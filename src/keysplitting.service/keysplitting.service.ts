@@ -43,7 +43,12 @@ export class KeySplittingService {
     public updateId(idToken: string) {
         this.config.set('idToken', idToken);
         this.config.set('latestIdToken', idToken);
-        this.logger.debug('Updated idToken and latestIdToken')
+        this.logger.debug('Updated idToken and latestIdToken');
+    }
+
+    public updateLatestId(latestIdToken: string) {
+        this.config.set('latestIdToken', latestIdToken);
+        this.logger.debug('Updated latestIdToken');
     }
 
     private generateKeys() {
