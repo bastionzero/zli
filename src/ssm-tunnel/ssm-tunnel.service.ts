@@ -9,8 +9,9 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
+import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper } from '../keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage } from '../keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -24,6 +25,7 @@ export class SsmTunnelService
     constructor(
         private logger: Logger,
         private configService: ConfigService,
+        private keySplittingService: KeySplittingService
     )
     {
         // https://caolan.github.io/async/v3/docs.html#queue

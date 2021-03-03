@@ -200,7 +200,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 })
             },
             async (argv) => {
-                let ssmTunnelService = new SsmTunnelService(this.logger, this.configService);
+                let ssmTunnelService = new SsmTunnelService(this.logger, this.configService, this.keySplittingService);
                 ssmTunnelService.errors.subscribe(errorMessage => {
                     process.stderr.write(`\n${errorMessage}\n`);
                     ssmTunnelService.closeConnection();
