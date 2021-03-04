@@ -169,6 +169,7 @@ export class ConfigService implements ConfigInterface {
     public logout(): void
     {
         this.config.delete('tokenSet');
+        this.config.delete('keySplitting');
     }
 
     public async loginSetup(idp: IdP): Promise<void>
