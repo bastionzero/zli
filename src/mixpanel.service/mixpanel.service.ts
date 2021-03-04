@@ -11,13 +11,13 @@ export class MixpanelService
     private userId: string;
     private sessionId: string;
 
-    constructor(private configService: ConfigService, userId: string)
+    constructor(private configService: ConfigService)
     {
         this.mixpanelClient = mixpanel.init(this.configService.mixpanelToken(), {
             protocol: 'https',
         });
 
-        this.userId = userId;
+        this.userId = this.configService.me().id;
         this.sessionId = this.configService.sessionId();
     }
 

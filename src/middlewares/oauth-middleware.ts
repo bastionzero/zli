@@ -1,9 +1,9 @@
-import { errors, UserinfoResponse } from 'openid-client';
+import { errors } from 'openid-client';
 import { OAuthService } from '../oauth.service/oauth.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
 
-export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<UserinfoResponse> {
+export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<void> {
 
     let ouath = new OAuthService(configService, logger);
 
@@ -38,8 +38,4 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
         logger.warn('You need to log in, please run \'zli login --help\'');
         process.exit(1);
     }
-
-    // Get user info from IdP
-    let userInfo = await ouath.userInfo();
-    return userInfo;
 }

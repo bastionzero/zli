@@ -147,6 +147,7 @@ export class OAuthService implements IDisposable {
         return refreshedTokenSet;
     }
 
+    // If you need the token.sub this is where you can get it
     public async userInfo(): Promise<UserinfoResponse>
     {
         const client = await this.getClient();

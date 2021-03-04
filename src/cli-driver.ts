@@ -26,7 +26,6 @@ import {
 import { OAuthService } from './oauth.service/oauth.service';
 import { ShellTerminal } from './terminal/terminal';
 import termsize from 'term-size';
-import { UserinfoResponse } from 'openid-client';
 import { MixpanelService } from './mixpanel.service/mixpanel.service';
 import { checkVersionMiddleware } from './middlewares/check-version-middleware';
 import { oauthMiddleware } from './middlewares/oauth-middleware';
@@ -44,7 +43,6 @@ export class CliDriver
     private processName: string;
     private configService: ConfigService;
     private loggerConfigService: LoggerConfigService;
-    private userInfo: UserinfoResponse; // sub and email
     private logger: Logger;
 
     private mixpanelService: MixpanelService;
@@ -91,20 +89,17 @@ export class CliDriver
                 return;
 
             // OAuth
-            this.userInfo = await oauthMiddleware(this.configService, this.logger);
+            await oauthMiddleware(this.configService, this.logger);
             const me = this.configService.me(); // if you have logged in, this should be set
             const sessionId = this.configService.sessionId();
-            this.logger.info(`Logged in as: ${this.userInfo.email}, bzero-id:${me.id}, session-id:${sessionId}`);
+            this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
                 return;
 
             // Mixpanel tracking
-            this.mixpanelService = new MixpanelService(
-                this.configService,
-                this.userInfo.sub
-            );
+            this.mixpanelService = new MixpanelService(this.configService);
 
             // Only captures args, not options at the moment. Capturing configName flag
             // does not matter as that is handled by which mixpanel token is used
@@ -243,7 +238,6 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 {
                     this.logger.info('Login required, opening browser');
                     await oAuthService.login((t) => this.configService.setTokenSet(t));
-                    this.userInfo = await oAuthService.userInfo();
                 }
                 
                 // Register user log in and get User Session Id
@@ -287,7 +281,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 const me = await userService.Me();
                 this.configService.setMe(me);
-                this.logger.info(`Logged in as: ${this.userInfo.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
+                this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
                 
                 process.exit(0);
             }
