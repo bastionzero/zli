@@ -84,7 +84,7 @@ export class CliDriver
             this.configService = new ConfigService(<string>argv.configName, this.logger);
             
             // KeySplittingService init
-            this.keySplittingService = new KeySplittingService(<string>argv.configName, this.logger);
+            this.keySplittingService = new KeySplittingService(this.configService, this.logger);
         })
         .middleware(() => {
             checkVersionMiddleware(this.logger);
@@ -245,7 +245,13 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 if(! oAuthService.isAuthenticated())
                 {
                     this.logger.info('Login required, opening browser');
-                    await oAuthService.login((t) => this.configService.setTokenSet(t));
+                    
+                    // Create our Nonce
+                    const nonce = this.keySplittingService.createNonce();
+
+                    // Pass it in as we login
+                    await oAuthService.login((t) => this.configService.setTokenSet(t), nonce);
+                    this.userInfo = await oAuthService.userInfo();
                 }
                 
                 // Register user log in and get User Session Id

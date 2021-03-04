@@ -4,6 +4,7 @@ import { ClientSecretResponse, UserSummary } from '../http.service/http.service.
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
+import { KeySplittingConfigSchema } from '../keysplitting.service/keysplitting.service';
 import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -19,6 +20,7 @@ type BastionZeroConfigSchema = {
     sessionId: string,
     whoami: UserSummary,
     sshKeyPath: string
+    keySplitting: KeySplittingConfigSchema
 }
 
 export class ConfigService {
@@ -43,7 +45,14 @@ export class ConfigService {
                 idp: undefined,
                 sessionId: undefined,
                 whoami: undefined,
-                sshKeyPath: undefined
+                sshKeyPath: undefined,
+                keySplitting: {
+                    initialIdToken: undefined, 
+                    cerRand: undefined,
+                    cerRandSig: undefined, 
+                    privateKey: undefined, 
+                    publicKey: undefined
+                }
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
@@ -65,6 +74,14 @@ export class ConfigService {
             this.config.set('sshKeyPath', path.join(path.dirname(this.config.path), 'bzero-temp-key'));
 
         this.tokenService = new TokenService(this, logger);
+    }
+
+    public updateKeySplitting(data: KeySplittingConfigSchema) {
+        this.config.set('keySplitting', data);
+    }
+
+    public loadKeySplitting() {
+        return this.config.get('keySplitting');
     }
 
     public getConfigName() {
