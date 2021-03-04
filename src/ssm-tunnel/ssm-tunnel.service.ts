@@ -11,7 +11,7 @@ import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage } from '../keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';
 
 export class SsmTunnelService
@@ -332,6 +332,7 @@ export class SsmTunnelService
 
     public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug(`Sending syn message...`);
+        this.logger.debug(`${JSON.stringify(synMessage)}`);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
