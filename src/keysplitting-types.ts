@@ -1,3 +1,11 @@
+export interface BZECert {
+    InitialIdToken: string,
+    CurrentIdToken: string,
+    ClientPublicKey: string,
+    Rand: string,
+    SignatureOnRand: string
+}
+
 export interface KeySplittingPayload {
     Type: string, 
     Action: string
@@ -10,7 +18,7 @@ export interface KeySplittingMessage<TPayload> {
 export interface SynMessagePayload extends KeySplittingPayload {
     Nonce: string, 
     TargetId: string, 
-    BZECert: string
+    BZECert: BZECert
 }
 
 export interface DataMessagePayload extends KeySplittingPayload {
