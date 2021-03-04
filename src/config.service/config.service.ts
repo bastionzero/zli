@@ -4,7 +4,7 @@ import { ClientSecretResponse, UserSummary } from '../http.service/http.service.
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
-import { KeySplittingConfigSchema } from '../keysplitting.service/keysplitting.service';
+import { KeySplittingConfigSchema, ConfigInterface } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -23,7 +23,7 @@ type BastionZeroConfigSchema = {
     keySplitting: KeySplittingConfigSchema
 }
 
-export class ConfigService {
+export class ConfigService implements ConfigInterface {
     private config: Conf<BastionZeroConfigSchema>;
     private configName: string;
     private tokenService: TokenService;
