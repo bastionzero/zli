@@ -75,7 +75,7 @@ export class SsmTunnelService
                     Action: "ssh/open",
                     Nonce: "testnonce",
                     TargetId: "testtargetid",
-                    BZECert: "thisisabzecert"
+                    BZECert: await this.keySplittingService.getBZECert(this.configService.getAuth())
                 }
             }
         });
@@ -90,7 +90,7 @@ export class SsmTunnelService
                     Action: "ssh/open",
                     HPointer: "placeholder",
                     TargetId: "testtargetid",
-                    BZECert: "thisisabzecert",
+                    BZECert: await this.keySplittingService.getBZECertHash(this.configService.getAuth()),
                     Payload: "payload"
                 }
             }
