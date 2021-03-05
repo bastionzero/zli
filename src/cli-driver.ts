@@ -98,10 +98,14 @@ export class CliDriver
             await oauthMiddleware(this.configService, this.logger);
             const me = this.configService.me(); // if you have logged in, this should be set
             const sessionId = this.configService.sessionId();
+<<<<<<< HEAD
             this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
 
             // Update our KeySplittingService
             this.keySplittingService.updateId(this.configService.getAuth());
+=======
+            this.logger.info(`Logged in as: ${this.userInfo.email}, bzero-id:${me.id}, session-id:${sessionId}`);
+>>>>>>> c649a65... Fix up issues regarding keysplitting confg
         })
         .middleware(async (argv) => {
             if(includes(this.noMixpanelCommands, argv._[0]))
@@ -296,8 +300,8 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 const me = await userService.Me();
                 this.configService.setMe(me);
+                this.keySplittingService.updateLatestId(this.configService.getAuth());
                 this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
-                
                 process.exit(0);
             }
         )
