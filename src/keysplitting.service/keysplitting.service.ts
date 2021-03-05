@@ -2,12 +2,21 @@ import { Logger } from '../logger.service/logger';
 import { ConfigInterface } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import { KeySplittingBase } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
+
+var forge = require('node-forge');
+forge.options.usePureJavaScript = true;
+
 export class KeySplittingService extends KeySplittingBase {
     private logger: Logger
 
     constructor(config: ConfigInterface, logger: Logger) {
         super(config);
         this.logger = logger;
+    }
+
+    public reset() {
+        super.reset();
+        this.logger.debug('Reset keysplitting service');
     }
 
     public updateId(idToken: string) {
@@ -36,7 +45,7 @@ export class KeySplittingService extends KeySplittingBase {
 
     public async generateCerRand() {
         super.generateCerRand();
-        this.logger.debug('Generated new cerRand and cerRandSig');
+        this.logger.debug('Generated or loaded cerRand and cerRandSig');
     }
 
     public generateKeys() {
