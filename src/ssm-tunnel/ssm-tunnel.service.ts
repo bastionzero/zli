@@ -332,8 +332,6 @@ export class SsmTunnelService
 
     public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug(`Sending syn message...`);
-        // this.keySplittingService.setSynHash(synMessage);
-        this.logger.debug(`HERE: ${JSON.stringify(synMessage)}`);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
