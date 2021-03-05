@@ -37,7 +37,7 @@ import qrcode from 'qrcode';
 import { Logger } from './logger.service/logger'
 import { LoggerConfigService } from './logger-config.service/logger-config.service';
 import { SsmTunnelService } from './ssm-tunnel/ssm-tunnel.service';
-import { KeySplittingService } from './keysplitting.service/keysplitting.service';
+import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 export class CliDriver
 {
@@ -241,7 +241,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
             async (argv) => {
                 // Clear previous log in info
                 this.configService.logout();
-                this.keySplittingService.reset();
+                await this.keySplittingService.reset();
 
                 const provider = <IdP> argv.provider;
                 await this.configService.loginSetup(provider);
@@ -257,7 +257,6 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                     // Pass it in as we login
                     await oAuthService.login((t) => this.configService.setTokenSet(t), nonce);
-                    this.userInfo = await oAuthService.userInfo();
                 }
                 
                 // Register user log in and get User Session Id
@@ -303,8 +302,8 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 this.configService.setMe(me);
 
                 // Reset our keysplitting service
-                this.keySplittingService.updateLatestId(this.configService.getAuth());
                 this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
+                this.keySplittingService.setInitialIdToken(this.configService.getAuth());
 
                 process.exit(0);
             }

@@ -9,7 +9,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
-import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
+import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
 import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';

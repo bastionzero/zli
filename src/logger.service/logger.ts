@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import winston, { Logger as WinstonLogger, format } from 'winston';
 import { LoggerConfigService } from '../logger-config.service/logger-config.service';
+import { ILogger } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types'
 const { printf } = format;
 
 // Not an enum, must be dictionary for winston
@@ -27,7 +28,7 @@ const loggingDebugFormat = printf(info => {
 });
 
 
-export class Logger {
+export class Logger implements ILogger {
     private debugFlag: boolean;
     private silentFlag: boolean;
     private logger: WinstonLogger;
