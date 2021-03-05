@@ -2,10 +2,6 @@ import { Logger } from '../logger.service/logger';
 import { ConfigInterface } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import { KeySplittingBase } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
-
-var forge = require('node-forge');
-forge.options.usePureJavaScript = true;
-
 export class KeySplittingService extends KeySplittingBase {
     private logger: Logger
 
