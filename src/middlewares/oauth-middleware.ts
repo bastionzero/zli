@@ -12,7 +12,8 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
     // decide if we need to refresh or prompt user for login
     if(tokenSet)
     {
-        if(configService.tokenSet().expired())
+        // if(configService.tokenSet().expired())
+        if (true)
         {
             logger.debug('Refreshing oauth');
 

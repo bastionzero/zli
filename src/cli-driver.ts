@@ -241,6 +241,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
             async (argv) => {
                 // Clear previous log in info
                 this.configService.logout();
+                this.keySplittingService.reset();
 
                 const provider = <IdP> argv.provider;
                 await this.configService.loginSetup(provider);
@@ -300,8 +301,11 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 const me = await userService.Me();
                 this.configService.setMe(me);
+
+                // Reset our keysplitting service
                 this.keySplittingService.updateLatestId(this.configService.getAuth());
                 this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
+
                 process.exit(0);
             }
         )
