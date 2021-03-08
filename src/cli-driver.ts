@@ -249,7 +249,10 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                     const nonce = this.keySplittingService.createNonce();
 
                     // Pass it in as we login
-                    await oAuthService.login((t) => this.configService.setTokenSet(t), nonce);
+                    await oAuthService.login((t) => {
+                        this.configService.setTokenSet(t);
+                        this.keySplittingService.setInitialIdToken(this.configService.getAuth());
+                      }, nonce);
                 }
                 
                 // Register user log in and get User Session Id
