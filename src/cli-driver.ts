@@ -297,7 +297,6 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 this.configService.setMe(me);
 
                 this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
-                this.keySplittingService.setInitialIdToken(this.configService.getAuth());
 
                 process.exit(0);
             }
