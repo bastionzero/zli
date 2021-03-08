@@ -85,7 +85,6 @@ export class CliDriver
             
             // KeySplittingService init
             this.keySplittingService = new KeySplittingService(this.configService, this.logger);
-            await this.keySplittingService.init();
         })
         .middleware(() => {
             checkVersionMiddleware(this.logger);
