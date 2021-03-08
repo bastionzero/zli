@@ -355,7 +355,8 @@ export class SsmTunnelService
     }
 
     public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
-        this.logger.debug('Sending syn message...');
+        this.logger.debug(`Sending syn message...`);
+        let synHash = await this.keySplittingService.getSynHash(synMessage.SynPayload.Payload);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
