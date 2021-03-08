@@ -13,6 +13,7 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
 import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SsmTargetService } from '../http.service/http.service';
+import { SsmTargetSummary } from '../http.service/http.service.types';
 
 export class SsmTunnelService
 {
@@ -20,6 +21,7 @@ export class SsmTunnelService
     private sendQueue: async.QueueObject<Buffer>;
     private websocket : HubConnection;
     private errorSubject: Subject<string> = new Subject<string>();
+    private target: SsmTargetSummary;
     public errors: Observable<string> = this.errorSubject.asObservable();
 
     constructor(
@@ -42,7 +44,7 @@ export class SsmTunnelService
         identityFile: string
     ) : Promise<boolean> {
         try {
-            let targetId = await this.parseTargetIdFromHost(hostName);
+            this.target = await this.getSsmTargetFromHostString(hostName);
 
             await Promise.all([
                 this.setupWebsocket(),
@@ -50,14 +52,14 @@ export class SsmTunnelService
             ]);
 
             await this.sendStartTunnelMessage({
-                targetId: targetId,
+                targetId: this.target.id,
                 targetPort: port,
                 targetUser: userName
             });
 
             await this.sendPubKeyFromIdentityFile(identityFile);
 
-            await this.sendOpenShellSynMessage();
+            await this.performKeysplittingHandshake();
 
             return true;
         } catch(err) {
@@ -66,7 +68,23 @@ export class SsmTunnelService
         }
     }
 
+    public async performKeysplittingHandshake() {
+        if(this.target.agentVersion === "") {
+            this.logger.warn(`Skipping keysplitting handshake because agent version is not set for target ${this.target.id}`);
+            return;
+        }
+
+        this.logger.debug(`Starting keysplitting handshake with ${this.target.id}`);
+        this.logger.debug(`Agent Version ${this.target.agentVersion}, Agent ID: ${this.target.agentId}`);
+
+        await this.sendOpenShellSynMessage();
+    }
+
     public async sendOpenShellSynMessage() {
+        if(this.target.agentId === "") {
+            throw new Error(`Unknown agentId in sendOpenShellSynMessage for target ${this.target.id}`);
+        }
+
         await this.sendSynMessage({
             SynPayload: {
                 Signature: "",
@@ -74,7 +92,7 @@ export class SsmTunnelService
                     Type: "SYN",
                     Action: "ssh/open",
                     Nonce: "testnonce",
-                    TargetId: "testtargetid",
+                    TargetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECert(this.configService.getAuth())
                 }
             }
@@ -82,6 +100,10 @@ export class SsmTunnelService
     }
 
     public async sendOpenShellDataMessage() {
+        if(this.target.agentId === "") {
+            throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
+        }
+
         await this.sendDataMessage({
             DataPayload: {
                 Signature: "",
@@ -89,7 +111,7 @@ export class SsmTunnelService
                     Type: "DATA",
                     Action: "ssh/open",
                     HPointer: "placeholder",
-                    TargetId: "testtargetid",
+                    TargetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECertHash(this.configService.getAuth()),
                     Payload: "payload"
                 }
@@ -292,7 +314,7 @@ export class SsmTunnelService
         this.errorSubject.next(errorMessage);
     }
 
-    private async parseTargetIdFromHost(host: string): Promise<string> {
+    private async getSsmTargetFromHostString(host: string): Promise<SsmTargetSummary> {
         let prefix = 'bzero-';
 
         if(! host.startsWith(prefix)) {
@@ -312,7 +334,7 @@ export class SsmTunnelService
                 throw new Error(`No ssm target exists with id ${targetId}`);
             }
 
-            return targetId;
+            return ssmTargets.filter(t => t.id == targetId)[0];
         } else {
             // target name
             let targetName = targetString;
@@ -326,7 +348,7 @@ export class SsmTunnelService
                 throw new Error(`Multiple targets found with name ${targetName}`)
             }
 
-            return matchedTarget[0].id;
+            return matchedTarget[0];
         }
     }
 

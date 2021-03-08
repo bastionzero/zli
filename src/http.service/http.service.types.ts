@@ -81,6 +81,10 @@ export interface SsmTargetSummary {
     name: string;
     status: SsmTargetStatus;
     environmentId?: string;
+    // ID of the agent (hash of public key)
+    // Used as the targetId in keysplitting messages
+    agentId: string;
+    agentVersion: string;
 }
 
 export enum SsmTargetStatus {
