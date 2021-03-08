@@ -234,7 +234,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
             async (argv) => {
                 // Clear previous log in info
                 this.configService.logout();
-                await this.keySplittingService.reset();
+                await this.keySplittingService.generateKeysplittingLoginData();
 
                 const provider = <IdP> argv.provider;
                 await this.configService.loginSetup(provider);
