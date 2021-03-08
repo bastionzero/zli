@@ -296,7 +296,6 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 const me = await userService.Me();
                 this.configService.setMe(me);
 
-                // Reset our keysplitting service
                 this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
                 this.keySplittingService.setInitialIdToken(this.configService.getAuth());
 
