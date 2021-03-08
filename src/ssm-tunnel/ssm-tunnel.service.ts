@@ -71,6 +71,7 @@ export class SsmTunnelService
     public async performKeysplittingHandshake() {
         if(this.target.agentVersion === "") {
             this.logger.warn(`Skipping keysplitting handshake because agent version is not set for target ${this.target.id}`);
+            return;
         }
 
         this.logger.debug(`Starting keysplitting handshake with ${this.target.id}`);
@@ -81,7 +82,7 @@ export class SsmTunnelService
 
     public async sendOpenShellSynMessage() {
         if(this.target.agentId === "") {
-            this.logger.warn(`Unknown agentId in sendOpenShellSynMessage for target ${this.target.id}`);
+            throw new Error(`Unknown agentId in sendOpenShellSynMessage for target ${this.target.id}`);
         }
 
         await this.sendSynMessage({
@@ -100,7 +101,7 @@ export class SsmTunnelService
 
     public async sendOpenShellDataMessage() {
         if(this.target.agentId === "") {
-            this.logger.warn(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
+            throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
         }
 
         await this.sendDataMessage({
