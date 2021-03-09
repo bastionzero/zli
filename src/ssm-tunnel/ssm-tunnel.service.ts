@@ -190,7 +190,7 @@ export class SsmTunnelService
 
                 // Validate our HPointer
                 if (this.keySplittingService.validateHPointer(synAckMessage.synAckPayload.payload.hPointer) != true) {
-                    let errorString = "[SynAck] Error Validating HPointer!";
+                    let errorString = '[SynAck] Error Validating HPointer!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
@@ -206,7 +206,7 @@ export class SsmTunnelService
 
                 // Validate our HPointer
                 if (this.keySplittingService.validateHPointer(dataAckMessage.dataAckPayload.payload.hPointer) != true) {
-                    let errorString = "[DataAck] Error Validating HPointer!";
+                    let errorString = '[DataAck] Error Validating HPointer!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
