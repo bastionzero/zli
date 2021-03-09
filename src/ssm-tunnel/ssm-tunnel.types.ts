@@ -25,7 +25,8 @@ export interface TunnelDataMessage {
 export enum SsmTunnelHubIncomingMessages {
     ReceiveData = 'ReceiveData',
     ReceiveSynAck = 'ReceiveSynAck',
-    ReceiveDataAck = 'ReceiveDataAck'
+    ReceiveDataAck = 'ReceiveDataAck',
+    ReceiveError = 'ReceiveError',
 }
 
 export enum SsmTunnelHubOutgoingMessages {
