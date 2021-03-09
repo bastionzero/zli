@@ -11,7 +11,8 @@ import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage, ErrorMessageWrapper } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { SsmTargetService } from '../http.service/http.service';
 import { SsmTargetSummary } from '../http.service/http.service.types';
 
@@ -63,7 +64,7 @@ export class SsmTunnelService
 
             return true;
         } catch(err) {
-            this.handleError(`Failed to setup tunnel: ${err.message}`);
+            this.handleError(`Failed to setup tunnel: ${err}`);
             return false;
         }
     }
@@ -183,7 +184,7 @@ export class SsmTunnelService
             }
         });
 
-        // Set up our SynAck and DataAck message handlers
+        // Set up receive message handlers
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
@@ -192,16 +193,19 @@ export class SsmTunnelService
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
             }
-        })
+        });
+
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
             } catch (e) {
                 this.logger.error(`Error in ReceiveDataAck: ${e}`);
             }
+        });
+
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveError, (errorMessage: ErrorMessageWrapper) => {
+            this.logger.error(`Got error message from agent for message ${errorMessage.errorPayload.hPointer}: ${errorMessage.errorPayload.message}`);
         })
-
-
     }
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
@@ -272,8 +276,7 @@ export class SsmTunnelService
         connectionBuilder.withUrl(
             connectionUrl,
             { headers: { authorization: this.configService.getAuthHeader() } }
-        ).configureLogging(6); // log level 6 is no websocket logs
-
+        ).configureLogging(new SignalRLogger(this.logger));
         return connectionBuilder.build();
     }
 
@@ -367,6 +370,4 @@ export class SsmTunnelService
             dataMessage
         );
     }
-
-
 }
