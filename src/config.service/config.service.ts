@@ -194,12 +194,12 @@ export class ConfigService implements ConfigInterface {
     private getAppName(configName: string) {
         switch(configName)
         {
-            case 'prod':
-                return 'cloud';
-            case 'stage':
-                return 'cloud-staging';
-            default:
-                return undefined;
+        case 'prod':
+            return 'cloud';
+        case 'stage':
+            return 'cloud-staging';
+        default:
+            return undefined;
         }
     }
 
@@ -211,25 +211,25 @@ export class ConfigService implements ConfigInterface {
     private getAuthUrl(idp: IdP) {
         switch(idp)
         {
-            case IdP.Google:
-                return 'https://accounts.google.com';
-            case IdP.Microsoft:
-                return 'https://login.microsoftonline.com/common/v2.0';
-            default:
-                throw new Error(`Unknown idp ${idp}`);
+        case IdP.Google:
+            return 'https://accounts.google.com';
+        case IdP.Microsoft:
+            return 'https://login.microsoftonline.com/common/v2.0';
+        default:
+            throw new Error(`Unknown idp ${idp}`);
         }
     }
 
     private getAuthScopes(idp: IdP) {
         switch(idp)
         {
-            case IdP.Google:
-                return 'openid email profile';
-            case IdP.Microsoft:
-                // both openid and offline_access must be set for refresh token
-                return 'offline_access openid email profile';
-            default:
-                throw new Error(`Unknown idp ${idp}`);
+        case IdP.Google:
+            return 'openid email profile';
+        case IdP.Microsoft:
+            // both openid and offline_access must be set for refresh token
+            return 'offline_access openid email profile';
+        default:
+            throw new Error(`Unknown idp ${idp}`);
         }
     }
 

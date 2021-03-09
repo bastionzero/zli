@@ -102,7 +102,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     // ref: https://github.com/cli-table/cli-table3
     var table = new Table({
         head: ['Type', 'Name', 'Environment', 'Id']
-    , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
+        , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
     });
 
     targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));

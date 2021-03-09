@@ -140,31 +140,31 @@ export class HttpService
         const formBody = this.getFormDataFromRequest(body);
         const whereToSave = localPath.endsWith('/') ? localPath + `bzero-download-${Math.floor(Date.now() / 1000)}` : localPath;
 
-            return new Promise((resolve, reject) => {
-                try {
-                    let requestStream = this.httpClient.stream.post(
-                        route,
-                        {
-                            isStream: true,
-                            body: formBody
-                        }
-                    );
+        return new Promise((resolve, reject) => {
+            try {
+                let requestStream = this.httpClient.stream.post(
+                    route,
+                    {
+                        isStream: true,
+                        body: formBody
+                    }
+                );
 
-                    // Buffer is returned by 'data' event
-                    requestStream.on('data', (response: Buffer) => {
-                        fs.writeFile(whereToSave, response, () => {});
-                    });
+                // Buffer is returned by 'data' event
+                requestStream.on('data', (response: Buffer) => {
+                    fs.writeFile(whereToSave, response, () => {});
+                });
 
-                    requestStream.on('end', () => {
-                        this.logger.info('File download complete');
-                        this.logger.info(whereToSave);
-                        resolve();
-                    });
-                } catch (error) {
-                    this.handleHttpException(error);
-                    reject(error);
-                }
-            });
+                requestStream.on('end', () => {
+                    this.logger.info('File download complete');
+                    this.logger.info(whereToSave);
+                    resolve();
+                });
+            } catch (error) {
+                this.handleHttpException(error);
+                reject(error);
+            }
+        });
     }
 }
 

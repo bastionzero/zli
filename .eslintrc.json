@@ -17,6 +17,7 @@
     "ignorePatterns": [
     ],
     "rules": {
+        "indent": ["error", 4],
         "no-trailing-spaces": ["error"],
         "quotes": ["error", "single"],
         "semi": ["error", "always"]

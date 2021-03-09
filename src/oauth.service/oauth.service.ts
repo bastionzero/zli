@@ -31,34 +31,34 @@ export class OAuthService implements IDisposable {
             res.writeHead(200, { 'content-type': 'text/html' });
 
             switch (req.url.split('?')[0]) {
-                case '/login-callback':
-                    const params = client.callbackParams(req);
+            case '/login-callback':
+                const params = client.callbackParams(req);
 
-                    const tokenSet = await client.callback(
-                        `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
-                        params,
-                        { code_verifier: codeVerifier, nonce: expectedNonce });
+                const tokenSet = await client.callback(
+                    `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
+                    params,
+                    { code_verifier: codeVerifier, nonce: expectedNonce });
 
-                    this.logger.info('Login successful');
-                    this.logger.debug('callback listener closed');
+                this.logger.info('Login successful');
+                this.logger.debug('callback listener closed');
 
-                    // write to config with callback
-                    callback(tokenSet);
-                    this.server.close();
-                    fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res);
-                    resolve();
-                    break;
+                // write to config with callback
+                callback(tokenSet);
+                this.server.close();
+                fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res);
+                resolve();
+                break;
 
-                case '/logout-callback':
-                    this.logger.info('Login successful');
-                    this.logger.debug('callback listener closed');
-                    fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res);
-                    resolve();
-                    break;
+            case '/logout-callback':
+                this.logger.info('Login successful');
+                this.logger.debug('callback listener closed');
+                fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res);
+                resolve();
+                break;
 
-                default:
-                    // console.log(`default callback at: ${req.url}`);
-                    break;
+            default:
+                // console.log(`default callback at: ${req.url}`);
+                break;
             }
         };
 
