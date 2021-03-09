@@ -47,10 +47,10 @@ export class ConfigService implements ConfigInterface {
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: {
-                    initialIdToken: undefined, 
+                    initialIdToken: undefined,
                     cerRand: undefined,
-                    cerRandSig: undefined, 
-                    privateKey: undefined, 
+                    cerRandSig: undefined,
+                    privateKey: undefined,
                     publicKey: undefined
                 }
             },
@@ -131,7 +131,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     public getAuthHeader(): string {
-        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`
+        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`;
     }
 
     public getAuth(): string {
@@ -182,10 +182,10 @@ export class ConfigService implements ConfigInterface {
         const clientSecret = await this.getOAuthClient(idp);
         this.config.set('clientId', clientSecret.clientId);
         this.config.set('clientSecret', clientSecret.clientSecret);
-        
+
         const mixpanelToken = await this.getMixpanelToken();
         this.config.set('mixpanelToken', mixpanelToken);
-        
+
         // Clear previous sessionId
         this.config.delete('sessionId');
         this.config.delete('whoami');
@@ -194,12 +194,12 @@ export class ConfigService implements ConfigInterface {
     private getAppName(configName: string) {
         switch(configName)
         {
-            case 'prod':
-                return 'cloud';
-            case 'stage':
-                return 'cloud-staging';
-            default:
-                return undefined;
+        case 'prod':
+            return 'cloud';
+        case 'stage':
+            return 'cloud-staging';
+        default:
+            return undefined;
         }
     }
 
@@ -211,25 +211,25 @@ export class ConfigService implements ConfigInterface {
     private getAuthUrl(idp: IdP) {
         switch(idp)
         {
-            case IdP.Google:
-                return 'https://accounts.google.com';
-            case IdP.Microsoft:
-                return 'https://login.microsoftonline.com/common/v2.0';
-            default:
-                throw new Error(`Unknown idp ${idp}`);
+        case IdP.Google:
+            return 'https://accounts.google.com';
+        case IdP.Microsoft:
+            return 'https://login.microsoftonline.com/common/v2.0';
+        default:
+            throw new Error(`Unknown idp ${idp}`);
         }
     }
 
     private getAuthScopes(idp: IdP) {
         switch(idp)
         {
-            case IdP.Google:
-                return 'openid email profile'
-            case IdP.Microsoft:
-                // both openid and offline_access must be set for refresh token
-                return 'offline_access openid email profile'
-            default:
-                throw new Error(`Unknown idp ${idp}`);
+        case IdP.Google:
+            return 'openid email profile';
+        case IdP.Microsoft:
+            // both openid and offline_access must be set for refresh token
+            return 'offline_access openid email profile';
+        default:
+            throw new Error(`Unknown idp ${idp}`);
         }
     }
 
@@ -238,6 +238,6 @@ export class ConfigService implements ConfigInterface {
     }
 
     private async getMixpanelToken(): Promise<string> {
-        return (await this.tokenService.GetMixpanelToken()).token
+        return (await this.tokenService.GetMixpanelToken()).token;
     }
 }

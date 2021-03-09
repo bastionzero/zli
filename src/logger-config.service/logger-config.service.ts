@@ -27,16 +27,16 @@ export class LoggerConfigService {
     private generateLogPath(configName: string): string {
 
         switch (configName) {
-            case 'prod':
-                return path.join(path.dirname(this.config.path), `bastionzero-zli.log`);
+        case 'prod':
+            return path.join(path.dirname(this.config.path), 'bastionzero-zli.log');
 
-            case 'stage':
-                return path.join(path.dirname(this.config.path), 'bastionzero-zli-stage.log');
+        case 'stage':
+            return path.join(path.dirname(this.config.path), 'bastionzero-zli-stage.log');
 
-            case 'dev':
-                return path.join(path.dirname(this.config.path), 'bastionzero-zli-dev.log');
-            default:
-                throw error('Unrecognized configName');
+        case 'dev':
+            return path.join(path.dirname(this.config.path), 'bastionzero-zli-dev.log');
+        default:
+            throw error('Unrecognized configName');
         }
     }
 
