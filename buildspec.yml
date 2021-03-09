@@ -32,6 +32,7 @@ phases:
       - echo Build started on `date`
       - git submodule update --init --recursive --depth 50
       - npm run build
+      - npm run lint
   post_build:
     commands:
       - echo Run unit tests started on `date`
