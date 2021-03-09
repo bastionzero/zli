@@ -104,7 +104,6 @@ export class SsmTunnelService
             throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
         }
 
-        this.logger.debug(`BZECERT SENDING DATA: ${JSON.stringify(await this.keySplittingService.getBZECert(this.configService.getAuth()))}`);
         await this.sendDataMessage({
             dataPayload: {
                 signature: '',
