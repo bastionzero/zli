@@ -105,7 +105,6 @@ export class SsmTunnelService
             throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
         }
 
-        this.logger.debug(`BZECERT SENDING DATA: ${JSON.stringify(await this.keySplittingService.getBZECert(this.configService.getAuth()))}`);
         await this.sendDataMessage({
             dataPayload: {
                 signature: '',
@@ -373,7 +372,6 @@ export class SsmTunnelService
     public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug('Sending syn message...');
         await this.keySplittingService.setExpectedHPointerSyn(synMessage.synPayload.payload);
-        this.logger.debug(`SENDING SYN MESSAGE: ${JSON.stringify(synMessage)}`);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
@@ -382,7 +380,6 @@ export class SsmTunnelService
 
     public async sendDataMessage(dataMessage: DataMessageWrapper): Promise<void> {
         this.logger.debug('Sending data message...');
-        this.logger.debug(`SENDING DATA: ${JSON.stringify(dataMessage)}`);
         await this.keySplittingService.setExpectedHPointerData(dataMessage.dataPayload.payload);
         await this.sendWebsocketMessage<DataMessageWrapper>(
             SsmTunnelHubOutgoingMessages.DataMessage,
