@@ -19,8 +19,8 @@ export class OAuthService implements IDisposable {
     }
 
     private setupCallbackListener(
-        client: Client, 
-        codeVerifier: string, 
+        client: Client,
+        codeVerifier: string,
         callback: (tokenSet: TokenSet) => void,
         onListen: () => void,
         resolve: (value?: void | PromiseLike<void>) => void,
@@ -142,7 +142,7 @@ export class OAuthService implements IDisposable {
         const tokenSet = this.configService.tokenSet();
         const refreshToken = tokenSet.refresh_token;
         const refreshedTokenSet = await client.refresh(tokenSet);
-        
+
         // In case of google the refreshed token is not returned in the refresh
         // response so we set it from the previous value
         if(! refreshedTokenSet.refresh_token)

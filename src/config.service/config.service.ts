@@ -47,10 +47,10 @@ export class ConfigService implements ConfigInterface {
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: {
-                    initialIdToken: undefined, 
+                    initialIdToken: undefined,
                     cerRand: undefined,
-                    cerRandSig: undefined, 
-                    privateKey: undefined, 
+                    cerRandSig: undefined,
+                    privateKey: undefined,
                     publicKey: undefined
                 }
             },
@@ -182,10 +182,10 @@ export class ConfigService implements ConfigInterface {
         const clientSecret = await this.getOAuthClient(idp);
         this.config.set('clientId', clientSecret.clientId);
         this.config.set('clientSecret', clientSecret.clientSecret);
-        
+
         const mixpanelToken = await this.getMixpanelToken();
         this.config.set('mixpanelToken', mixpanelToken);
-        
+
         // Clear previous sessionId
         this.config.delete('sessionId');
         this.config.delete('whoami');

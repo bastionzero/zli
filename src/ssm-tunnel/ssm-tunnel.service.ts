@@ -209,7 +209,7 @@ export class SsmTunnelService
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
         let bzeroSshKeyPath = this.configService.sshKeyPath();
-        
+
         // Generate a new ssh key for each new tunnel as long as the identity
         // file provided is managed by bzero
         // TODO #39: Change the lifetime of this key?
@@ -345,7 +345,7 @@ export class SsmTunnelService
             if(matchedTarget.length == 0) {
                 throw new Error(`No ssm target exists with name ${targetName}`);
             }
-            
+
             if(matchedTarget.length > 1) {
                 throw new Error(`Multiple targets found with name ${targetName}`);
             }

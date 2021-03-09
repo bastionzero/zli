@@ -66,7 +66,7 @@ export class ShellTerminal implements IDisposable
             () => {
                 this.terminalRunningStream.error(undefined);
             }
-        ); 
+        );
     }
 
     public resize(resizeEvent: TerminalSize)
@@ -88,7 +88,7 @@ export class ShellTerminal implements IDisposable
     {
         if(this.websocketStream)
             this.websocketStream.dispose();
-        
+
         this.terminalRunningStream.complete();
     }
 }

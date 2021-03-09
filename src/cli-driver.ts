@@ -1,26 +1,26 @@
 import { IdP, SessionState, TargetType } from './types';
-import { 
-    checkTargetTypeAndStringPair, 
-    findSubstring, 
-    parsedTargetString, 
-    parseTargetString, 
-    getTableOfTargets, 
-    targetStringExample, 
-    targetStringExampleNoPath, 
+import {
+    checkTargetTypeAndStringPair,
+    findSubstring,
+    parsedTargetString,
+    parseTargetString,
+    getTableOfTargets,
+    targetStringExample,
+    targetStringExampleNoPath,
     TargetSummary,
     parseTargetType
 } from './utils';
 import yargs from 'yargs';
 import { ConfigService } from './config.service/config.service';
-import { 
-    ConnectionService, 
-    DynamicAccessConfigService, 
-    EnvironmentService, 
-    FileService, 
-    MfaService, 
-    SessionService, 
-    SshTargetService, 
-    SsmTargetService, 
+import {
+    ConnectionService,
+    DynamicAccessConfigService,
+    EnvironmentService,
+    FileService,
+    MfaService,
+    SessionService,
+    SshTargetService,
+    SsmTargetService,
     UserService
 } from './http.service/http.service';
 import { OAuthService } from './oauth.service/oauth.service';
@@ -82,7 +82,7 @@ export class CliDriver
 
             // Config init
             this.configService = new ConfigService(<string>argv.configName, this.logger);
-            
+
             // KeySplittingService init
             this.keySplittingService = new KeySplittingService(this.configService, this.logger);
         })
@@ -110,7 +110,7 @@ export class CliDriver
             // does not matter as that is handled by which mixpanel token is used
             // TODO: capture options and flags
             this.mixpanelService.TrackCliCall(
-                'CliCommand', 
+                'CliCommand',
                 {
                     'cli-version': version,
                     'command': argv._[0],
@@ -122,21 +122,21 @@ export class CliDriver
             if(includes(this.noFetchCommands, argv._[0]))
                 return;
 
-            // Greedy fetch of some data that we use frequently 
+            // Greedy fetch of some data that we use frequently
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
             const sshTargetService = new SshTargetService(this.configService, this.logger);
             const dynamicConfigService = new DynamicAccessConfigService(this.configService, this.logger);
             const envService = new EnvironmentService(this.configService, this.logger);
 
             this.dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
-                .then(result => 
+                .then(result =>
                     result.map<TargetSummary>((config, _index, _array) => {
                         return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId};
                     })
                 );
 
             this.ssmTargets = ssmTargetService.ListSsmTargets(false)
-                .then(result => 
+                .then(result =>
                     result.map<TargetSummary>((ssm, _index, _array) => {
                         return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId};
                     })
@@ -144,7 +144,7 @@ export class CliDriver
 
 
             this.sshTargets = sshTargetService.ListSshTargets()
-                .then(result => 
+                .then(result =>
                     result.map<TargetSummary>((ssh, _index, _array) => {
                         return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId};
                 })
@@ -221,7 +221,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                     choices: [IdP.Google, IdP.Microsoft]
                 })
                 .option(
-                    'mfa', 
+                    'mfa',
                     {
                         type: 'string',
                         demandOption: false,
@@ -237,13 +237,13 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 const provider = <IdP> argv.provider;
                 await this.configService.loginSetup(provider);
-                
+
                 // Can only create oauth service after loginSetup completes
                 const oAuthService = new OAuthService(this.configService, this.logger);
                 if(! oAuthService.isAuthenticated())
                 {
                     this.logger.info('Login required, opening browser');
-                    
+
                     // Create our Nonce
                     const nonce = this.keySplittingService.createNonce();
 
@@ -253,12 +253,12 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         this.keySplittingService.setInitialIdToken(this.configService.getAuth());
                       }, nonce);
                 }
-                
+
                 // Register user log in and get User Session Id
                 const userService = new UserService(this.configService, this.logger);
                 const registerResponse = await userService.Register();
                 this.configService.setSessionId(registerResponse.userSessionId);
-                
+
                 // Check if we must MFA and act upon it
                 const mfaService = new MfaService(this.configService, this.logger);
                 switch(registerResponse.mfaActionRequired)
@@ -275,7 +275,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         }
 
                         await mfaService.SendTotp(argv.mfa);
-                        
+
                         break;
                     case MfaActionRequired.RESET:
                         this.logger.info('MFA reset detected, requesting new MFA token');
@@ -286,7 +286,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         console.log(data);
 
                         this.logger.info('Please log in again with \'--mfa token\'');
-                        
+
                         break;
                     default:
                         this.logger.warn(`Unexpected MFA response ${registerResponse.mfaActionRequired}`);
@@ -321,7 +321,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 .example('connect dynamic science@big-science-container-config', 'Connect to a dynamic target example');
             },
             async (argv) => {
-                
+
                 const parsedTarget = await this.disambiguateTargetName(argv.targetType, argv.targetString);
 
                 // call list session
@@ -347,7 +347,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 // make a new connection
                 const connectionService = new ConnectionService(this.configService, this.logger);
-                // if SSM user does not exist then resp.connectionId will throw a 
+                // if SSM user does not exist then resp.connectionId will throw a
                 // 'TypeError: Cannot read property 'connectionId' of undefined'
                 // so we need to catch and return undefined
                 const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSessionId, targetUser).catch(() => undefined);
@@ -371,7 +371,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                 // connect to target and run terminal
                 var terminal = new ShellTerminal(this.configService, connectionId);
-                try {   
+                try {
                     await terminal.start(termsize());
                 } catch (err) {
                     this.logger.error(`Error connecting to terminal: ${err.stack}`);
@@ -385,13 +385,13 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 // https://github.com/nodejs/node/issues/16194
                 // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
                 process.stdout.on(
-                    'resize', 
+                    'resize',
                     () => {
                         const resizeEvent = termsize();
                         terminal.resize(resizeEvent);
                     }
                 );
-                
+
                 // If we detect a disconnection, close the connection immediately
                 terminal.terminalRunning.subscribe(
                     () => {},
@@ -403,7 +403,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         }
 
                         terminal.dispose();
-                        
+
                         this.logger.debug('Cleaning up connection...');
                         const conn = await connectionService.GetConnection(connectionId);
                         // if connection not already closed
@@ -411,7 +411,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                             await connectionService.CloseConnection(connectionId);
 
                         this.logger.debug('Connection closed');
-                        
+
                         if(error)
                             process.exit(1);
 
@@ -599,7 +599,7 @@ Need help? https://app.bastionzero.com/support`)
         }
 
         if(! checkTargetTypeAndStringPair(parsedTarget))
-        {   
+        {
 
             switch(parsedTarget.type)
             {

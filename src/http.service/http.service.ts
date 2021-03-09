@@ -45,7 +45,7 @@ export class HttpService
 
         if(this.authorized) headers['Authorization'] = this.configService.getAuthHeader();
         if(this.authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
-        
+
         // append headers
         this.httpClient = this.httpClient.extend({ headers: headers });
     }
@@ -53,7 +53,7 @@ export class HttpService
     private handleHttpException(error: HTTPError) : void
     {
         let errorMessage = error.message;
-        
+
         if(error.response.statusCode == 401) {
             errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
             this.logger.error(`Authentication Error:\n${errorMessage}`);
@@ -119,10 +119,10 @@ export class HttpService
     protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
     {
         const formBody = this.getFormDataFromRequest(body);
-        
+
         try {
             var resp : TResp = await this.httpClient.post(
-                route, 
+                route,
                 {
                     body: formBody
                 }
@@ -154,7 +154,7 @@ export class HttpService
                     requestStream.on('data', (response: Buffer) => {
                         fs.writeFile(whereToSave, response, () => {});
                     });
-            
+
                     requestStream.on('end', () => {
                         this.logger.info('File download complete');
                         this.logger.info(whereToSave);
@@ -165,7 +165,7 @@ export class HttpService
                     reject(error);
                 }
             });
-    }   
+    }
 }
 
 export class SessionService extends HttpService
@@ -309,21 +309,21 @@ export class FileService extends HttpService
             file: file,
             targetUser: targetUser
         };
-        
+
         const resp : UploadFileResponse = await this.FormPost('upload', request);
-    
+
         return;
     }
 
     public async downloadFile(targetId: string, targetType: TargetType, targetPath: string,localPath: string, targetUser?: string): Promise<any> {
-        
+
         const request: DownloadFileRequest = {
             targetId: targetId,
             targetType: targetType,
             filePath: targetPath,
             targetUser: targetUser
         };
-    
+
         await this.FormStream('download', request, localPath);
 
         return;
@@ -364,7 +364,7 @@ export class MfaService extends HttpService
     }
 
     public ResetSecret(): Promise<MfaResetResponse>
-    {   
+    {
         return this.Post('reset', {});
     }
 

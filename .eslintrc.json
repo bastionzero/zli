@@ -17,6 +17,7 @@
     "ignorePatterns": [
     ],
     "rules": {
+        "no-trailing-spaces": ["error"],
         "quotes": ["error", "single"],
         "semi": ["error", "always"]
     }

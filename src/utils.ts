@@ -48,7 +48,7 @@ export function parseTargetString(targetTypeString: string , targetString: strin
         result.user = atSignSplit[0];
         atSignSplit = atSignSplit.slice(1);
     }
-    
+
     // extract targetId and maybe targetPath
     const colonSplit = atSignSplit[0].split(':', 2);
     const targetSomething = colonSplit[0];
