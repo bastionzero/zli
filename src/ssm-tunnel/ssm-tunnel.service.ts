@@ -85,18 +85,9 @@ export class SsmTunnelService
             throw new Error(`Unknown agentId in sendOpenShellSynMessage for target ${this.target.id}`);
         }
 
-        await this.sendSynMessage({
-            synPayload: {
-                signature: '',
-                payload: {
-                    type: 'SYN',
-                    action: 'ssh/open',
-                    nonce: crypto.randomBytes(32).toString('base64'),
-                    targetId: this.target.agentId,
-                    BZECert: await this.keySplittingService.getBZECert(this.configService.getAuth())
-                }
-            }
-        });
+        await this.sendSynMessage(await this.keySplittingService.buildSynMessage(
+            this.target.agentId, 'ssh/open', this.configService.getAuth()
+        ));
     }
 
     public async sendOpenShellDataMessage() {
@@ -104,19 +95,9 @@ export class SsmTunnelService
             throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
         }
 
-        await this.sendDataMessage({
-            dataPayload: {
-                signature: '',
-                payload: {
-                    type: 'DATA',
-                    action: 'ssh/open',
-                    hPointer: 'placeholder',
-                    targetId: this.target.agentId,
-                    BZECert: await this.keySplittingService.getBZECertHash(this.configService.getAuth()),
-                    payload: 'payload'
-                }
-            }
-        });
+        await this.sendDataMessage(await this.keySplittingService.buildDataMessage(
+            this.target.agentId, 'ssh/open', this.configService.getAuth()
+        ));
     }
 
     public sendData(data: Buffer) {
