@@ -28,7 +28,7 @@ export class LoggerConfigService {
 
         switch (configName) {
             case 'prod':
-                return path.join(path.dirname(this.config.path), `bastionzero-zli.log`);
+                return path.join(path.dirname(this.config.path), 'bastionzero-zli.log');
 
             case 'stage':
                 return path.join(path.dirname(this.config.path), 'bastionzero-zli-stage.log');

@@ -11,7 +11,7 @@ class ZliAuthConfigService implements AuthConfigService {
     {}
 
     getServiceUrl() {
-        return this.configService.serviceUrl() + "api/v1/";
+        return this.configService.serviceUrl() + 'api/v1/';
     }
 
     getSessionId() {

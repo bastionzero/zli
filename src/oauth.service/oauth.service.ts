@@ -39,8 +39,8 @@ export class OAuthService implements IDisposable {
                         params,
                         { code_verifier: codeVerifier, nonce: expectedNonce });
 
-                    this.logger.info(`Login successful`);
-                    this.logger.debug(`callback listener closed`);
+                    this.logger.info('Login successful');
+                    this.logger.debug('callback listener closed');
 
                     // write to config with callback
                     callback(tokenSet);
@@ -50,8 +50,8 @@ export class OAuthService implements IDisposable {
                     break;
 
                 case '/logout-callback':
-                    this.logger.info(`Login successful`);
-                    this.logger.debug(`callback listener closed`);
+                    this.logger.info('Login successful');
+                    this.logger.debug('callback listener closed');
                     fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res)
                     resolve();
                     break;

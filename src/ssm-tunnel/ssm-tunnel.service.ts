@@ -70,7 +70,7 @@ export class SsmTunnelService
     }
 
     public async performKeysplittingHandshake() {
-        if(this.target.agentVersion === "") {
+        if(this.target.agentVersion === '') {
             this.logger.warn(`Skipping keysplitting handshake because agent version is not set for target ${this.target.id}`);
             return;
         }
@@ -82,17 +82,17 @@ export class SsmTunnelService
     }
 
     public async sendOpenShellSynMessage() {
-        if(this.target.agentId === "") {
+        if(this.target.agentId === '') {
             throw new Error(`Unknown agentId in sendOpenShellSynMessage for target ${this.target.id}`);
         }
 
         await this.sendSynMessage({
             SynPayload: {
-                Signature: "",
+                Signature: '',
                 Payload: {
-                    Type: "SYN",
-                    Action: "ssh/open",
-                    Nonce: "testnonce",
+                    Type: 'SYN',
+                    Action: 'ssh/open',
+                    Nonce: 'testnonce',
                     TargetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECert(this.configService.getAuth())
                 }
@@ -101,20 +101,20 @@ export class SsmTunnelService
     }
 
     public async sendOpenShellDataMessage() {
-        if(this.target.agentId === "") {
+        if(this.target.agentId === '') {
             throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.target.id}`);
         }
 
         await this.sendDataMessage({
             DataPayload: {
-                Signature: "",
+                Signature: '',
                 Payload: {
-                    Type: "DATA",
-                    Action: "ssh/open",
-                    HPointer: "placeholder",
+                    Type: 'DATA',
+                    Action: 'ssh/open',
+                    HPointer: 'placeholder',
                     TargetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECertHash(this.configService.getAuth()),
-                    Payload: "payload"
+                    Payload: 'payload'
                 }
             }
         });
@@ -356,7 +356,7 @@ export class SsmTunnelService
     }
 
     public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
-        this.logger.debug(`Sending syn message...`);
+        this.logger.debug('Sending syn message...');
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
@@ -364,7 +364,7 @@ export class SsmTunnelService
     }
 
     public async sendDataMessage(dataMessage: DataMessageWrapper): Promise<void> {
-        this.logger.debug(`Sending data message...`);
+        this.logger.debug('Sending data message...');
         await this.sendWebsocketMessage<DataMessageWrapper>(
             SsmTunnelHubOutgoingMessages.DataMessage,
             dataMessage
