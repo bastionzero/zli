@@ -11,7 +11,7 @@ import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage, ErrorMessageWrapper } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage, ErrorMessageWrapper, KeysplittingErrorTypes } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { SsmTargetService } from '../http.service/http.service';
 import { SsmTargetSummary } from '../http.service/http.service.types';
@@ -218,8 +218,29 @@ export class SsmTunnelService
         });
 
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveError, (errorMessage: ErrorMessageWrapper) => {
-            this.logger.error(`Got error message from agent for message ${errorMessage.errorPayload.hPointer}: ${errorMessage.errorPayload.message}`);
+            let errorPayload = errorMessage.errorPayload.payload;
+
+            // TODO: check signature on error payload
+
+            this.logger.error(`
+                Got agent keysplitting error on message ${errorPayload.hPointer}
+                Error Type: ${errorPayload.errorType}
+                Error Message: ${errorPayload.message}
+            `);
+
+            switch(errorPayload.errorType) {
+                case KeysplittingErrorTypes.BZECertIDTokenValidationError:
+                    this.handleIdTokenValidationError();
+                    break;
+                default:
+                    this.handleError(`Unhandled keysplitting error: ${errorPayload.message}`);
+            }
         });
+    }
+
+    private handleIdTokenValidationError() {
+        // TODO: refresh oauth token
+        // If that still fails then logout
     }
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
