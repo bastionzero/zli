@@ -87,13 +87,13 @@ export class SsmTunnelService
         }
 
         await this.sendSynMessage({
-            SynPayload: {
-                Signature: '',
-                Payload: {
-                    Type: 'SYN',
-                    Action: 'ssh/open',
-                    Nonce: 'testnonce',
-                    TargetId: this.target.agentId,
+            synPayload: {
+                signature: '',
+                payload: {
+                    type: 'SYN',
+                    action: 'ssh/open',
+                    nonce: crypto.randomBytes(32).toString('base64'),
+                    targetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECert(this.configService.getAuth())
                 }
             }
@@ -106,15 +106,15 @@ export class SsmTunnelService
         }
 
         await this.sendDataMessage({
-            DataPayload: {
-                Signature: '',
-                Payload: {
-                    Type: 'DATA',
-                    Action: 'ssh/open',
-                    HPointer: 'placeholder',
-                    TargetId: this.target.agentId,
+            dataPayload: {
+                signature: '',
+                payload: {
+                    type: 'DATA',
+                    action: 'ssh/open',
+                    hPointer: 'placeholder',
+                    targetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECertHash(this.configService.getAuth()),
-                    Payload: 'payload'
+                    payload: 'payload'
                 }
             }
         });
@@ -189,6 +189,13 @@ export class SsmTunnelService
             try {
                 this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
 
+                // Validate our HPointer
+                if (this.keySplittingService.validateHPointer(synAckMessage.synAckPayload.payload.hPointer) != true) {
+                    let errorString = '[SynAck] Error Validating HPointer!';
+                    this.logger.error(errorString);
+                    throw new Error(errorString);
+                }
+
                 this.sendOpenShellDataMessage();
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
@@ -197,6 +204,14 @@ export class SsmTunnelService
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
+
+                // Validate our HPointer
+                if (this.keySplittingService.validateHPointer(dataAckMessage.dataAckPayload.payload.hPointer) != true) {
+                    let errorString = '[DataAck] Error Validating HPointer!';
+                    this.logger.error(errorString);
+                    throw new Error(errorString);
+                }
+
             } catch (e) {
                 this.logger.error(`Error in ReceiveDataAck: ${e}`);
             }
@@ -356,6 +371,7 @@ export class SsmTunnelService
 
     public async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug('Sending syn message...');
+        await this.keySplittingService.setExpectedHPointerSyn(synMessage.synPayload.payload);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
@@ -364,6 +380,7 @@ export class SsmTunnelService
 
     public async sendDataMessage(dataMessage: DataMessageWrapper): Promise<void> {
         this.logger.debug('Sending data message...');
+        await this.keySplittingService.setExpectedHPointerData(dataMessage.dataPayload.payload);
         await this.sendWebsocketMessage<DataMessageWrapper>(
             SsmTunnelHubOutgoingMessages.DataMessage,
             dataMessage
