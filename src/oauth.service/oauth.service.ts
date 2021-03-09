@@ -6,7 +6,7 @@ import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
 import { Logger } from '../../src/logger.service/logger';
 
-const fs = require('fs')
+const fs = require('fs');
 const path = require('path');
 
 export class OAuthService implements IDisposable {
@@ -19,8 +19,8 @@ export class OAuthService implements IDisposable {
     }
 
     private setupCallbackListener(
-        client: Client, 
-        codeVerifier: string, 
+        client: Client,
+        codeVerifier: string,
         callback: (tokenSet: TokenSet) => void,
         onListen: () => void,
         resolve: (value?: void | PromiseLike<void>) => void,
@@ -28,37 +28,37 @@ export class OAuthService implements IDisposable {
     ): void {
 
         const requestListener: RequestListener = async (req, res) => {
-            res.writeHead(200, { 'content-type': 'text/html' })
+            res.writeHead(200, { 'content-type': 'text/html' });
 
             switch (req.url.split('?')[0]) {
-                case '/login-callback':
-                    const params = client.callbackParams(req);
+            case '/login-callback':
+                const params = client.callbackParams(req);
 
-                    const tokenSet = await client.callback(
-                        `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
-                        params,
-                        { code_verifier: codeVerifier, nonce: expectedNonce });
+                const tokenSet = await client.callback(
+                    `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
+                    params,
+                    { code_verifier: codeVerifier, nonce: expectedNonce });
 
-                    this.logger.info(`Login successful`);
-                    this.logger.debug(`callback listener closed`);
+                this.logger.info('Login successful');
+                this.logger.debug('callback listener closed');
 
-                    // write to config with callback
-                    callback(tokenSet);
-                    this.server.close();
-                    fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res)
-                    resolve();
-                    break;
+                // write to config with callback
+                callback(tokenSet);
+                this.server.close();
+                fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res);
+                resolve();
+                break;
 
-                case '/logout-callback':
-                    this.logger.info(`Login successful`);
-                    this.logger.debug(`callback listener closed`);
-                    fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res)
-                    resolve();
-                    break;
+            case '/logout-callback':
+                this.logger.info('Login successful');
+                this.logger.debug('callback listener closed');
+                fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res);
+                resolve();
+                break;
 
-                default:
-                    // console.log(`default callback at: ${req.url}`);
-                    break;
+            default:
+                // console.log(`default callback at: ${req.url}`);
+                break;
             }
         };
 
@@ -142,7 +142,7 @@ export class OAuthService implements IDisposable {
         const tokenSet = this.configService.tokenSet();
         const refreshToken = tokenSet.refresh_token;
         const refreshedTokenSet = await client.refresh(tokenSet);
-        
+
         // In case of google the refreshed token is not returned in the refresh
         // response so we set it from the previous value
         if(! refreshedTokenSet.refresh_token)

@@ -19,7 +19,7 @@ test('invalid targetType strings', () => {
         'ssmA', // too long
         'sssm', // too long
         'SSHssm',
-        'SuSHiMi', // SSH and SSM embedded 
+        'SuSHiMi', // SSH and SSM embedded
         'mss'
     ];
     validSSMTargetTypeStrings.forEach(t => expect(parseTargetType(t)).toBeUndefined());
@@ -49,7 +49,7 @@ test('invalid targetStrings', () => {
 });
 
 test('properly matched targetType and targetStrings', () => {
-    
+
     const correctSsmParsedTarget: parsedTargetString[] =[
         { id: '123123', user: 'ssm-user', type: TargetType.SSM, name: 'hello-world', path: '/var/log' },
         { id: '123123', user: 'ssm-user', type: TargetType.SSM, name: 'hello-world', path: undefined },
@@ -68,7 +68,7 @@ test('properly matched targetType and targetStrings', () => {
 });
 
 test('improperly matched targetType and targetStrings', () => {
-    
+
     const correctSsmParsedTarget: parsedTargetString[] =[
         { id: '123123', user: undefined, type: TargetType.SSM, name: 'hello-world', path: '/var/log' },
         { id: '123123', user: undefined, type: TargetType.SSM, name: 'hello-world', path: undefined },

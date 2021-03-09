@@ -11,7 +11,7 @@ class ZliAuthConfigService implements AuthConfigService {
     {}
 
     getServiceUrl() {
-        return this.configService.serviceUrl() + "api/v1/";
+        return this.configService.serviceUrl() + 'api/v1/';
     }
 
     getSessionId() {
@@ -66,7 +66,7 @@ export class ShellTerminal implements IDisposable
             () => {
                 this.terminalRunningStream.error(undefined);
             }
-        ); 
+        );
     }
 
     public resize(resizeEvent: TerminalSize)
@@ -88,7 +88,7 @@ export class ShellTerminal implements IDisposable
     {
         if(this.websocketStream)
             this.websocketStream.dispose();
-        
+
         this.terminalRunningStream.complete();
     }
 }

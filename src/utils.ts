@@ -1,5 +1,5 @@
 import { TargetType } from './types';
-import { max } from 'lodash'
+import { max } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 
@@ -10,7 +10,7 @@ export function findSubstring(targetString: string, searchString: string) : bool
 }
 
 export const targetStringExample: string = '[targetUser@]<targetId | targetName>:<targetPath>';
-export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targetName>'
+export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targetName>';
 
 export function parseTargetType(targetType: string) : TargetType
 {
@@ -48,7 +48,7 @@ export function parseTargetString(targetTypeString: string , targetString: strin
         result.user = atSignSplit[0];
         atSignSplit = atSignSplit.slice(1);
     }
-    
+
     // extract targetId and maybe targetPath
     const colonSplit = atSignSplit[0].split(':', 2);
     const targetSomething = colonSplit[0];
@@ -102,7 +102,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     // ref: https://github.com/cli-table/cli-table3
     var table = new Table({
         head: ['Type', 'Name', 'Environment', 'Id']
-    , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
+        , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
     });
 
     targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));
