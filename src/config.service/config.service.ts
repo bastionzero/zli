@@ -131,7 +131,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     public getAuthHeader(): string {
-        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`
+        return `${this.tokenSet().token_type} ${this.tokenSet().id_token}`;
     }
 
     public getAuth(): string {
@@ -224,10 +224,10 @@ export class ConfigService implements ConfigInterface {
         switch(idp)
         {
             case IdP.Google:
-                return 'openid email profile'
+                return 'openid email profile';
             case IdP.Microsoft:
                 // both openid and offline_access must be set for refresh token
-                return 'offline_access openid email profile'
+                return 'offline_access openid email profile';
             default:
                 throw new Error(`Unknown idp ${idp}`);
         }
@@ -238,6 +238,6 @@ export class ConfigService implements ConfigInterface {
     }
 
     private async getMixpanelToken(): Promise<string> {
-        return (await this.tokenService.GetMixpanelToken()).token
+        return (await this.tokenService.GetMixpanelToken()).token;
     }
 }

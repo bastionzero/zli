@@ -1,5 +1,5 @@
 import { TargetType } from './types';
-import { max } from 'lodash'
+import { max } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 
@@ -10,7 +10,7 @@ export function findSubstring(targetString: string, searchString: string) : bool
 }
 
 export const targetStringExample: string = '[targetUser@]<targetId | targetName>:<targetPath>';
-export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targetName>'
+export const targetStringExampleNoPath : string = '[targetUser@]<targetId | targetName>';
 
 export function parseTargetType(targetType: string) : TargetType
 {

@@ -153,7 +153,7 @@ export class HttpService
                     // Buffer is returned by 'data' event
                     requestStream.on('data', (response: Buffer) => {
                         fs.writeFile(whereToSave, response, () => {});
-                    })
+                    });
             
                     requestStream.on('end', () => {
                         this.logger.info('File download complete');
@@ -199,7 +199,7 @@ export class SessionService extends HttpService
 
     public CloseSession(sessionId: string) : Promise<CloseSessionResponse>
     {
-        var req : CloseSessionRequest = {sessionId: sessionId}
+        var req : CloseSessionRequest = {sessionId: sessionId};
         return this.Post('close', req);
     }
 }

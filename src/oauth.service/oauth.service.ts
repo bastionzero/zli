@@ -6,7 +6,7 @@ import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
 import { Logger } from '../../src/logger.service/logger';
 
-const fs = require('fs')
+const fs = require('fs');
 const path = require('path');
 
 export class OAuthService implements IDisposable {
@@ -28,7 +28,7 @@ export class OAuthService implements IDisposable {
     ): void {
 
         const requestListener: RequestListener = async (req, res) => {
-            res.writeHead(200, { 'content-type': 'text/html' })
+            res.writeHead(200, { 'content-type': 'text/html' });
 
             switch (req.url.split('?')[0]) {
                 case '/login-callback':
@@ -45,14 +45,14 @@ export class OAuthService implements IDisposable {
                     // write to config with callback
                     callback(tokenSet);
                     this.server.close();
-                    fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res)
+                    fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res);
                     resolve();
                     break;
 
                 case '/logout-callback':
                     this.logger.info('Login successful');
                     this.logger.debug('callback listener closed');
-                    fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res)
+                    fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res);
                     resolve();
                     break;
 

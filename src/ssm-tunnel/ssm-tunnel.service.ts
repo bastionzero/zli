@@ -194,7 +194,6 @@ export class SsmTunnelService
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
             }
         });
-
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
@@ -205,7 +204,7 @@ export class SsmTunnelService
 
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveError, (errorMessage: ErrorMessageWrapper) => {
             this.logger.error(`Got error message from agent for message ${errorMessage.errorPayload.hPointer}: ${errorMessage.errorPayload.message}`);
-        })
+        });
     }
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
@@ -344,11 +343,11 @@ export class SsmTunnelService
             let matchedTarget = ssmTargets.filter(t => t.name == targetName);
 
             if(matchedTarget.length == 0) {
-                throw new Error(`No ssm target exists with name ${targetName}`)
+                throw new Error(`No ssm target exists with name ${targetName}`);
             }
             
             if(matchedTarget.length > 1) {
-                throw new Error(`Multiple targets found with name ${targetName}`)
+                throw new Error(`Multiple targets found with name ${targetName}`);
             }
 
             return matchedTarget[0];

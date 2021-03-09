@@ -29,12 +29,12 @@ import termsize from 'term-size';
 import { MixpanelService } from './mixpanel.service/mixpanel.service';
 import { checkVersionMiddleware } from './middlewares/check-version-middleware';
 import { oauthMiddleware } from './middlewares/oauth-middleware';
-import fs from 'fs'
+import fs from 'fs';
 import { EnvironmentDetails, ConnectionState, MfaActionRequired } from './http.service/http.service.types';
 import { Dictionary, includes } from 'lodash';
 import { version } from '../package.json';
 import qrcode from 'qrcode';
-import { Logger } from './logger.service/logger'
+import { Logger } from './logger.service/logger';
 import { LoggerConfigService } from './logger-config.service/logger-config.service';
 import { SsmTunnelService } from './ssm-tunnel/ssm-tunnel.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
@@ -194,7 +194,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 })
                 .positional('identityFile', {
                     type: 'string'
-                })
+                });
             },
             async (argv) => {
                 let ssmTunnelService = new SsmTunnelService(this.logger, this.configService, this.keySplittingService);
@@ -296,7 +296,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 const me = await userService.Me();
                 this.configService.setMe(me);
 
-                this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`)
+                this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`);
 
                 process.exit(0);
             }
@@ -457,7 +457,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         demandOption: false,
                         alias: 'n'
                     }
-                )
+                );
             },
             async (argv) => {
                 // await and concatenate
@@ -560,7 +560,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 // Deletes the auth tokens from the config which will force the
                 // user to login again before running another command
                 this.configService.logout();
-                this.logger.info('Logout successful')
+                this.logger.info('Logout successful');
                 process.exit(0);
             }
         )
