@@ -92,7 +92,7 @@ export class SsmTunnelService
                 payload: {
                     type: 'SYN',
                     action: 'ssh/open',
-                    nonce: 'testnonce',
+                    nonce: crypto.randomBytes(32).toString('base64'),
                     targetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECert(this.configService.getAuth())
                 }
@@ -112,7 +112,7 @@ export class SsmTunnelService
                     type: 'DATA',
                     action: 'ssh/open',
                     hPointer: 'placeholder',
-                    targetId: 'testtargetid',
+                    targetId: this.target.agentId,
                     BZECert: await this.keySplittingService.getBZECertHash(this.configService.getAuth()),
                     payload: 'payload'
                 }
