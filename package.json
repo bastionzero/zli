@@ -17,7 +17,7 @@
     "copy-files": "copyfiles src/**/*.html src/**/*.css dist/",
     "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest",
-    "lint": "eslint 'src/**/*.ts' 'webshell-common-ts/**/*.ts'"
+    "lint": "eslint 'src/**/*.ts' 'webshell-common-ts/**/*.ts' -c webshell-common-ts/.eslintrc.json"
   },
   "author": "nabeelperson",
   "license": "ISC",
