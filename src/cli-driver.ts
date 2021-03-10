@@ -198,9 +198,9 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 },
                 async (argv) => {
                     let ssmTunnelService = new SsmTunnelService(this.logger, this.configService, this.keySplittingService);
-                    ssmTunnelService.errors.subscribe(errorMessage => {
+                    ssmTunnelService.errors.subscribe(async errorMessage => {
                         process.stderr.write(`\n${errorMessage}\n`);
-                        process.exit(1);
+                        await this.cleanExit(1);
                     });
 
                     if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, argv.port, argv.identityFile)) {
@@ -270,7 +270,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                             this.logger.warn('MFA token required for this account');
                             this.logger.info('Please try logging in again with \'--mfa <token\' flag');
                             this.configService.logout();
-                            process.exit(1);
+                            await this.cleanExit(1);
                         }
 
                         await mfaService.SendTotp(argv.mfa);
@@ -297,7 +297,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                     this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`);
 
-                    process.exit(0);
+                    await this.cleanExit(0);
                 }
             )
         // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
@@ -365,7 +365,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                             this.logger.info('Please check your polices in the web app for this target and/or environment');
                         }
 
-                        process.exit(1);
+                        await this.cleanExit(1);
                     }
 
                     // connect to target and run terminal
@@ -374,7 +374,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         await terminal.start(termsize());
                     } catch (err) {
                         this.logger.error(`Error connecting to terminal: ${err.stack}`);
-                        process.exit(1);
+                        await this.cleanExit(1);
                     }
 
                     this.mixpanelService.TrackNewConnection(parsedTarget.type);
@@ -412,9 +412,9 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                             this.logger.debug('Connection closed');
 
                             if(error)
-                                process.exit(1);
+                                await this.cleanExit(1);
 
-                            process.exit(0);
+                            await this.cleanExit(0);
                         },
                         () => {}
                     );
@@ -488,7 +488,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
 
                     let tableString = getTableOfTargets(allTargets, envs);
                     console.log(tableString);
-                    process.exit(0);
+                    await this.cleanExit(0);
                 }
             )
             .command(
@@ -526,7 +526,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         if(fh.readableLength === 0)
                         {
                             this.logger.warn(`File ${argv.source} does not exist or cannot be read`);
-                            process.exit(1);
+                            await this.cleanExit(1);
                         }
 
                         await fileService.uploadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, fh, parsedTarget.user);
@@ -539,17 +539,17 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         this.logger.error('Invalid target string, must follow syntax:');
                         this.logger.error(targetStringExample);
                     }
-                    process.exit(0);
+                    await this.cleanExit(0);
                 }
             )
             .command(
                 'config',
                 'Returns config file path',
                 () => {},
-                () => {
+                async () => {
                     this.logger.info(`You can edit your config here: ${this.configService.configPath()}`);
                     this.logger.info(`You can find your log files here: ${this.loggerConfigService.logPath()}`);
-                    process.exit(0);
+                    await this.cleanExit(0);
                 }
             ).command(
                 'logout',
@@ -560,7 +560,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 // user to login again before running another command
                     this.configService.logout();
                     this.logger.info('Logout successful');
-                    process.exit(0);
+                    await this.cleanExit(0);
                 }
             )
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
@@ -594,7 +594,7 @@ Need help? https://app.bastionzero.com/support`)
         {
             this.logger.error('Invalid target string, must follow syntax:');
             this.logger.error(targetStringExampleNoPath);
-            process.exit(1);
+            await this.cleanExit(1);
         }
 
         if(! checkTargetTypeAndStringPair(parsedTarget))
@@ -615,7 +615,7 @@ Need help? https://app.bastionzero.com/support`)
             default:
                 throw new Error('Unhandled TargetType');
             }
-            process.exit(1);
+            await this.cleanExit(1);
         }
 
 
@@ -636,7 +636,7 @@ Need help? https://app.bastionzero.com/support`)
                 break;
             default:
                 this.logger.error(`Invalid TargetType passed ${parsedTarget.type}`);
-                process.exit(1);
+                await this.cleanExit(1);
             }
 
             if(matchedNamedTargets.length < 1)
@@ -644,7 +644,7 @@ Need help? https://app.bastionzero.com/support`)
                 this.logger.error(`No ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
                 this.logger.warn('Target names are case sensitive');
                 this.logger.warn('To see list of all targets run: \'zli lt\'');
-                process.exit(1);
+                await this.cleanExit(1);
             } else if(matchedNamedTargets.length == 1)
             {
                 // the rest of the flow will work as before since the targetId has now been disambiguated
@@ -655,10 +655,15 @@ Need help? https://app.bastionzero.com/support`)
                 const tableString = getTableOfTargets(matchedNamedTargets, await this.envs);
                 console.log(tableString);
                 this.logger.info('Please connect using \'target id\' instead of target name');
-                process.exit(1);
+                await this.cleanExit(1);
             }
         }
 
         return parsedTarget;
+    }
+
+    public async cleanExit(exitCode: number) {
+        await this.logger.flushLogs();
+        process.exit(exitCode);
     }
 }
