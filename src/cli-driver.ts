@@ -1,45 +1,31 @@
-import { IdP, SessionState, TargetType } from './types';
+import { IdP, TargetType } from './types';
 import {
-    checkTargetTypeAndStringPair,
-    findSubstring,
-    parsedTargetString,
-    parseTargetString,
-    getTableOfTargets,
     targetStringExample,
-    targetStringExampleNoPath,
     TargetSummary,
-    parseTargetType
 } from './utils';
-import yargs from 'yargs';
 import { ConfigService } from './config.service/config.service';
-import {
-    ConnectionService,
-    DynamicAccessConfigService,
-    EnvironmentService,
-    FileService,
-    MfaService,
-    SessionService,
-    SshTargetService,
-    SsmTargetService,
-    UserService
-} from './http.service/http.service';
-import { OAuthService } from './oauth.service/oauth.service';
-import { ShellTerminal } from './terminal/terminal';
-import termsize from 'term-size';
 import { MixpanelService } from './mixpanel.service/mixpanel.service';
 import { checkVersionMiddleware } from './middlewares/check-version-middleware';
-import { oauthMiddleware } from './middlewares/oauth-middleware';
-import fs from 'fs';
-import { EnvironmentDetails, ConnectionState, MfaActionRequired } from './http.service/http.service.types';
-import { Dictionary, includes } from 'lodash';
-import { version } from '../package.json';
-import qrcode from 'qrcode';
+import { EnvironmentDetails} from './http.service/http.service.types';
 import { Logger } from './logger.service/logger';
 import { LoggerConfigService } from './logger-config.service/logger-config.service';
-import { SsmTunnelService } from './ssm-tunnel/ssm-tunnel.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { Observable } from 'rxjs';
-import { bufferTime, filter } from 'rxjs/operators';
+
+// Handlers
+import { initMiddleware, oAuthMiddleware, mixedPanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
+import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
+import { sshProxyHandler } from './handlers/ssh-proxy.handler';
+import { loginHandler } from './handlers/login.handler';
+import { connectHandler } from './handlers/connect.handler';
+import { listTargetsHandler } from './handlers/list-targets.handler';
+import { copyHandler } from './handlers/copy.handler';
+import { configHandler } from './handlers/config.handler';
+import { logoutHandler } from './handlers/logout.handler';
+
+// 3rd Party Modules
+import { Dictionary, includes } from 'lodash';
+import yargs from 'yargs';
+
 
 export class CliDriver
 {
@@ -79,16 +65,11 @@ export class CliDriver
             .usage('$0 <cmd> [args]')
             .wrap(null)
             .middleware(async (argv) => {
-                // Configure our logger
-                this.loggerConfigService = new LoggerConfigService(<string> argv.configName);
-                this.logger = new Logger(this.loggerConfigService, !!argv.debug, !!argv.silent);
-
-                // Config init
-                this.configService = new ConfigService(<string>argv.configName, this.logger);
-
-                // KeySplittingService init
-                this.keySplittingService = new KeySplittingService(this.configService, this.logger);
-                await this.keySplittingService.init();
+                var initResponse = await initMiddleware(argv);
+                this.loggerConfigService = initResponse.loggingConfigService;
+                this.logger = initResponse.logger;
+                this.configService = initResponse.configService;
+                this.keySplittingService = initResponse.keySplittingService;
             })
             .middleware(() => {
                 checkVersionMiddleware(this.logger);
@@ -96,90 +77,29 @@ export class CliDriver
             .middleware(async (argv) => {
                 if(includes(this.noOauthCommands, argv._[0]))
                     return;
-
-                // OAuth
-                await oauthMiddleware(this.configService, this.logger);
-                const me = this.configService.me(); // if you have logged in, this should be set
-                const sessionId = this.configService.sessionId();
-                this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
+                oAuthMiddleware(this.configService, this.logger);
             })
             .middleware(async (argv) => {
                 if(includes(this.noMixpanelCommands, argv._[0]))
                     return;
-
-                // Mixpanel tracking
-                this.mixpanelService = new MixpanelService(this.configService);
-
-                // Only captures args, not options at the moment. Capturing configName flag
-                // does not matter as that is handled by which mixpanel token is used
-                // TODO: capture options and flags
-                this.mixpanelService.TrackCliCall(
-                    'CliCommand',
-                    {
-                        'cli-version': version,
-                        'command': argv._[0],
-                        args: argv._.slice(1)
-                    }
-                );
+                this.mixpanelService = mixedPanelTrackingMiddleware(this.configService, argv);
             })
             .middleware((argv) => {
                 if(includes(this.noFetchCommands, argv._[0]))
                     return;
 
-                // Greedy fetch of some data that we use frequently
-                const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-                const sshTargetService = new SshTargetService(this.configService, this.logger);
-                const dynamicConfigService = new DynamicAccessConfigService(this.configService, this.logger);
-                const envService = new EnvironmentService(this.configService, this.logger);
-
-                this.dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
-                    .then(result =>
-                        result.map<TargetSummary>((config, _index, _array) => {
-                            return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId};
-                        })
-                    );
-
-                this.ssmTargets = ssmTargetService.ListSsmTargets(false)
-                    .then(result =>
-                        result.map<TargetSummary>((ssm, _index, _array) => {
-                            return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId};
-                        })
-                    );
-
-
-                this.sshTargets = sshTargetService.ListSshTargets()
-                    .then(result =>
-                        result.map<TargetSummary>((ssh, _index, _array) => {
-                            return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId};
-                        })
-                    );
-
-                this.envs = envService.ListEnvironments();
+                let fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
+                this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
+                this.ssmTargets = fetchDataResponse.ssmTargets;
+                this.sshTargets = fetchDataResponse.sshTargets;
+                this.envs = fetchDataResponse.envs;
             })
             .command(
                 'ssh-proxy-config',
                 'Generate ssh configuration to be used with the ssh-proxy command',
                 (_) => {},
                 async (_) => {
-                    let keyPath = this.configService.sshKeyPath();
-                    let configName = this.configService.getConfigName();
-                    let configNameArg = '';
-                    if(configName != 'prod') {
-                        configNameArg = `--configName=${configName}`;
-                    }
-
-                    this.logger.info(`
-Add the following lines to your ssh config (~/.ssh/config) file:
-
-host bzero-*
-    IdentityFile ${keyPath}
-    ProxyCommand ${this.processName} ssh-proxy ${configNameArg} -s %h %r %p ${keyPath}
-
-
-Then you can use native ssh to connect to any of your ssm targets using the following syntax:
-
-ssh <user>@bzero-<ssm-target-id-or-name>
-                `);
+                    sshProxyConfigHandler(this.configService, this.logger, this.processName);
                 }
             )
             .command(
@@ -201,17 +121,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         });
                 },
                 async (argv) => {
-                    let ssmTunnelService = new SsmTunnelService(this.logger, this.configService, this.keySplittingService, this.envMap['enableKeysplitting'] == 'true');
-                    ssmTunnelService.errors.subscribe(async errorMessage => {
-                        process.stderr.write(`\n${errorMessage}\n`);
-                        await this.cleanExit(1);
-                    });
-
-                    if( await ssmTunnelService.setupWebsocketTunnel(argv.host, argv.user, argv.port, argv.identityFile)) {
-                        process.stdin.on('data', async (data) => {
-                            ssmTunnelService.sendData(data);
-                        });
-                    }
+                    await sshProxyHandler(this.configService, this.logger, argv, this.keySplittingService, this.envMap);
                 }
             )
             .command(
@@ -234,74 +144,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         .example('login Google', 'Login with Google');
                 },
                 async (argv) => {
-                // Clear previous log in info
-                    this.configService.logout();
-                    await this.keySplittingService.generateKeysplittingLoginData();
-
-                    const provider = <IdP> argv.provider;
-                    await this.configService.loginSetup(provider);
-
-                    // Can only create oauth service after loginSetup completes
-                    const oAuthService = new OAuthService(this.configService, this.logger);
-                    if(! oAuthService.isAuthenticated())
-                    {
-                        this.logger.info('Login required, opening browser');
-
-                        // Create our Nonce
-                        const nonce = this.keySplittingService.createNonce();
-
-                        // Pass it in as we login
-                        await oAuthService.login((t) => {
-                            this.configService.setTokenSet(t);
-                            this.keySplittingService.setInitialIdToken(this.configService.getAuth());
-                        }, nonce);
-                    }
-
-                    // Register user log in and get User Session Id
-                    const userService = new UserService(this.configService, this.logger);
-                    const registerResponse = await userService.Register();
-                    this.configService.setSessionId(registerResponse.userSessionId);
-
-                    // Check if we must MFA and act upon it
-                    const mfaService = new MfaService(this.configService, this.logger);
-                    switch(registerResponse.mfaActionRequired)
-                    {
-                    case MfaActionRequired.NONE:
-                        break;
-                    case MfaActionRequired.TOTP:
-                        if(! argv.mfa)
-                        {
-                            this.logger.warn('MFA token required for this account');
-                            this.logger.info('Please try logging in again with \'--mfa <token\' flag');
-                            this.configService.logout();
-                            await this.cleanExit(1);
-                        }
-
-                        await mfaService.SendTotp(argv.mfa);
-
-                        break;
-                    case MfaActionRequired.RESET:
-                        this.logger.info('MFA reset detected, requesting new MFA token');
-                        this.logger.info('Please scan the following QR code with your device (Google Authenticator recommended)');
-
-                        const resp = await mfaService.ResetSecret();
-                        var data = await qrcode.toString(resp.mfaSecretUrl, {type: 'terminal', scale: 2});
-                        console.log(data);
-
-                        this.logger.info('Please log in again with \'--mfa token\'');
-
-                        break;
-                    default:
-                        this.logger.warn(`Unexpected MFA response ${registerResponse.mfaActionRequired}`);
-                        break;
-                    }
-
-                    const me = await userService.Me();
-                    this.configService.setMe(me);
-
-                    this.logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${registerResponse.userSessionId}`);
-
-                    await this.cleanExit(0);
+                    await loginHandler(this.configService, this.logger, argv, this.keySplittingService);
                 }
             )
         // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
@@ -324,116 +167,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         .example('connect dynamic science@big-science-container-config', 'Connect to a dynamic target example');
                 },
                 async (argv) => {
-
-                    const parsedTarget = await this.disambiguateTargetName(argv.targetType, argv.targetString);
-
-                    // call list session
-                    const sessionService = new SessionService(this.configService, this.logger);
-                    const listSessions = await sessionService.ListSessions();
-
-                    // space names are not unique, make sure to find the latest active one
-                    const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
-
-                    // maybe make a session
-                    let cliSessionId: string;
-                    if(cliSpace.length === 0)
-                    {
-                        cliSessionId =  await sessionService.CreateSession('cli-space');
-                    } else {
-                    // there should only be 1 active 'cli-space' session
-                        cliSessionId = cliSpace.pop().id;
-                    }
-
-                    // We do the following for ssh since we are required to pass
-                    // in a user although it does not get read at any point
-                    const targetUser = parsedTarget.type === TargetType.SSH ? 'ssh' : parsedTarget.user;
-
-                    // make a new connection
-                    const connectionService = new ConnectionService(this.configService, this.logger);
-                    // if SSM user does not exist then resp.connectionId will throw a
-                    // 'TypeError: Cannot read property 'connectionId' of undefined'
-                    // so we need to catch and return undefined
-                    const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSessionId, targetUser).catch(() => undefined);
-
-                    if(! connectionId)
-                    {
-                        this.logger.error('Connection creation failed');
-                        if(parsedTarget.type !== TargetType.SSH)
-                        {
-                            const allSsmBasedTargets = (await this.ssmTargets).concat(await this.dynamicConfigs);
-                            const targetEnvId = allSsmBasedTargets.filter(ssm => ssm.id == parsedTarget.id)[0].environmentId;
-                            const targetEnvName = (await this.envs).filter(e => e.id == targetEnvId)[0].name;
-                            this.logger.error(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${targetEnvName}`);
-                            this.logger.info('You can find SSM user policies in the web app');
-                        } else {
-                            this.logger.info('Please check your polices in the web app for this target and/or environment');
-                        }
-
-                        await this.cleanExit(1);
-                    }
-
-                    // connect to target and run terminal
-                    var terminal = new ShellTerminal(this.configService, connectionId);
-                    try {
-                        await terminal.start(termsize());
-                    } catch (err) {
-                        this.logger.error(`Error connecting to terminal: ${err.stack}`);
-                        await this.cleanExit(1);
-                    }
-                    this.mixpanelService.TrackNewConnection(parsedTarget.type);
-
-                    // Terminal resize event logic
-                    // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
-                    // https://github.com/nodejs/node/issues/16194
-                    // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
-                    process.stdout.on(
-                        'resize',
-                        () => {
-                            const resizeEvent = termsize();
-                            terminal.resize(resizeEvent);
-                        }
-                    );
-
-                    // If we detect a disconnection, close the connection immediately
-                    terminal.terminalRunning.subscribe(
-                        () => {},
-                        async (error) => {
-                            if(error)
-                            {
-                                this.logger.error(error);
-                                this.logger.warn('Target may have gone offline or space/connection closed from another client');
-                            }
-
-                            terminal.dispose();
-
-                            this.logger.debug('Cleaning up connection...');
-                            const conn = await connectionService.GetConnection(connectionId);
-                            // if connection not already closed
-                            if(conn.state == ConnectionState.Open)
-                                await connectionService.CloseConnection(connectionId);
-
-                            this.logger.debug('Connection closed');
-
-                            if(error)
-                                await this.cleanExit(1);
-
-                            await this.cleanExit(0);
-                        },
-                        () => {}
-                    );
-
-                    let source = new Observable<string>(function (observer) {
-                        // To get 'keypress' events you need the following lines
-                        // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
-                        const readline = require('readline');
-                        readline.emitKeypressEvents(process.stdin);
-                        process.stdin.setRawMode(true);
-                        process.stdin.on('keypress', (_, key) => observer.next(key.sequence));
-                    });
-                    source.pipe(bufferTime(50), filter(buffer => buffer.length > 0)).subscribe(keypresses => {
-                        // This pipe is in order to allow copy-pasted input to be treated like a single string
-                        terminal.writeString(keypresses.join(''));
-                    });
+                    await connectHandler(this.configService, this.logger, argv, this.mixpanelService, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
                 }
             )
             .command(
@@ -468,36 +202,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         );
                 },
                 async (argv) => {
-                // await and concatenate
-                    let allTargets = [...await this.ssmTargets, ...await this.sshTargets, ...await this.dynamicConfigs];
-                    let envs = await this.envs;
-
-                    // find all envIds with substring search
-                    // filter targets down by endIds
-                    // ref for '!!': https://stackoverflow.com/a/29312197/14782428
-                    if(!! argv.env)
-                    {
-                        const envIdFilter = envs.filter(e => findSubstring(argv.env, e.name)).map(e => e.id);
-
-                        allTargets = allTargets.filter(t => envIdFilter.includes(t.environmentId));
-                    }
-
-                    // filter targets by name/alias
-                    if(!! argv.name)
-                    {
-                        allTargets = allTargets.filter(t => findSubstring(argv.name, t.name));
-                    }
-
-                    // filter targets by TargetType
-                    if(!! argv.targetType)
-                    {
-                        let targetType = parseTargetType(argv.targetType);
-                        allTargets = allTargets.filter(t => t.type === targetType);
-                    }
-
-                    let tableString = getTableOfTargets(allTargets, envs);
-                    console.log(tableString);
-                    await this.cleanExit(0);
+                    await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
                 }
             )
             .command(
@@ -520,36 +225,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
                 },
                 async (argv) => {
-                    const fileService = new FileService(this.configService, this.logger);
-
-                    const sourceParsedString = parseTargetString(argv.targetType, argv.source);
-                    const destParsedString = parseTargetString(argv.targetType, argv.destination);
-                    const parsedTarget = sourceParsedString || destParsedString; // one of these will be undefined so javascript will use the other
-
-                    // figure out upload or download
-                    // would be undefined if not parsed properly
-                    if(destParsedString)
-                    {
-                        // Upload case
-                        // First ensure that the file exists
-                        if (!fs.existsSync(argv.source)) {
-                            this.logger.warn(`File ${argv.source} does not exist!`);
-                            process.exit(1);
-                        }
-
-                        // Then create our read stream and try to upload it
-                        const fh = fs.createReadStream(argv.source);
-                        await fileService.uploadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, fh, parsedTarget.user);
-                        this.logger.info('File upload complete');
-
-                    } else if(sourceParsedString) {
-                    // download case
-                        await fileService.downloadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, argv.destination, parsedTarget.user);
-                    } else {
-                        this.logger.error('Invalid target string, must follow syntax:');
-                        this.logger.error(targetStringExample);
-                    }
-                    await this.cleanExit(0);
+                    await copyHandler(this.configService, this.logger, argv);
                 }
             )
             .command(
@@ -557,20 +233,14 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 'Returns config file path',
                 () => {},
                 async () => {
-                    this.logger.info(`You can edit your config here: ${this.configService.configPath()}`);
-                    this.logger.info(`You can find your log files here: ${this.loggerConfigService.logPath()}`);
-                    await this.cleanExit(0);
+                    await configHandler(this.logger, this.configService, this.loggerConfigService);
                 }
             ).command(
                 'logout',
                 'Deauthenticate the client',
                 () => {},
                 async () => {
-                // Deletes the auth tokens from the config which will force the
-                // user to login again before running another command
-                    this.configService.logout();
-                    this.logger.info('Logout successful');
-                    await this.cleanExit(0);
+                    await logoutHandler(this.configService, this.logger);
                 }
             )
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
@@ -592,88 +262,5 @@ Command arguments key:
 
 Need help? https://app.bastionzero.com/support`)
             .argv; // returns argv of yargs
-    }
-
-    // Figure out target id based on target name and target type.
-    // Also preforms error checking on target type and target string passed in
-    private async disambiguateTargetName(argvTargetType: string, argvTargetString: string) : Promise<parsedTargetString>
-    {
-        let parsedTarget = parseTargetString(argvTargetType, argvTargetString);
-
-        if(! parsedTarget)
-        {
-            this.logger.error('Invalid target string, must follow syntax:');
-            this.logger.error(targetStringExampleNoPath);
-            await this.cleanExit(1);
-        }
-
-        if(! checkTargetTypeAndStringPair(parsedTarget))
-        {
-
-            switch(parsedTarget.type)
-            {
-            case TargetType.SSH:
-                this.logger.warn('Cannot specify targetUser for SSH connections');
-                this.logger.warn('Please try your previous command without the targetUser');
-                this.logger.warn('Target string for SSH: targetId[:path]');
-                break;
-            case TargetType.SSM:
-            case TargetType.DYNAMIC:
-                this.logger.warn('Must specify targetUser for SSM and DYNAMIC connections');
-                this.logger.warn('Target string for SSM: targetUser@targetId[:path]');
-                break;
-            default:
-                throw new Error('Unhandled TargetType');
-            }
-            await this.cleanExit(1);
-        }
-
-
-        if(parsedTarget.name)
-        {
-            let matchedNamedTargets: TargetSummary[] = [];
-
-            switch(parsedTarget.type)
-            {
-            case TargetType.SSM:
-                matchedNamedTargets = (await this.ssmTargets).filter(ssm => ssm.name === parsedTarget.name);
-                break;
-            case TargetType.SSH:
-                matchedNamedTargets = (await this.sshTargets).filter(ssh => ssh.name === parsedTarget.name);
-                break;
-            case TargetType.DYNAMIC:
-                matchedNamedTargets = (await this.dynamicConfigs).filter(config => config.name === parsedTarget.name);
-                break;
-            default:
-                this.logger.error(`Invalid TargetType passed ${parsedTarget.type}`);
-                await this.cleanExit(1);
-            }
-
-            if(matchedNamedTargets.length < 1)
-            {
-                this.logger.error(`No ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
-                this.logger.warn('Target names are case sensitive');
-                this.logger.warn('To see list of all targets run: \'zli lt\'');
-                await this.cleanExit(1);
-            } else if(matchedNamedTargets.length == 1)
-            {
-                // the rest of the flow will work as before since the targetId has now been disambiguated
-                parsedTarget.id = matchedNamedTargets.pop().id;
-            } else {
-                // ambiguous target id, warn user, exit process
-                this.logger.warn(`Multiple ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
-                const tableString = getTableOfTargets(matchedNamedTargets, await this.envs);
-                console.log(tableString);
-                this.logger.info('Please connect using \'target id\' instead of target name');
-                await this.cleanExit(1);
-            }
-        }
-
-        return parsedTarget;
-    }
-
-    public async cleanExit(exitCode: number) {
-        await this.logger.flushLogs();
-        process.exit(exitCode);
     }
 }
