@@ -55,20 +55,18 @@ export class HttpService
         let errorMessage = error.message;
         
         if(error.response.statusCode == 401) {
-            errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
             this.logger.error(`Authentication Error:\n${errorMessage}`);
-            process.exit(1);
+        } else {
+            // Handle 500 errors by printing out our custom exception message
+            if(error.response.statusCode == 500) {
+                errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
+            } else if(error.response.statusCode == 502)
+            {
+                this.logger.error('Service is offline');
+            }
+            this.logger.error(`HttpService Error:\n${errorMessage}`);
         }
-
-        // Handle 500 errors by printing out our custom exception message
-        if(error.response.statusCode == 500) {
-            errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
-        } else if(error.response.statusCode == 502)
-        {
-            this.logger.error('Service is offline');
-        }
-
-        this.logger.error(`HttpService Error:\n${errorMessage}`);
+        process.exit(1);
     }
 
     protected getFormDataFromRequest(request: any): FormData {
@@ -118,6 +116,8 @@ export class HttpService
 
     protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
     {
+        this.setHeaders();
+
         const formBody = this.getFormDataFromRequest(body);
         
         try {
@@ -137,34 +137,36 @@ export class HttpService
     // Returns a request object that you can add response handlers to at a higher layer
     protected FormStream<TReq>(route: string, body: TReq, localPath: string) : Promise<void>
     {
+        this.setHeaders();
+
         const formBody = this.getFormDataFromRequest(body);
         const whereToSave = localPath.endsWith('/') ? localPath + `bzero-download-${Math.floor(Date.now() / 1000)}` : localPath;
 
-            return new Promise((resolve, reject) => {
-                try {
-                    let requestStream = this.httpClient.stream.post(
-                        route,
-                        {
-                            isStream: true,
-                            body: formBody
-                        }
-                    );
+        return new Promise((resolve, reject) => {
+            try {
+                let requestStream = this.httpClient.stream.post(
+                    route,
+                    {
+                        isStream: true,
+                        body: formBody
+                    }
+                );
 
-                    // Buffer is returned by 'data' event
-                    requestStream.on('data', (response: Buffer) => {
-                        fs.writeFile(whereToSave, response, () => {});
-                    })
-            
-                    requestStream.on('end', () => {
-                        this.logger.info('File download complete');
-                        this.logger.info(whereToSave);
-                        resolve();
-                    });
-                } catch (error) {
-                    this.handleHttpException(error);
-                    reject(error);
-                }
-            });
+                // Buffer is returned by 'data' event
+                requestStream.on('data', (response: Buffer) => {
+                    fs.writeFileSync(whereToSave, response);
+                })
+        
+                requestStream.on('end', () => {
+                    this.logger.info('File download complete');
+                    this.logger.info(whereToSave);
+                    resolve();
+                });
+            } catch (error) {
+                this.handleHttpException(error);
+                reject(error);
+            }
+        });
     }   
 }
 

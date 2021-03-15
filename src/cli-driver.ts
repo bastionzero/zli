@@ -507,14 +507,15 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 // would be undefined if not parsed properly
                 if(destParsedString)
                 {
-                    // upload case
-                    const fh = fs.createReadStream(argv.source);
-                    if(fh.readableLength === 0)
-                    {
-                        this.logger.warn(`File ${argv.source} does not exist or cannot be read`);
+                    // Upload case
+                    // First ensure that the file exists
+                    if (!fs.existsSync(argv.source)) {
+                        this.logger.warn(`File ${argv.source} does not exist!`);
                         process.exit(1);
                     }
 
+                    // Then create our read stream and try to upload it
+                    const fh = fs.createReadStream(argv.source);
                     await fileService.uploadFile(parsedTarget.id, parsedTarget.type, parsedTarget.path, fh, parsedTarget.user);
                     this.logger.info('File upload complete');
 
