@@ -20,14 +20,14 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
             await ouath.refresh()
                 .then((newTokenSet) => configService.setTokenSet(newTokenSet))
             // Catch oauth related errors
-                .catch((error: errors.OPError | errors.RPError) => {
+                .catch((_: errors.OPError | errors.RPError) => {
                     logger.error('Stale log in detected');
                     logger.info('You need to log in, please run \'zli login --help\'');
                     // TODO trade of exception
                     configService.logout();
                     process.exit(1);
                 })
-                .catch((error: any) => {
+                .catch((_: any) => {
                     logger.error('Unexpected error during oauth refresh');
                     logger.info('Please log in again');
                     configService.logout();
