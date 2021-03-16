@@ -155,8 +155,8 @@ export class CliDriver
             .command(
                 'ssh-proxy-config',
                 'Generate ssh configuration to be used with the ssh-proxy command',
-                (yargs) => {},
-                async (argv) => {
+                (_) => {},
+                async (_) => {
                     let keyPath = this.configService.sshKeyPath();
                     let configName = this.configService.getConfigName();
                     let configNameArg = '';

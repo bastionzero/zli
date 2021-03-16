@@ -5,7 +5,6 @@ import fs from 'fs';
 import SshPK from 'sshpk';
 import async from 'async';
 import { Observable, Subject } from 'rxjs';
-import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
@@ -91,7 +90,7 @@ export class SsmTunnelService
         // Generate a new ephemeral key to use
         this.logger.info('Generating an ephemeral ssh key');
 
-        let { publicKey, privateKey } = await util.promisify(crypto.generateKeyPair)('rsa', {
+        let { privateKey } = await util.promisify(crypto.generateKeyPair)('rsa', {
             modulusLength: 4096,
             publicKeyEncoding: {
                 type: 'spki',
