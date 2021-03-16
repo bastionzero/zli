@@ -310,7 +310,7 @@ export class FileService extends HttpService
             targetUser: targetUser
         };
 
-        const resp : UploadFileResponse = await this.FormPost('upload', request);
+        const _ : UploadFileResponse = await this.FormPost('upload', request);
 
         return;
     }

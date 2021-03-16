@@ -1,6 +1,5 @@
 import { BehaviorSubject, Observable } from 'rxjs';
 import { IDisposable, WebsocketStream, TerminalSize } from '../../webshell-common-ts/websocket.service/websocket.service';
-import { AuthConfigService } from '../../webshell-common-ts/auth-config-service/auth-config.service';
 
 import { ConfigService } from '../config.service/config.service';
 import { ShellState } from '../../webshell-common-ts/websocket.service/websocket.service.types';
