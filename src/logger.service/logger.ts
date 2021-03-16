@@ -95,7 +95,7 @@ export class Logger implements ILogger {
             }
         }
 
-        this.logger.on('error', (err) => {
+        this.logger.on('error', (_) => {
             // suppress errors that occur in the logger otherwise they will be
             // unhandled exceptions this may happen if we write to the logger
             // after having called flushLogs which ends the log stream
@@ -104,7 +104,7 @@ export class Logger implements ILogger {
 
     // Ends the logger stream and waits for finish event to be emitted
     public flushLogs(): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             this.logger.on('finish', () => {
                 // This should work without a timeout but this is currently an open bug in winston
                 // https://github.com/winstonjs/winston#awaiting-logs-to-be-written-in-winston
