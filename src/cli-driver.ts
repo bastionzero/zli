@@ -76,7 +76,7 @@ export class CliDriver
             .usage('$0 <cmd> [args]')
             .wrap(null)
             .middleware(async (argv) => {
-            // Configure our logger
+                // Configure our logger
                 this.loggerConfigService = new LoggerConfigService(<string> argv.configName);
                 this.logger = new Logger(this.loggerConfigService, !!argv.debug, !!argv.silent);
 
