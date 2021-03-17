@@ -37,9 +37,9 @@ export class SsmTunnelService
         });
 
         if(keysplittingEnabled) {
-            this.logger.info("Keysplitting Enabled!");
+            this.logger.info('Keysplitting Enabled!');
         } else {
-            this.logger.info("Keysplitting Disabled!");
+            this.logger.info('Keysplitting Disabled!');
         }
     }
 
