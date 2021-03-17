@@ -64,7 +64,8 @@ export class CliDriver
 
     // Mapping from env vars to options if they exist
     private envMap: Dictionary<string> = {
-        'configName': process.env.ZLI_CONFIG_NAME || 'prod'
+        'configName': process.env.ZLI_CONFIG_NAME || 'prod',
+        'enableKeysplitting': process.env.ZLI_ENABLE_KEYSPLITTING || 'false'
     };
 
     public start()
@@ -198,7 +199,7 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         });
                 },
                 async (argv) => {
-                    let ssmTunnelService = new SsmTunnelService(this.logger, this.configService, this.keySplittingService);
+                    let ssmTunnelService = new SsmTunnelService(this.logger, this.configService, this.keySplittingService, this.envMap['enableKeysplitting'] == 'true');
                     ssmTunnelService.errors.subscribe(async errorMessage => {
                         process.stderr.write(`\n${errorMessage}\n`);
                         await this.cleanExit(1);

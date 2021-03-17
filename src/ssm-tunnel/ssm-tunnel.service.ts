@@ -26,7 +26,8 @@ export class SsmTunnelService
     constructor(
         private logger: Logger,
         private configService: ConfigService,
-        private keySplittingService: KeySplittingService
+        private keySplittingService: KeySplittingService,
+        private keysplittingEnabled: boolean
     )
     {
         // https://caolan.github.io/async/v3/docs.html#queue
@@ -34,6 +35,12 @@ export class SsmTunnelService
             await this.ssmTunnelWebsocketService.sendData(data);
             cb();
         });
+
+        if(keysplittingEnabled) {
+            this.logger.info('Keysplitting Enabled!');
+        } else {
+            this.logger.info('Keysplitting Disabled!');
+        }
     }
 
     public async setupWebsocketTunnel(
@@ -58,7 +65,7 @@ export class SsmTunnelService
             await this.setupEphemeralSshKey(identityFile);
             let pubKey = await this.extractPubKeyFromIdentityFile(identityFile);
 
-            await this.ssmTunnelWebsocketService.setupWebsocketTunnel(userName, port, pubKey);
+            await this.ssmTunnelWebsocketService.setupWebsocketTunnel(userName, port, pubKey, this.keysplittingEnabled);
 
             return true;
         } catch(err) {
