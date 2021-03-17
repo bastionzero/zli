@@ -64,7 +64,8 @@ export class CliDriver
 
     // Mapping from env vars to options if they exist
     private envMap: Dictionary<string> = {
-        'configName': process.env.ZLI_CONFIG_NAME || 'prod'
+        'configName': process.env.ZLI_CONFIG_NAME || 'prod',
+        'enableKeysplitting': process.env.ZLI_ENABLE_KEYSPLITTING || 'false'
     };
 
     public start()
