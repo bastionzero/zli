@@ -37,7 +37,7 @@ export class SsmTunnelService
         });
 
         if(keysplittingEnabled) {
-            this.logger.info('Keysplitting Enabled!');
+            this.logger.info('Keysplitting Enabled! Will attempt keysplitting on all agents that return agent version!');
         } else {
             this.logger.info('Keysplitting Disabled!');
         }
