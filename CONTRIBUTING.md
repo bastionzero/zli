@@ -39,5 +39,7 @@ When filing an issue, make sure to answer these five questions:
  - What did you expect to see?
  - What did you see instead?
 
+If you have logs or screenshots, please provide them in your issue.
+
 CONTRIBUTING abridged from
 [here](https://github.com/nayafia/contributing-template/blob/HEAD/CONTRIBUTING-template.md)
