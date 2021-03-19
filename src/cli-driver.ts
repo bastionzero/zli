@@ -498,19 +498,19 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                 'Upload/download a file to target',
                 (yargs) => {
                     return yargs
-                    .positional('targetType', {
-                        type: 'string',
-                        choices: ['ssm', 'ssh']
-                    })
-                    .positional('source', {
-                        type: 'string'
-                    })
-                    .positional('destination', {
-                        type: 'string'
-                    })
-                    .example('copy ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'SSM Download example')
-                    .example('copy ssm /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'SSM Upload example')
-                    .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
+                        .positional('targetType', {
+                            type: 'string',
+                            choices: ['ssm', 'ssh']
+                        })
+                        .positional('source', {
+                            type: 'string'
+                        })
+                        .positional('destination', {
+                            type: 'string'
+                        })
+                        .example('copy ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'SSM Download example')
+                        .example('copy ssm /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'SSM Upload example')
+                        .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
                 },
                 async (argv) => {
                     const fileService = new FileService(this.configService, this.logger);

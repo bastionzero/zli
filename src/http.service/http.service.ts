@@ -155,8 +155,8 @@ export class HttpService
                 // Buffer is returned by 'data' event
                 requestStream.on('data', (response: Buffer) => {
                     fs.writeFileSync(whereToSave, response);
-                })
-        
+                });
+
                 requestStream.on('end', () => {
                     this.logger.info('File download complete');
                     this.logger.info(whereToSave);
@@ -167,7 +167,7 @@ export class HttpService
                 reject(error);
             }
         });
-    }   
+    }
 }
 
 export class SessionService extends HttpService
