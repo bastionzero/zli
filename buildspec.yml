@@ -5,7 +5,7 @@ env:
   variables:
     TZ: "America/New_York date"
     # The remote origin that will be used if building through CodePipeline
-    remote_origin: "git@github.com:cwcrypto/thoum.git"
+    remote_origin: "git@github.com:bastionzero/zli.git"
   parameter-store:
     GITHUB_KEY_PATH: "/github/sshkey/path"
     SSH_KEY_PATH: "/webshell/sshkey/path"

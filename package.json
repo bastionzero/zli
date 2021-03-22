@@ -20,7 +20,7 @@
     "lint": "eslint 'src/**/*.ts' 'webshell-common-ts/**/*.ts' -c webshell-common-ts/.eslintrc.json"
   },
   "author": "nabeelperson",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/async": "^3.2.5",
     "@types/jest": "^26.0.20",
