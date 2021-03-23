@@ -38,6 +38,8 @@ import { Logger } from './logger.service/logger';
 import { LoggerConfigService } from './logger-config.service/logger-config.service';
 import { SsmTunnelService } from './ssm-tunnel/ssm-tunnel.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { Observable } from 'rxjs';
+import { bufferTime, filter } from 'rxjs/operators';
 
 export class CliDriver
 {
@@ -378,7 +380,6 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         this.logger.error(`Error connecting to terminal: ${err.stack}`);
                         await this.cleanExit(1);
                     }
-
                     this.mixpanelService.TrackNewConnection(parsedTarget.type);
 
                     // Terminal resize event logic
@@ -421,12 +422,18 @@ ssh <user>@bzero-<ssm-target-id-or-name>
                         () => {}
                     );
 
-                    // To get 'keypress' events you need the following lines
-                    // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
-                    const readline = require('readline');
-                    readline.emitKeypressEvents(process.stdin);
-                    process.stdin.setRawMode(true);
-                    process.stdin.on('keypress', (_, key) => terminal.writeString(key.sequence));
+                    let source = new Observable<string>(function (observer) {
+                        // To get 'keypress' events you need the following lines
+                        // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
+                        const readline = require('readline');
+                        readline.emitKeypressEvents(process.stdin);
+                        process.stdin.setRawMode(true);
+                        process.stdin.on('keypress', (_, key) => observer.next(key.sequence));
+                    });
+                    source.pipe(bufferTime(50), filter(buffer => buffer.length > 0)).subscribe(keypresses => {
+                        // This pipe is in order to allow copy-pasted input to be treated like a single string
+                        terminal.writeString(keypresses.join(''));
+                    });
                 }
             )
             .command(
