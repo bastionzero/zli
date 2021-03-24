@@ -127,6 +127,10 @@ export class SsmTunnelService
 
     private async getSsmTargetFromHostString(host: string): Promise<SsmTargetSummary> {
         let prefix = 'bzero-';
+        let configName = this.configService.getConfigName();
+        if(configName != 'prod') {
+            prefix = `${configName}-${prefix}`;
+        }
 
         if(! host.startsWith(prefix)) {
             throw new Error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
