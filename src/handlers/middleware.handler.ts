@@ -29,7 +29,10 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             })
         );
 
-    var ssmTargets = ssmTargetService.ListSsmTargets(false)
+    // We will to show existing dynamic access targets for file transfer
+    // UX to be more pleasant as people cannot file transfer to configs
+    // only the DATs they produce from the config
+    var ssmTargets = ssmTargetService.ListSsmTargets(true)
         .then(result =>
             result.map<TargetSummary>((ssm, _index, _array) => {
                 return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId};

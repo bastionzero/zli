@@ -225,7 +225,7 @@ export class CliDriver
                         .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
                 },
                 async (argv) => {
-                    await copyHandler(this.configService, this.logger, argv);
+                    await copyHandler(this.configService, this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
                 }
             )
             .command(

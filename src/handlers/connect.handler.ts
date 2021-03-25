@@ -26,7 +26,7 @@ export async function connectHandler(
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
     sshTargets: Promise<TargetSummary[]>,
-    envs: Promise<EnvironmentDetails[]>,) {
+    envs: Promise<EnvironmentDetails[]>) {
     const parsedTarget = await disambiguateTargetName(argv.targetType, argv.targetString, logger, dynamicConfigs, ssmTargets, sshTargets, envs);
 
     // call list session
@@ -136,7 +136,7 @@ export async function connectHandler(
 
 // Figure out target id based on target name and target type.
 // Also preforms error checking on target type and target string passed in
-async function disambiguateTargetName(
+export async function disambiguateTargetName(
     argvTargetType: string,
     argvTargetString: string,
     logger: Logger,

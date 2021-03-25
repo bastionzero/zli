@@ -160,7 +160,7 @@ export class SsmTunnelService
             }
 
             if(matchedTarget.length > 1) {
-                throw new Error(`Multiple targets found with name ${targetName}`);
+                throw new Error(`Multiple targets found with name ${targetName} please use targetId instead (zli lt)`);
             }
 
             return matchedTarget[0];
