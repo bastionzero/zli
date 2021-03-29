@@ -43,7 +43,7 @@ export async function listTargetsHandler(
         allTargets = allTargets.filter(t => t.type === targetType);
     }
 
-    const tableString = getTableOfTargets(allTargets, envs);
+    const tableString = getTableOfTargets(allTargets, envs, !! argv.showId);
     console.log(tableString);
     await cleanExit(0, logger);
 }

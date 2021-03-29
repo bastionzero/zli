@@ -201,9 +201,9 @@ export async function disambiguateTargetName(
         } else {
             // ambiguous target id, warn user, exit process
             logger.warn(`Multiple ${parsedTarget.type} targets found with name ${parsedTarget.name}`);
-            const tableString = getTableOfTargets(matchedNamedTargets, await envs);
+            const tableString = getTableOfTargets(matchedNamedTargets, await envs, true);
             console.log(tableString);
-            logger.info('Please connect using \'target id\' instead of target name');
+            logger.info('Please connect using the target\'s id instead of target name');
             await cleanExit(1, logger);
         }
     }

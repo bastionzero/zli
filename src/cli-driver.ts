@@ -199,6 +199,14 @@ export class CliDriver
                                 demandOption: false,
                                 alias: 'n'
                             }
+                        ).option(
+                            'showId',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'i'
+                            }
                         );
                 },
                 async (argv) => {

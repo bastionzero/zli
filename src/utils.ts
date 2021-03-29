@@ -94,18 +94,29 @@ export interface TargetSummary
     type: TargetType;
 }
 
-export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[]) : string
+export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showGuid: boolean = false) : string
 {
     const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
     const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
 
-    // ref: https://github.com/cli-table/cli-table3
-    const table = new Table({
-        head: ['Type', 'Name', 'Environment', 'Id']
-        , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
-    });
+    let header: string[] = ['Type', 'Name', 'Environment'];
+    let columnWidths = [10, targetNameLength + 2, envNameLength + 2]
 
-    targets.forEach(target => table.push([target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name, target.id]));
+    if(showGuid) 
+    {
+        header.push('Id');
+        columnWidths.push(38);
+    }
+
+    // ref: https://github.com/cli-table/cli-table3
+    var table = new Table({ head: header, colWidths: columnWidths });
+
+    targets.forEach(target => {
+            let row = [target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name];
+            if(showGuid) row.push(target.id);
+            table.push(row);
+        }
+    );
 
     return table.toString();
 }
