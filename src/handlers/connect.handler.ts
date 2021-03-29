@@ -75,7 +75,7 @@ export async function connectHandler(
     }
 
     // connect to target and run terminal
-    var terminal = new ShellTerminal(configService, connectionId);
+    var terminal = new ShellTerminal(logger, configService, connectionId);
     try {
         await terminal.start(termsize());
     } catch (err) {

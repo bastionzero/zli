@@ -1,6 +1,6 @@
 import { AuthorizationParameters, Client, custom, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
 import open from 'open';
-import { IDisposable } from '../../webshell-common-ts/websocket.service/websocket.service';
+import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { ConfigService } from '../config.service/config.service';
 import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
