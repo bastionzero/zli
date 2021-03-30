@@ -139,7 +139,7 @@ export class CliDriver
                         .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
                 },
                 async (argv) => {
-                    const parsedTarget = await disambiguateTarget(argv, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
                     await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                 }
@@ -215,8 +215,8 @@ export class CliDriver
                         .example('copy /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example');
                 },
                 async (argv) => {
-                    const sourceParsedTarget = await disambiguateTarget(argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
-                    const destParsedTarget = await disambiguateTarget(argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
                     if(! sourceParsedTarget && ! destParsedTarget)
                     {
@@ -271,9 +271,8 @@ export class CliDriver
                     }
                     
                     // modify argv to have the targetString and targetType params
-                    argv.targetString = argv.user + '@' + argv.host.substr(prefix.length);
-                    argv.targetType = 'ssm';
-                    const parsedTarget = await disambiguateTarget(argv, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const targetString = argv.user + '@' + argv.host.substr(prefix.length);
+                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
                     if(argv.port < 1 || argv.port > 65535)
                     {

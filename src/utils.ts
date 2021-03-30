@@ -110,14 +110,15 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
 // Figure out target id based on target name and target type.
 // Also preforms error checking on target type and target string passed in
 export async function disambiguateTarget(
-    argv: any,
+    targetTypeString: string,
+    targetString: string,
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
     sshTargets: Promise<TargetSummary[]>,
     envs: Promise<EnvironmentDetails[]>): Promise<ParsedTargetString> {
 
-    let parsedTarget = parseTargetString(argv.targetString);
+    let parsedTarget = parseTargetString(targetString);
 
     if(! parsedTarget) {
         return undefined;
@@ -125,8 +126,8 @@ export async function disambiguateTarget(
 
     let zippedTargets = _.concat(await ssmTargets, await sshTargets, await dynamicConfigs);
 
-    if(!! argv.targetType) {
-        let targetType = parseTargetType(argv.targetType);
+    if(!! targetTypeString) {
+        let targetType = parseTargetType(targetTypeString);
         zippedTargets = zippedTargets.filter(t => t.type == targetType);
     }
 
@@ -140,8 +141,6 @@ export async function disambiguateTarget(
 
     if(matchedTargets.length == 0) {
         return undefined;
-        // logger.error('No targets match that name, please check your targetUser, targetName/targetId');
-        // cleanExit(1, logger);
     } else if(matchedTargets.length == 1) {
         parsedTarget.id = matchedTargets[0].id;
         parsedTarget.name = matchedTargets[0].name;
