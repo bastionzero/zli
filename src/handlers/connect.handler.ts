@@ -1,7 +1,7 @@
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
-import { SessionService, ConnectionService } from '../http.service/http.service';
-import { ConnectionState } from '../http.service/http.service.types';
+import { SessionService, ConnectionService, PolicyQueryService } from '../http.service/http.service';
+import { ConnectionState, VerbType } from '../http.service/http.service.types';
 import { ParsedTargetString, SessionState, TargetType } from '../types';
 import { ShellTerminal } from '../terminal/terminal';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
@@ -9,6 +9,7 @@ import { cleanExit } from './clean-exit.handler';
 
 import termsize from 'term-size';
 import { targetStringExampleNoPath } from '../utils';
+import _ from 'lodash';
 
 
 export async function connectHandler(
@@ -16,11 +17,27 @@ export async function connectHandler(
     logger: Logger,
     mixpanelService: MixpanelService,
     parsedTarget: ParsedTargetString) {
-    
+
     if(! parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
         logger.error(targetStringExampleNoPath);
         await cleanExit(1, logger);
+    }
+
+    const policyQueryService = new PolicyQueryService(configService, logger);
+    const response = await policyQueryService.ListTargetUsers(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
+
+    if(! response.allowed)
+    {
+        logger.error('You do not have sufficient permission to access the target');
+        cleanExit(1, logger);
+    }
+
+    const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
+    if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, parsedTarget.user)) {
+        logger.error(`You do not have permission to connect as targetUser: ${parsedTarget.user}`);
+        logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
+        cleanExit(1, logger);
     }
 
     // call list session
@@ -32,8 +49,7 @@ export async function connectHandler(
 
     // maybe make a session
     let cliSessionId: string;
-    if(cliSpace.length === 0)
-    {
+    if(cliSpace.length === 0) {
         cliSessionId =  await sessionService.CreateSession('cli-space');
     } else {
         // there should only be 1 active 'cli-space' session

@@ -1,4 +1,4 @@
-import { IdP, ParsedTargetString, TargetSummary, TargetType } from './types';
+import { IdP, TargetSummary, TargetType } from './types';
 import {
     disambiguateTarget,
     targetStringExample
@@ -212,7 +212,7 @@ export class CliDriver
                             }
                         )
                         .example('copy ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'Download example')
-                        .example('copy /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example')
+                        .example('copy /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example');
                 },
                 async (argv) => {
                     const sourceParsedTarget = await disambiguateTarget(argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
@@ -227,7 +227,7 @@ export class CliDriver
                     const isTargetSource = !! sourceParsedTarget;
                     const parsedTarget = sourceParsedTarget || destParsedTarget;
                     const localFilePath = ! isTargetSource ? argv.source : argv.destination;
-                    
+
                     await copyHandler(this.configService, this.logger, parsedTarget, localFilePath, isTargetSource);
                 }
             )
@@ -258,10 +258,31 @@ export class CliDriver
                         });
                 },
                 async (argv) => {
-                    // TODO: parameter validation/sanitize before sending to handler
+                    let prefix = 'bzero-';
+                    let configName = this.configService.getConfigName();
+                    if(configName != 'prod') {
+                        prefix = `${configName}-${prefix}`;
+                    }
+
+                    if(! argv.host.startsWith(prefix)) {
+                        // TODO throw versus exit?
+                        this.logger.error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
+                        cleanExit(1, this.logger);
+                    }
+                    
+                    // modify argv to have the targetString and targetType params
+                    argv.targetString = argv.user + '@' + argv.host.substr(prefix.length);
+                    argv.targetType = 'ssm';
+                    const parsedTarget = await disambiguateTarget(argv, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+
+                    if(argv.port < 1 || argv.port > 65535)
+                    {
+                        this.logger.warn(`Port ${argv.port} outside of port range [1-65535]`);
+                        cleanExit(1, this.logger);
+                    }
+
                     const sshTunnelParameters: SshTunnelParameters = {
-                        host: argv.host,
-                        user: argv.user,
+                        parsedTarget: parsedTarget,
                         port: argv.port,
                         identityFile: argv.identityFile
                     };

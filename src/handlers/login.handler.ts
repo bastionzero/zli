@@ -18,9 +18,6 @@ export async function loginHandler(configService: ConfigService, logger: Logger,
     const provider = <IdP> argv.provider;
     await configService.loginSetup(provider);
 
-    // const oAuthService = new OAuthService(configService, logger);
-    // await oAuthService.idpSelect(async (idp) => await configService.loginSetup(idp));
-
     // Can only create oauth service after loginSetup completes
     const oAuthService = new OAuthService(configService, logger);
     if(! oAuthService.isAuthenticated())

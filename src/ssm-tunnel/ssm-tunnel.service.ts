@@ -15,6 +15,7 @@ import { SsmTargetSummary } from '../http.service/http.service.types';
 import { SsmTunnelWebsocketService } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.service';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { SsmTunnelTargetInfo } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.types';
+import { ParsedTargetString } from '../types';
 
 export class SsmTunnelService
 {
@@ -44,14 +45,15 @@ export class SsmTunnelService
     }
 
     public async setupWebsocketTunnel(
-        hostName: string,
-        userName: string,
+        parsedTarget: ParsedTargetString,
         port: number,
         identityFile: string
     ) : Promise<boolean> {
         try {
-            const target = await this.getSsmTargetFromHostString(hostName);
-
+            // target is ssmtargetsummary
+            const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+            const target = await ssmTargetService.GetSsmTarget(parsedTarget.id);
+            
             this.ssmTunnelWebsocketService = new SsmTunnelWebsocketService(
                 this.logger,
                 this.keySplittingService,
@@ -65,7 +67,7 @@ export class SsmTunnelService
             await this.setupEphemeralSshKey(identityFile);
             const pubKey = await this.extractPubKeyFromIdentityFile(identityFile);
 
-            await this.ssmTunnelWebsocketService.setupWebsocketTunnel(userName, port, pubKey, this.keysplittingEnabled);
+            await this.ssmTunnelWebsocketService.setupWebsocketTunnel(parsedTarget.user, port, pubKey, this.keysplittingEnabled);
 
             return true;
         } catch(err) {
@@ -123,47 +125,5 @@ export class SsmTunnelService
 
     private async readIdentityFile(identityFileName: string): Promise<string> {
         return util.promisify(fs.readFile)(identityFileName, 'utf8');
-    }
-
-    private async getSsmTargetFromHostString(host: string): Promise<SsmTargetSummary> {
-        let prefix = 'bzero-';
-        const configName = this.configService.getConfigName();
-        if(configName != 'prod') {
-            prefix = `${configName}-${prefix}`;
-        }
-
-        if(! host.startsWith(prefix)) {
-            throw new Error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
-        }
-
-        const targetString = host.substr(prefix.length);
-
-        const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-        const ssmTargets = await ssmTargetService.ListSsmTargets(true);
-
-        const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
-        if(guidPattern.test(targetString)) {
-            // target id
-            const targetId = targetString;
-            if(! ssmTargets.some(t => t.id == targetId)) {
-                throw new Error(`No ssm target exists with id ${targetId}`);
-            }
-
-            return ssmTargets.filter(t => t.id == targetId)[0];
-        } else {
-            // target name
-            const targetName = targetString;
-            const matchedTarget = ssmTargets.filter(t => t.name == targetName);
-
-            if(matchedTarget.length == 0) {
-                throw new Error(`No ssm target exists with name ${targetName}`);
-            }
-
-            if(matchedTarget.length > 1) {
-                throw new Error(`Multiple targets found with name ${targetName} please use targetId instead (zli lt)`);
-            }
-
-            return matchedTarget[0];
-        }
     }
 }

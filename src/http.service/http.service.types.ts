@@ -216,3 +216,34 @@ export interface DynamicAccessConfigSummary
     name: string;
     environmentId: string;
 }
+
+export interface GetTargetPolicyResponse
+{
+    allowed: boolean;
+    allowedTargetUsers: TargetUser[];
+    allowedVerbs: Verb[]
+}
+
+export interface TargetUser
+{
+    userName: string;
+}
+
+export interface Verb
+{
+    type: VerbType;
+}
+
+export interface GetTargetPolicyRequest
+{
+    targetId: string;
+    targetType: TargetType;
+    verb?: Verb;
+    targetUser?: TargetUser;
+}
+
+export enum VerbType {
+    Shell = 'Shell',
+    FileTransfer = 'FileTransfer',
+    Tunnel = 'Tunnel'
+}
