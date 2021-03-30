@@ -1,13 +1,13 @@
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { OAuthService } from '../oauth.service/oauth.service';
-import { IdP } from '../types';
 import { MfaService, UserService } from '../http.service/http.service';
 import { MfaActionRequired } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
+import { IdP } from '../types';
 
 
 export async function loginHandler(configService: ConfigService, logger: Logger, argv: any, keySplittingService: KeySplittingService) {
@@ -17,6 +17,9 @@ export async function loginHandler(configService: ConfigService, logger: Logger,
 
     const provider = <IdP> argv.provider;
     await configService.loginSetup(provider);
+
+    // const oAuthService = new OAuthService(configService, logger);
+    // await oAuthService.idpSelect(async (idp) => await configService.loginSetup(idp));
 
     // Can only create oauth service after loginSetup completes
     const oAuthService = new OAuthService(configService, logger);

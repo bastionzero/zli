@@ -6,8 +6,7 @@ import {
     SshTargetService,
     SsmTargetService
 } from '../http.service/http.service';
-import { TargetSummary } from '../utils';
-import { TargetType } from '../types';
+import { TargetSummary, TargetType } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';

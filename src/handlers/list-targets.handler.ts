@@ -1,5 +1,4 @@
 import {
-    TargetSummary,
     findSubstring,
     parseTargetType,
     getTableOfTargets
@@ -7,6 +6,7 @@ import {
 import { Logger } from '../logger.service/logger';
 import { EnvironmentDetails } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
+import { TargetSummary } from '../types';
 
 
 export async function listTargetsHandler(

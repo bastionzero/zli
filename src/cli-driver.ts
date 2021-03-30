@@ -1,7 +1,7 @@
-import { IdP, TargetType } from './types';
+import { IdP, ParsedTargetString, TargetSummary, TargetType } from './types';
 import {
-    targetStringExample,
-    TargetSummary,
+    disambiguateTarget,
+    targetStringExample
 } from './utils';
 import { ConfigService } from './config.service/config.service';
 import { MixpanelService } from './mixpanel.service/mixpanel.service';
@@ -14,7 +14,7 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 // Handlers
 import { initMiddleware, oAuthMiddleware, mixedPanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
-import { sshProxyHandler } from './handlers/ssh-proxy.handler';
+import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handler';
 import { loginHandler } from './handlers/login.handler';
 import { connectHandler } from './handlers/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets.handler';
@@ -25,6 +25,7 @@ import { logoutHandler } from './handlers/logout.handler';
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
+import { cleanExit } from './handlers/clean-exit.handler';
 
 
 export class CliDriver
@@ -95,36 +96,6 @@ export class CliDriver
                 this.envs = fetchDataResponse.envs;
             })
             .command(
-                'ssh-proxy-config',
-                'Generate ssh configuration to be used with the ssh-proxy command',
-                (_) => {},
-                async (_) => {
-                    sshProxyConfigHandler(this.configService, this.logger, this.processName);
-                }
-            )
-            .command(
-                'ssh-proxy <host> <user> <port> <identityFile>',
-                'ssh proxy command (run ssh-proxy-config command to generate configuration)',
-                (yargs) => {
-                    return yargs
-                        .positional('host', {
-                            type: 'string',
-                        })
-                        .positional('user', {
-                            type: 'string',
-                        })
-                        .positional('port', {
-                            type: 'number',
-                        })
-                        .positional('identityFile', {
-                            type: 'string'
-                        });
-                },
-                async (argv) => {
-                    await sshProxyHandler(this.configService, this.logger, argv, this.keySplittingService, this.envMap);
-                }
-            )
-            .command(
                 'login <provider>',
                 'Login through a specific provider',
                 (yargs) => {
@@ -147,27 +118,30 @@ export class CliDriver
                     await loginHandler(this.configService, this.logger, argv, this.keySplittingService);
                 }
             )
-        // TODO: https://github.com/yargs/yargs/blob/master/docs/advanced.md#commanddirdirectory-opts
-        // <requiredPositional>, [optionalPositional]
             .command(
-                'connect <targetType> <targetString>',
+                'connect <targetString>',
                 'Connect to a target',
                 (yargs) => {
-                // you must return the yarg for the handler to have types
                     return yargs
-                        .positional('targetType', {
-                            type: 'string',
-                            choices: this.targetTypeChoices
-                        })
                         .positional('targetString', {
                             type: 'string',
                         })
-                        .example('connect ssm ssm-user@neat-name', 'SSM connect example')
-                        .example('connect ssh dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example')
-                        .example('connect dynamic science@big-science-container-config', 'Connect to a dynamic target example');
+                        .option(
+                            'targetType',
+                            {
+                                type: 'string',
+                                choices: this.targetTypeChoices,
+                                demandOption: false,
+                                alias: 't'
+                            },
+                        )
+                        .example('connect ssm-user@neat-name', 'SSM connect example')
+                        .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
                 },
                 async (argv) => {
-                    await connectHandler(this.configService, this.logger, argv, this.mixpanelService, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(argv, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+
+                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                 }
             )
             .command(
@@ -182,7 +156,7 @@ export class CliDriver
                                 choices: this.targetTypeChoices,
                                 demandOption: false,
                                 alias: 't'
-                            },
+                            }
                         )
                         .option(
                             'env',
@@ -214,26 +188,85 @@ export class CliDriver
                 }
             )
             .command(
-                'copy <targetType> <source> <destination>',
+                'copy <source> <destination>',
                 'Upload/download a file to target',
                 (yargs) => {
                     return yargs
-                        .positional('targetType', {
-                            type: 'string',
-                            choices: ['ssm', 'ssh']
-                        })
-                        .positional('source', {
-                            type: 'string'
-                        })
-                        .positional('destination', {
-                            type: 'string'
-                        })
-                        .example('copy ssm ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'SSM Download example')
-                        .example('copy ssm /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'SSM Upload example')
-                        .example('copy ssh /Users/coolUser/neatFile.txt cool-alias:/home/ssm-user/newFileName.txt', 'SSH Upload example');
+                        .positional('source',
+                            {
+                                type: 'string'
+                            }
+                        )
+                        .positional('destination',
+                            {
+                                type: 'string'
+                            }
+                        )
+                        .option(
+                            'targetType',
+                            {
+                                type: 'string',
+                                choices: this.targetTypeChoices,
+                                demandOption: false,
+                                alias: 't'
+                            }
+                        )
+                        .example('copy ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'Download example')
+                        .example('copy /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example')
                 },
                 async (argv) => {
-                    await copyHandler(this.configService, this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const sourceParsedTarget = await disambiguateTarget(argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const destParsedTarget = await disambiguateTarget(argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+
+                    if(! sourceParsedTarget && ! destParsedTarget)
+                    {
+                        this.logger.error('Either source or destination must be a valid target string');
+                        cleanExit(1, this.logger);
+                    }
+
+                    const isTargetSource = !! sourceParsedTarget;
+                    const parsedTarget = sourceParsedTarget || destParsedTarget;
+                    const localFilePath = ! isTargetSource ? argv.source : argv.destination;
+                    
+                    await copyHandler(this.configService, this.logger, parsedTarget, localFilePath, isTargetSource);
+                }
+            )
+            .command(
+                'ssh-proxy-config',
+                'Generate ssh configuration to be used with the ssh-proxy command',
+                (_) => {},
+                async (_) => {
+                    sshProxyConfigHandler(this.configService, this.logger, this.processName);
+                }
+            )
+            .command(
+                'ssh-proxy <host> <user> <port> <identityFile>',
+                'SSM targets only, ssh proxy command (run ssh-proxy-config command to generate configuration)',
+                (yargs) => {
+                    return yargs
+                        .positional('host', {
+                            type: 'string',
+                        })
+                        .positional('user', {
+                            type: 'string',
+                        })
+                        .positional('port', {
+                            type: 'number',
+                        })
+                        .positional('identityFile', {
+                            type: 'string'
+                        });
+                },
+                async (argv) => {
+                    // TODO: parameter validation/sanitize before sending to handler
+                    const sshTunnelParameters: SshTunnelParameters = {
+                        host: argv.host,
+                        user: argv.user,
+                        port: argv.port,
+                        identityFile: argv.identityFile
+                    };
+
+                    await sshProxyHandler(this.configService, this.logger, sshTunnelParameters, this.keySplittingService, this.envMap);
                 }
             )
             .command(
