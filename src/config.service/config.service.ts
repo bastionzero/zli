@@ -4,7 +4,7 @@ import { ClientSecretResponse, UserSummary } from '../http.service/http.service.
 import { TokenService } from '../http.service/http.service';
 import { IdP } from '../types';
 import { Logger } from '../../src/logger.service/logger';
-import { KeySplittingConfigSchema, ConfigInterface } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
+import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig } from '../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -46,13 +46,7 @@ export class ConfigService implements ConfigInterface {
                 sessionId: undefined,
                 whoami: undefined,
                 sshKeyPath: undefined,
-                keySplitting: {
-                    initialIdToken: undefined,
-                    cerRand: undefined,
-                    cerRandSig: undefined,
-                    privateKey: undefined,
-                    publicKey: undefined
-                }
+                keySplitting: getDefaultKeysplittingConfig()
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
