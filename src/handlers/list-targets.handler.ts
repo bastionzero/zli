@@ -18,7 +18,7 @@ export async function listTargetsHandler(
     envsPassed: Promise<EnvironmentDetails[]>) {
     // await and concatenate
     let allTargets = [...await ssmTargets, ...await sshTargets, ...await dynamicConfigs];
-    let envs = await envsPassed;
+    const envs = await envsPassed;
 
     // find all envIds with substring search
     // filter targets down by endIds
@@ -39,11 +39,11 @@ export async function listTargetsHandler(
     // filter targets by TargetType
     if(!! argv.targetType)
     {
-        let targetType = parseTargetType(argv.targetType);
+        const targetType = parseTargetType(argv.targetType);
         allTargets = allTargets.filter(t => t.type === targetType);
     }
 
-    let tableString = getTableOfTargets(allTargets, envs);
+    const tableString = getTableOfTargets(allTargets, envs);
     console.log(tableString);
     await cleanExit(0, logger);
 }

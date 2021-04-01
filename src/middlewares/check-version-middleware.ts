@@ -22,10 +22,10 @@ class CheckVersionMiddleware {
     constructor() {}
 
     public async checkNewVersion(logger: Logger) {
-        let manifestFile = await this.getManifestFile();
+        const manifestFile = await this.getManifestFile();
 
-        let latestVersion = new SemVer(manifestFile.version);
-        let currentVersion = new SemVer(version);
+        const latestVersion = new SemVer(manifestFile.version);
+        const currentVersion = new SemVer(version);
 
         if (latestVersion > currentVersion) {
             logger.warn(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`);
@@ -41,7 +41,7 @@ class CheckVersionMiddleware {
     }
 
     private async getManifestFile() : Promise<ManifestFile> {
-        var resp: ManifestFile = await got.get('https://download-zli.bastionzero.com/release/latest/MANIFEST').json();
+        const resp: ManifestFile = await got.get('https://download-zli.bastionzero.com/release/latest/MANIFEST').json();
         return resp;
     }
 }

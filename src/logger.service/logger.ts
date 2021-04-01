@@ -64,12 +64,13 @@ export class Logger implements ILogger {
                 ]
             });
         } catch (error) {
+            let errorMessage;
             if (error.code == 'EACCES') {
                 // This would happen if the user does not have access to create dirs in /var/log/
-                var errorMessage = `Please ensure that you have access to ${this.config.logPath()}`;
+                errorMessage = `Please ensure that you have access to ${this.config.logPath()}`;
             } else {
                 // Else it's an unknown error
-                var errorMessage = `${error.message}`;
+                errorMessage = `${error.message}`;
             }
             console.log(chalk.red(`${errorMessage}`));
             process.exit(1);

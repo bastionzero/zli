@@ -41,7 +41,7 @@ export class HttpService
 
     private setHeaders()
     {
-        let headers: Dictionary<string> = {};
+        const headers: Dictionary<string> = {};
 
         if(this.authorized) headers['Authorization'] = this.configService.getAuthHeader();
         if(this.authorized && this.configService.sessionId()) headers['X-Session-Id'] = this.configService.sessionId();
@@ -81,18 +81,17 @@ export class HttpService
         this.setHeaders();
 
         try {
-            var resp : TResp = await this.httpClient.get(
+            const resp : TResp = await this.httpClient.get(
                 route,
                 {
                     searchParams: queryParams,
                     parseJson: text => JSON.parse(text),
                 }
             ).json();
+            return resp;
         } catch(error) {
             this.handleHttpException(error);
         }
-
-        return resp;
     }
 
     protected async Post<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
@@ -100,18 +99,17 @@ export class HttpService
         this.setHeaders();
 
         try {
-            var resp : TResp = await this.httpClient.post(
+            const resp : TResp = await this.httpClient.post(
                 route,
                 {
                     json: body,
                     parseJson: text => JSON.parse(text),
                 }
             ).json();
+            return resp;
         } catch(error) {
             this.handleHttpException(error);
         }
-
-        return resp;
     }
 
     protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
@@ -121,17 +119,16 @@ export class HttpService
         const formBody = this.getFormDataFromRequest(body);
 
         try {
-            var resp : TResp = await this.httpClient.post(
+            const resp : TResp = await this.httpClient.post(
                 route,
                 {
                     body: formBody
                 }
             ).json();
+            return resp;
         } catch (error) {
             this.handleHttpException(error);
         }
-
-        return resp;
     }
 
     // Returns a request object that you can add response handlers to at a higher layer
@@ -144,7 +141,7 @@ export class HttpService
 
         return new Promise((resolve, reject) => {
             try {
-                let requestStream = this.httpClient.stream.post(
+                const requestStream = this.httpClient.stream.post(
                     route,
                     {
                         isStream: true,
@@ -189,7 +186,7 @@ export class SessionService extends HttpService
 
     public async CreateSession(sessionName? : string) : Promise<string>
     {
-        var req : CreateSessionRequest = {connectionsToOpen: []};
+        const req : CreateSessionRequest = {connectionsToOpen: []};
 
         if(sessionName)
             req.displayName = sessionName;
@@ -201,7 +198,7 @@ export class SessionService extends HttpService
 
     public CloseSession(sessionId: string) : Promise<CloseSessionResponse>
     {
-        var req : CloseSessionRequest = {sessionId: sessionId};
+        const req : CloseSessionRequest = {sessionId: sessionId};
         return this.Post('close', req);
     }
 }
@@ -220,7 +217,7 @@ export class ConnectionService extends HttpService
 
     public async CreateConnection(targetType: TargetType, targetId: string, sessionId: string, targetUser: string) : Promise<string>
     {
-        var req : CreateConnectionRequest = {
+        const req : CreateConnectionRequest = {
             serverType: targetType,
             serverId: targetId,
             sessionId: sessionId,
@@ -234,7 +231,7 @@ export class ConnectionService extends HttpService
 
     public CloseConnection(connectionId: string) : Promise<void>
     {
-        var req : CloseConnectionRequest = {
+        const req : CloseConnectionRequest = {
             connectionId: connectionId
         };
 

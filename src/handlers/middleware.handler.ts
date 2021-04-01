@@ -22,7 +22,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
 
-    var dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
+    const dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
         .then(result =>
             result.map<TargetSummary>((config, _index, _array) => {
                 return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId};
@@ -32,7 +32,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     // We will to show existing dynamic access targets for file transfer
     // UX to be more pleasant as people cannot file transfer to configs
     // only the DATs they produce from the config
-    var ssmTargets = ssmTargetService.ListSsmTargets(true)
+    const ssmTargets = ssmTargetService.ListSsmTargets(true)
         .then(result =>
             result.map<TargetSummary>((ssm, _index, _array) => {
                 return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId};
@@ -40,14 +40,14 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         );
 
 
-    var sshTargets = sshTargetService.ListSshTargets()
+    const sshTargets = sshTargetService.ListSshTargets()
         .then(result =>
             result.map<TargetSummary>((ssh, _index, _array) => {
                 return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId};
             })
         );
 
-    var envs = envService.ListEnvironments();
+    const envs = envService.ListEnvironments();
 
     return {
         dynamicConfigs: dynamicConfigs,
@@ -59,7 +59,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
 export function mixedPanelTrackingMiddleware(configService: ConfigService, argv: any) {
     // Mixpanel tracking
-    var mixedPanelService = new MixpanelService(configService);
+    const mixedPanelService = new MixpanelService(configService);
 
     // Only captures args, not options at the moment. Capturing configName flag
     // does not matter as that is handled by which mixpanel token is used
@@ -86,14 +86,14 @@ export function oAuthMiddleware(configService: ConfigService, logger: Logger) {
 
 export async function initMiddleware(argv: any) {
     // Configure our logger
-    var loggerConfigService = new LoggerConfigService(<string> argv.configName);
-    var logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent);
+    const loggerConfigService = new LoggerConfigService(<string> argv.configName);
+    const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent);
 
     // Config init
-    var configService = new ConfigService(<string>argv.configName, logger);
+    const configService = new ConfigService(<string>argv.configName, logger);
 
     // KeySplittingService init
-    var keySplittingService = new KeySplittingService(configService, logger);
+    const keySplittingService = new KeySplittingService(configService, logger);
     await keySplittingService.init();
 
     return {

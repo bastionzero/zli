@@ -65,7 +65,7 @@ export class CliDriver
             .usage('$0 <cmd> [args]')
             .wrap(null)
             .middleware(async (argv) => {
-                var initResponse = await initMiddleware(argv);
+                const initResponse = await initMiddleware(argv);
                 this.loggerConfigService = initResponse.loggingConfigService;
                 this.logger = initResponse.logger;
                 this.configService = initResponse.configService;
@@ -88,7 +88,7 @@ export class CliDriver
                 if(includes(this.noFetchCommands, argv._[0]))
                     return;
 
-                let fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
+                const fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
                 this.ssmTargets = fetchDataResponse.ssmTargets;
                 this.sshTargets = fetchDataResponse.sshTargets;

@@ -29,7 +29,7 @@ export class ConfigService implements ConfigInterface {
     private tokenService: TokenService;
 
     constructor(configName: string, logger: Logger) {
-        var appName = this.getAppName(configName);
+        const appName = this.getAppName(configName);
         this.configName = configName;
         this.config = new Conf<BastionZeroConfigSchema>({
             projectName: 'bastionzero-zli',
@@ -103,7 +103,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     public tokenSet(): TokenSet {
-        let tokenSet = this.config.get('tokenSet');
+        const tokenSet = this.config.get('tokenSet');
         return tokenSet && new TokenSet(tokenSet);
     }
 

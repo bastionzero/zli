@@ -6,8 +6,8 @@ import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
 import { Logger } from '../../src/logger.service/logger';
 
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -80,7 +80,7 @@ export class OAuthService implements IDisposable {
     private async getClient(): Promise<Client>
     {
         const authority = await Issuer.discover(this.configService.authUrl());
-        var client = new authority.Client({
+        const client = new authority.Client({
             client_id: this.configService.clientId(),
             redirect_uris: [`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`],
             response_types: ['code'],

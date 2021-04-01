@@ -32,7 +32,7 @@ export function parseTargetString(targetTypeString: string , targetString: strin
     if(! pattern.test(targetString))
         return undefined;
 
-    let result : parsedTargetString = {
+    const result : parsedTargetString = {
         type: targetType,
         user: undefined,
         id: undefined,
@@ -100,7 +100,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
 
     // ref: https://github.com/cli-table/cli-table3
-    var table = new Table({
+    const table = new Table({
         head: ['Type', 'Name', 'Environment', 'Id']
         , colWidths: [10, targetNameLength + 2, envNameLength + 2, 38]
     });

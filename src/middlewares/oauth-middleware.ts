@@ -5,9 +5,9 @@ import { Logger } from '../../src/logger.service/logger';
 
 export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<void> {
 
-    let ouath = new OAuthService(configService, logger);
+    const ouath = new OAuthService(configService, logger);
 
-    let tokenSet = configService.tokenSet();
+    const tokenSet = configService.tokenSet();
 
     // decide if we need to refresh or prompt user for login
     if(tokenSet)

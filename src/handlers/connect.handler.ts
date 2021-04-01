@@ -75,7 +75,7 @@ export async function connectHandler(
     }
 
     // connect to target and run terminal
-    var terminal = new ShellTerminal(logger, configService, connectionId);
+    const terminal = new ShellTerminal(logger, configService, connectionId);
     try {
         await terminal.start(termsize());
     } catch (err) {
@@ -144,7 +144,7 @@ export async function disambiguateTargetName(
     ssmTargets: Promise<TargetSummary[]>,
     sshTargets: Promise<TargetSummary[]>,
     envs: Promise<EnvironmentDetails[]>): Promise<parsedTargetString> {
-    let parsedTarget = parseTargetString(argvTargetType, argvTargetString);
+    const parsedTarget = parseTargetString(argvTargetType, argvTargetString);
 
     if (!parsedTarget) {
         logger.error('Invalid target string, must follow syntax:');

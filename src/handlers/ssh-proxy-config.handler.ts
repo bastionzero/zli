@@ -4,8 +4,8 @@ import { Logger } from '../logger.service/logger';
 
 export function sshProxyConfigHandler(configService: ConfigService, logger: Logger, processName: string) {
     let prefix = 'bzero-';
-    let keyPath = configService.sshKeyPath();
-    let configName = configService.getConfigName();
+    const keyPath = configService.sshKeyPath();
+    const configName = configService.getConfigName();
     let configNameArg = '';
     if(configName != 'prod') {
         prefix = `${configName}-${prefix}`;

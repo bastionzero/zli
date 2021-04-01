@@ -62,7 +62,7 @@ export async function loginHandler(configService: ConfigService, logger: Logger,
         logger.info('Please scan the following QR code with your device (Google Authenticator recommended)');
 
         const resp = await mfaService.ResetSecret();
-        var data = await qrcode.toString(resp.mfaSecretUrl, {type: 'terminal', scale: 2});
+        const data = await qrcode.toString(resp.mfaSecretUrl, {type: 'terminal', scale: 2});
         console.log(data);
 
         logger.info('Please log in again with \'--mfa token\'');

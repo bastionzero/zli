@@ -50,7 +50,7 @@ export class SsmTunnelService
         identityFile: string
     ) : Promise<boolean> {
         try {
-            let target = await this.getSsmTargetFromHostString(hostName);
+            const target = await this.getSsmTargetFromHostString(hostName);
 
             this.ssmTunnelWebsocketService = new SsmTunnelWebsocketService(
                 this.logger,
@@ -63,7 +63,7 @@ export class SsmTunnelService
             this.ssmTunnelWebsocketService.errors.subscribe(err => this.errorSubject.next(err));
 
             await this.setupEphemeralSshKey(identityFile);
-            let pubKey = await this.extractPubKeyFromIdentityFile(identityFile);
+            const pubKey = await this.extractPubKeyFromIdentityFile(identityFile);
 
             await this.ssmTunnelWebsocketService.setupWebsocketTunnel(userName, port, pubKey, this.keysplittingEnabled);
 
@@ -80,13 +80,13 @@ export class SsmTunnelService
     }
 
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
-        let bzeroSshKeyPath = this.configService.sshKeyPath();
+        const bzeroSshKeyPath = this.configService.sshKeyPath();
 
         // Generate a new ssh key for each new tunnel as long as the identity
         // file provided is managed by bzero
         // TODO #39: Change the lifetime of this key?
         if(identityFile === bzeroSshKeyPath) {
-            let privateKey = await this.generateEphemeralSshKey();
+            const privateKey = await this.generateEphemeralSshKey();
             await util.promisify(fs.writeFile)(bzeroSshKeyPath, privateKey, {
                 mode: '0600'
             });
@@ -97,7 +97,7 @@ export class SsmTunnelService
         // Generate a new ephemeral key to use
         this.logger.info('Generating an ephemeral ssh key');
 
-        let { privateKey } = await util.promisify(crypto.generateKeyPair)('rsa', {
+        const { privateKey } = await util.promisify(crypto.generateKeyPair)('rsa', {
             modulusLength: 4096,
             publicKeyEncoding: {
                 type: 'spki',
@@ -113,7 +113,7 @@ export class SsmTunnelService
     }
 
     private async extractPubKeyFromIdentityFile(identityFileName: string): Promise<SshPK.Key> {
-        let identityFile = await this.readIdentityFile(identityFileName);
+        const identityFile = await this.readIdentityFile(identityFileName);
 
         // Use ssh-pk library to convert the public key to ssh RFC 4716 format
         // https://stackoverflow.com/a/54406021/9186330
@@ -127,7 +127,7 @@ export class SsmTunnelService
 
     private async getSsmTargetFromHostString(host: string): Promise<SsmTargetSummary> {
         let prefix = 'bzero-';
-        let configName = this.configService.getConfigName();
+        const configName = this.configService.getConfigName();
         if(configName != 'prod') {
             prefix = `${configName}-${prefix}`;
         }
@@ -136,15 +136,15 @@ export class SsmTunnelService
             throw new Error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
         }
 
-        let targetString = host.substr(prefix.length);
+        const targetString = host.substr(prefix.length);
 
         const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-        let ssmTargets = await ssmTargetService.ListSsmTargets(true);
+        const ssmTargets = await ssmTargetService.ListSsmTargets(true);
 
         const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
         if(guidPattern.test(targetString)) {
             // target id
-            let targetId = targetString;
+            const targetId = targetString;
             if(! ssmTargets.some(t => t.id == targetId)) {
                 throw new Error(`No ssm target exists with id ${targetId}`);
             }
@@ -152,8 +152,8 @@ export class SsmTunnelService
             return ssmTargets.filter(t => t.id == targetId)[0];
         } else {
             // target name
-            let targetName = targetString;
-            let matchedTarget = ssmTargets.filter(t => t.name == targetName);
+            const targetName = targetString;
+            const matchedTarget = ssmTargets.filter(t => t.name == targetName);
 
             if(matchedTarget.length == 0) {
                 throw new Error(`No ssm target exists with name ${targetName}`);
