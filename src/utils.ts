@@ -33,7 +33,7 @@ export function parseTargetString(targetString: string) : ParsedTargetString
     if(! pattern.test(targetString))
         return undefined;
 
-    let result : ParsedTargetString = {
+    const result : ParsedTargetString = {
         type: undefined,
         user: undefined,
         id: undefined,
@@ -85,8 +85,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
     const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
 
-    let header: string[] = ['Type', 'Name', 'Environment'];
-    let columnWidths = [10, targetNameLength + 2, envNameLength + 2];
+    const header: string[] = ['Type', 'Name', 'Environment'];
+    const columnWidths = [10, targetNameLength + 2, envNameLength + 2];
 
     if(showGuid)
     {
@@ -95,10 +95,10 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     }
 
     // ref: https://github.com/cli-table/cli-table3
-    var table = new Table({ head: header, colWidths: columnWidths });
+    const table = new Table({ head: header, colWidths: columnWidths });
 
     targets.forEach(target => {
-        let row = [target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name];
+        const row = [target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name];
         if(showGuid) row.push(target.id);
         table.push(row);
     }
@@ -118,7 +118,7 @@ export async function disambiguateTarget(
     sshTargets: Promise<TargetSummary[]>,
     envs: Promise<EnvironmentDetails[]>): Promise<ParsedTargetString> {
 
-    let parsedTarget = parseTargetString(targetString);
+    const parsedTarget = parseTargetString(targetString);
 
     if(! parsedTarget) {
         return undefined;
@@ -127,7 +127,7 @@ export async function disambiguateTarget(
     let zippedTargets = _.concat(await ssmTargets, await sshTargets, await dynamicConfigs);
 
     if(!! targetTypeString) {
-        let targetType = parseTargetType(targetTypeString);
+        const targetType = parseTargetType(targetTypeString);
         zippedTargets = zippedTargets.filter(t => t.type == targetType);
     }
 

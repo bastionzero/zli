@@ -28,7 +28,7 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
         cleanExit(1, logger);
     }
 
-    let ssmTunnelService = new SsmTunnelService(logger, configService, keySplittingService, envMap['enableKeysplitting'] == 'true');
+    const ssmTunnelService = new SsmTunnelService(logger, configService, keySplittingService, envMap['enableKeysplitting'] == 'true');
     ssmTunnelService.errors.subscribe(async errorMessage => {
         process.stderr.write(`\n${errorMessage}\n`);
         await cleanExit(1, logger);

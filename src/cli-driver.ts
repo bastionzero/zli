@@ -181,6 +181,14 @@ export class CliDriver
                                 demandOption: false,
                                 alias: 'i'
                             }
+                        ).option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
                         );
                 },
                 async (argv) => {
@@ -259,7 +267,7 @@ export class CliDriver
                 },
                 async (argv) => {
                     let prefix = 'bzero-';
-                    let configName = this.configService.getConfigName();
+                    const configName = this.configService.getConfigName();
                     if(configName != 'prod') {
                         prefix = `${configName}-${prefix}`;
                     }
@@ -269,7 +277,7 @@ export class CliDriver
                         this.logger.error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
                         cleanExit(1, this.logger);
                     }
-                    
+
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
                     const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);

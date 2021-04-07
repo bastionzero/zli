@@ -424,6 +424,6 @@ export class PolicyQueryService extends HttpService
             targetUser: targetUser
         };
 
-        return this.Post('target-connect', request)
+        return this.Post('target-connect', request);
     }
 }

@@ -11,7 +11,6 @@ import { ConfigService } from '../config.service/config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { SsmTargetService } from '../http.service/http.service';
-import { SsmTargetSummary } from '../http.service/http.service.types';
 import { SsmTunnelWebsocketService } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.service';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { SsmTunnelTargetInfo } from '../../webshell-common-ts/ssm-tunnel-websocket.service/ssm-tunnel-websocket.types';
@@ -53,7 +52,7 @@ export class SsmTunnelService
             // target is ssmtargetsummary
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
             const target = await ssmTargetService.GetSsmTarget(parsedTarget.id);
-            
+
             this.ssmTunnelWebsocketService = new SsmTunnelWebsocketService(
                 this.logger,
                 this.keySplittingService,
