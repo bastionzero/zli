@@ -112,7 +112,8 @@ export class CliDriver
                                 alias: 'm'
                             }
                         )
-                        .example('login Google', 'Login with Google');
+                        .example('login Google', 'Login with Google')
+                        .example('login Google --mfa 123456', 'Login with Microsoft and enter MFA');
                 },
                 async (argv) => {
                     await loginHandler(this.configService, this.logger, argv, this.keySplittingService);
@@ -135,8 +136,8 @@ export class CliDriver
                                 alias: 't'
                             },
                         )
-                        .example('connect ssm-user@neat-name', 'SSM connect example')
-                        .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example');
+                        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
+                        .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example, unique id of ssh target');
                 },
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
@@ -173,7 +174,8 @@ export class CliDriver
                                 demandOption: false,
                                 alias: 'n'
                             }
-                        ).option(
+                        )
+                        .option(
                             'showId',
                             {
                                 type: 'boolean',
@@ -181,7 +183,8 @@ export class CliDriver
                                 demandOption: false,
                                 alias: 'i'
                             }
-                        ).option(
+                        )
+                        .option(
                             'json',
                             {
                                 type: 'boolean',
@@ -189,7 +192,10 @@ export class CliDriver
                                 demandOption: false,
                                 alias: 'j',
                             }
-                        );
+                        )
+                        .example('lt -t ssm', 'List all SSM targets only')
+                        .example('lt -i', 'List all targets and show unique ids')
+                        .example('lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
                 },
                 async (argv) => {
                     await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
@@ -219,8 +225,8 @@ export class CliDriver
                                 alias: 't'
                             }
                         )
-                        .example('copy ssm-user@95b72b50-d09c-49fa-8825-332abfeb013e:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'Download example')
-                        .example('copy /Users/coolUser/secretFile.txt ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example');
+                        .example('copy ssm-user@neat-target:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'Download example, relative to your machine')
+                        .example('copy /Users/coolUser/secretFile ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example, relative to your machine');
                 },
                 async (argv) => {
                     const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
@@ -320,8 +326,8 @@ export class CliDriver
             .help() // auto gen help message
             .epilog(`Note:
  - <targetString> format: ${targetStringExample}
- - TargetStrings only require targetUser for SSM
- - TargetPath can be omitted
+ - TargetStrings only require targetUser for SSM and Dynamic targets
+ - TargetPath can be omitted for connect
 
 For command specific help: zli <cmd> help
 
@@ -329,7 +335,7 @@ Command arguments key:
  - <arg> is required
  - [arg] is optional or sometimes required
 
-Need help? https://app.bastionzero.com/support`)
+Need help? https://cloud.bastionzero.com/support`)
             .argv; // returns argv of yargs
     }
 }
