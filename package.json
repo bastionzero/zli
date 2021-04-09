@@ -77,8 +77,7 @@
   "pkg": {
     "scripts": [],
     "assets": [
-      "node_modules/figlet/fonts/Standard.flf",
-      "src/oauth.service/templates/*.html"
+      "node_modules/figlet/fonts/Standard.flf"
     ]
   }
 }

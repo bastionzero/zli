@@ -1,6 +1,6 @@
-<html>
+export const logoutHtml = `<html>
     <head>
-        <title>Login Successful</title>
+        <title>Logout Successful</title>
         <link rel="icon" type="image/png" href="https://cloud.bastionzero.com/assets/icons/favicon_light.png">
         <link rel="stylesheet" href="https://code.cdn.mozilla.net/fonts/fira.css">
         <style>
@@ -23,7 +23,7 @@
         <div class="center-div">
             <img src="https://cloud.bastionzero.com/assets/icons/Wordmark-Horizontal.png" height="28px">
             <br>
-            <p class="text">Log in successful. You may close this window.</p>
+            <p class="text">Log out successful. You may close this window.</p>
         </div>
     </body>
-</html>
+</html>`;

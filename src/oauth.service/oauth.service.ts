@@ -5,9 +5,8 @@ import { ConfigService } from '../config.service/config.service';
 import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
 import { Logger } from '../../src/logger.service/logger';
-import { IdP } from '../types';
-import fs from 'fs';
-import path from 'path';
+import { loginHtml } from './templates/login';
+import { logoutHtml } from './templates/logout';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -45,14 +44,15 @@ export class OAuthService implements IDisposable {
                 // write to config with callback
                 callback(tokenSet);
                 this.server.close();
-                fs.createReadStream(path.join(__dirname, './templates/login.html')).pipe(res);
+                res.write(loginHtml);
                 resolve();
                 break;
 
             case '/logout-callback':
                 this.logger.info('Login successful');
                 this.logger.debug('callback listener closed');
-                fs.createReadStream(path.join(__dirname, './templates/logout.html')).pipe(res);
+                this.server.close();
+                res.write(logoutHtml);
                 resolve();
                 break;
 
