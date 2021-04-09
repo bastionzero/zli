@@ -6,8 +6,8 @@
   "types": "dist/src/index.d.ts",
   "bin": "dist/src/index.js",
   "engines": {
-    "node": ">=0.12 <0.13",
-    "npm": ">=7.0.0"
+    "node": ">0.12.0",
+    "npm": ">7.0.0"
   },
   "scripts": {
     "start": "ts-node src/index.ts",
@@ -77,7 +77,8 @@
   "pkg": {
     "scripts": [],
     "assets": [
-      "node_modules/figlet/fonts/Standard.flf"
+      "node_modules/figlet/fonts/Standard.flf",
+      "src/oauth.service/templates/*.html"
     ]
   }
 }
