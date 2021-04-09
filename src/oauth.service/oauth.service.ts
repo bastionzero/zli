@@ -18,48 +18,6 @@ export class OAuthService implements IDisposable {
         this.logger = logger;
     }
 
-    private setupIdpListener(
-        callback: (idp: IdP) => Promise<void>,
-        onListen: () => void,
-        resolve: (value?: void | PromiseLike<void>) => void
-    ): void {
-
-        const requestListener: RequestListener = async (req, res) => {
-            res.writeHead(200, { 'content-type': 'text/html' });
-            res.end();
-
-            switch (req.url.split('?')[0]) {
-            case '/google':
-                this.logger.info('Google IdP selected');
-                this.logger.debug('callback listener closed');
-
-                // write to config with callback
-                callback(IdP.Google);
-                this.server.close();
-                // The server reacts at this point and can print a message
-                resolve();
-                break;
-            case '/microsoft':
-                break;
-            default:
-                break;
-            }
-        };
-
-        this.logger.debug(`Setting up idp listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
-        this.server = http.createServer(requestListener);
-        // Port binding failure will produce error event
-        this.server.on('error', () => {
-            this.logger.error('Log in listener could not bind to port');
-            this.logger.warn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
-            this.logger.warn('To edit callback port please run: \'zli config\'');
-            process.exit(1);
-        });
-        // open browser after successful port binding
-        this.server.on('listening', onListen);
-        this.server.listen(this.configService.callbackListenerPort(), this.host, () => {});
-    }
-
     private setupCallbackListener(
         client: Client,
         codeVerifier: string,
@@ -137,11 +95,6 @@ export class OAuthService implements IDisposable {
         return client;
     }
 
-    private getIdpSelectionUrl() : string
-    {
-        return `${this.configService.serviceUrl()}zli-login`;
-    }
-
     private getAuthUrl(client: Client, code_challenge: string, nonce?: string) : string
     {
         const authParams: AuthorizationParameters = {
@@ -167,16 +120,6 @@ export class OAuthService implements IDisposable {
             return false;
 
         return tokenSet.expired();
-    }
-
-    public idpSelect(callback: (idp: IdP) => Promise<void>): Promise<void>
-    {
-        return new Promise<void>(async (resolve, reject) => {
-            setTimeout(() => reject('Log in timeout reached'), 60 * 1000);
-
-            const openBrowser = async () => await open(this.getIdpSelectionUrl());
-            this.setupIdpListener(callback, openBrowser, resolve);
-        });
     }
 
     public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
