@@ -2,11 +2,12 @@ import { FileService, PolicyQueryService } from '../http.service/http.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
-import fs from 'fs';
 import { ParsedTargetString, TargetType } from '../types';
 import { targetStringExampleNoPath } from '../utils';
 import { VerbType } from '../http.service/http.service.types';
+
 import _ from 'lodash';
+import fs from 'fs';
 
 
 export async function copyHandler(
@@ -42,8 +43,8 @@ export async function copyHandler(
 
     if(parsedTarget.type == TargetType.DYNAMIC)
     {
-        this.logger.error('Cannot file transfer with a dynamic access config');
-        this.logger.warn('Please create a new dynamic access target or fetch an existing one (zli lt)');
+        logger.error('Cannot file transfer with a dynamic access config');
+        logger.warn('Please create a new dynamic access target or fetch an existing one (zli lt)');
         cleanExit(1, this.logger);
     }
 

@@ -279,7 +279,6 @@ export class CliDriver
                     }
 
                     if(! argv.host.startsWith(prefix)) {
-                        // TODO throw versus exit?
                         this.logger.error(`Invalid host provided must have form ${prefix}<target>. Target must be either target id or name`);
                         cleanExit(1, this.logger);
                     }
