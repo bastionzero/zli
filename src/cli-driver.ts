@@ -176,6 +176,15 @@ export class CliDriver
                             }
                         )
                         .option(
+                            'detail',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'd'
+                            }
+                        )
+                        .option(
                             'showId',
                             {
                                 type: 'boolean',

@@ -21,6 +21,8 @@ export interface TargetSummary
     name: string;
     environmentId: string;
     type: TargetType;
+    agentVersion: string;
+    status: string;
 }
 
 export interface ParsedTargetString

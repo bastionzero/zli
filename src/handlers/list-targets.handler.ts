@@ -44,7 +44,7 @@ export async function listTargetsHandler(
         console.log(JSON.stringify(allTargets));
     } else {
         // regular table output
-        const tableString = getTableOfTargets(allTargets, envs, !! argv.showId);
+        const tableString = getTableOfTargets(allTargets, envs, !! argv.detail , !! argv.showId);
         console.log(tableString);
     }
 

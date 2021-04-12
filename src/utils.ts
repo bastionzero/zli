@@ -80,7 +80,7 @@ export function checkTargetTypeAndStringPair(parsedTarget: ParsedTargetString) :
     return true;
 }
 
-export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showGuid: boolean = false) : string
+export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
     const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
     const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
@@ -94,12 +94,27 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
         columnWidths.push(38);
     }
 
+    if(showDetail)
+    {
+        header.push('Agent Version', 'Status');
+        columnWidths.push(15, 10);
+    }
+
     // ref: https://github.com/cli-table/cli-table3
     const table = new Table({ head: header, colWidths: columnWidths });
 
     targets.forEach(target => {
         const row = [target.type, target.name, envs.filter(e => e.id == target.environmentId).pop().name];
-        if(showGuid) row.push(target.id);
+
+        if(showGuid) {
+            row.push(target.id);
+        }
+
+        if(showDetail) {
+            row.push(target.agentVersion);
+            row.push(target.status);
+        }
+
         table.push(row);
     }
     );
