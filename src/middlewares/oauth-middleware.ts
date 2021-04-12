@@ -2,6 +2,7 @@ import { errors } from 'openid-client';
 import { OAuthService } from '../oauth.service/oauth.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
+import { cleanExit } from '../../src/handlers/clean-exit.handler';
 
 export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<void> {
 
@@ -14,25 +15,25 @@ export async function oauthMiddleware(configService: ConfigService, logger: Logg
     {
         if(configService.tokenSet().expired())
         {
-            logger.debug('Refreshing oauth');
+            try {
+                logger.debug('Refreshing oauth tokens');
 
-            // refresh using existing creds
-            await ouath.refresh()
-                .then((newTokenSet) => configService.setTokenSet(newTokenSet))
-            // Catch oauth related errors
-                .catch((_: errors.OPError | errors.RPError) => {
+                const newTokenSet = await ouath.refresh();
+                configService.setTokenSet(newTokenSet);
+                logger.debug('Oauth tokens refreshed');
+            } catch(e) {
+                if(e instanceof errors.RPError || e instanceof errors.OPError) {
                     logger.error('Stale log in detected');
                     logger.info('You need to log in, please run \'zli login --help\'');
-                    // TODO trade of exception
                     configService.logout();
-                    process.exit(1);
-                })
-                .catch((_: any) => {
+                    cleanExit(1, logger);
+                } else {
                     logger.error('Unexpected error during oauth refresh');
                     logger.info('Please log in again');
                     configService.logout();
-                    process.exit(1);
-                });
+                    cleanExit(1, logger);
+                }
+            }
         }
     } else {
         logger.warn('You need to log in, please run \'zli login --help\'');

@@ -71,13 +71,13 @@ export class CliDriver
                 this.configService = initResponse.configService;
                 this.keySplittingService = initResponse.keySplittingService;
             })
-            .middleware(() => {
-                checkVersionMiddleware(this.logger);
+            .middleware(async () => {
+                await checkVersionMiddleware(this.logger);
             })
             .middleware(async (argv) => {
                 if(includes(this.noOauthCommands, argv._[0]))
                     return;
-                oAuthMiddleware(this.configService, this.logger);
+                await oAuthMiddleware(this.configService, this.logger);
             })
             .middleware(async (argv) => {
                 if(includes(this.noMixpanelCommands, argv._[0]))

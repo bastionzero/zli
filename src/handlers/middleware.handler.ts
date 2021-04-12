@@ -76,9 +76,9 @@ export function mixedPanelTrackingMiddleware(configService: ConfigService, argv:
     return mixedPanelService;
 }
 
-export function oAuthMiddleware(configService: ConfigService, logger: Logger) {
+export async function oAuthMiddleware(configService: ConfigService, logger: Logger) {
     // OAuth
-    oauthMiddleware(configService, logger);
+    await oauthMiddleware(configService, logger);
     const me = configService.me(); // if you have logged in, this should be set
     const sessionId = configService.sessionId();
     logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
