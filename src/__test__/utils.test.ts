@@ -1,5 +1,4 @@
-import { ParsedTargetString, TargetType } from '../types';
-import { checkTargetTypeAndStringPair, parseTargetString, parseTargetType } from '../utils';
+import { parseTargetString, parseTargetType } from '../utils';
 
 test('valid targetType strings', () => {
     const validSSMTargetTypeStrings = [
@@ -46,42 +45,4 @@ test('invalid targetStrings', () => {
         'ss!!!r@whatsUp!Word:/cool' // invalid character in target name
     ];
     validSSMTargetStrings.forEach(t => expect(parseTargetString(t)).toBeUndefined());
-});
-
-test('properly matched targetType and targetStrings', () => {
-
-    const correctSsmParsedTarget: ParsedTargetString[] = [
-        { id: '123123', user: 'ssm-user', type: TargetType.SSM, name: 'hello-world', path: '/var/log', envId: undefined, envName: undefined },
-        { id: '123123', user: 'ssm-user', type: TargetType.SSM, name: 'hello-world', path: undefined, envId: undefined, envName: undefined },
-        { id: '123123', user: 'ssm-user', type: TargetType.SSM, name: undefined, path: undefined, envId: undefined, envName: undefined }
-    ];
-
-    correctSsmParsedTarget.forEach(t => expect(checkTargetTypeAndStringPair(t)).toBeTruthy());
-
-    const correctSshParsedTarget: ParsedTargetString[] = [
-        { id: '123123', user: undefined, type: TargetType.SSH, name: 'hello-world', path: '/var/log', envId: undefined, envName: undefined },
-        { id: '123123', user: undefined, type: TargetType.SSH, name: 'hello-world', path: undefined, envId: undefined, envName: undefined },
-        { id: '123123', user: undefined, type: TargetType.SSH, name: undefined, path: undefined, envId: undefined, envName: undefined }
-    ];
-
-    correctSshParsedTarget.forEach(t => expect(checkTargetTypeAndStringPair(t)).toBeTruthy());
-});
-
-test('improperly matched targetType and targetStrings', () => {
-
-    const correctSsmParsedTarget: ParsedTargetString[] = [
-        { id: '123123', user: undefined, type: TargetType.SSM, name: 'hello-world', path: '/var/log', envId: undefined, envName: undefined },
-        { id: '123123', user: undefined, type: TargetType.SSM, name: 'hello-world', path: undefined, envId: undefined, envName: undefined },
-        { id: '123123', user: undefined, type: TargetType.SSM, name: undefined, path: undefined, envId: undefined, envName: undefined }
-    ];
-
-    correctSsmParsedTarget.forEach(t => expect(checkTargetTypeAndStringPair(t)).toBeFalsy());
-
-    const correctSshParsedTarget: ParsedTargetString[] = [
-        { id: '123123', user: 'ssm-user', type: TargetType.SSH, name: 'hello-world', path: '/var/log', envId: undefined, envName: undefined },
-        { id: '123123', user: 'ssm-user', type: TargetType.SSH, name: 'hello-world', path: undefined, envId: undefined, envName: undefined },
-        { id: '123123', user: 'ssm-user', type: TargetType.SSH, name: undefined, path: undefined, envId: undefined, envName: undefined }
-    ];
-
-    correctSshParsedTarget.forEach(t => expect(checkTargetTypeAndStringPair(t)).toBeFalsy());
 });

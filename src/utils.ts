@@ -69,17 +69,6 @@ export function parseTargetString(targetString: string) : ParsedTargetString
     return result;
 }
 
-export function checkTargetTypeAndStringPair(parsedTarget: ParsedTargetString) : boolean
-{
-    if(parsedTarget.type === TargetType.SSH && parsedTarget.user)
-        return false;
-
-    if((parsedTarget.type === TargetType.SSM || parsedTarget.type === TargetType.DYNAMIC) && ! parsedTarget.user)
-        return false;
-
-    return true;
-}
-
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
     const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
