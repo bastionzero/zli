@@ -5,7 +5,7 @@ import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import { ConfigService } from '../config.service/config.service';
-import { IShellWebsocketService, ShellState, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
+import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
 import { SsmTargetService } from '../http.service/http.service';
@@ -16,6 +16,7 @@ import { SsmTargetSummary } from '../http.service/http.service.types';
 export class ShellTerminal implements IDisposable
 {
     private shellWebsocketService : IShellWebsocketService;
+    private attached: boolean = false;
 
     // stdin
     private inputSubject: Subject<string> = new Subject<string>();
@@ -82,16 +83,30 @@ export class ShellTerminal implements IDisposable
         // initial terminal size
         await this.shellWebsocketService.start();
 
-        this.shellWebsocketService.shellStateData.subscribe(
-            async (newState: ShellState) => {
-                this.logger.trace(`Got new shell state update: ${JSON.stringify(newState)}`);
-                if (newState.start) {
+        this.shellWebsocketService.shellEventData.subscribe(
+            async (shellEvent: ShellEvent) => {
+                this.logger.trace(`Got new shell event update: ${JSON.stringify(shellEvent)}`);
+
+                switch(shellEvent.type) {
+                case ShellEventType.Ready:
+                    this.shellWebsocketService.sendShellConnect(termSize.rows, termSize.columns);
+                    break;
+                case ShellEventType.Start:
                     this.blockInput = false;
+                    this.attached = true;
                     this.terminalRunningStream.next(true);
-                } else if (newState.ready) {
-                    await this.shellWebsocketService.sendShellConnect(termSize.rows, termSize.columns);
-                } else if (newState.disconnect || newState.delete ) {
+                    break;
+                case ShellEventType.Unattached:
+                    this.logger.warn('Another active session has been detected and input has been suspended. Press ALT+R at any time to resume this terminal');
+                    this.blockInput = true;
+                    this.attached = false;
+                    break;
+                case ShellEventType.Disconnect:
+                case ShellEventType.Delete:
                     this.dispose();
+                    break;
+                default:
+                    this.logger.warn(`unhandled shell event type ${shellEvent.type}`);
                 }
             },
             (error: any) => {
@@ -111,9 +126,17 @@ export class ShellTerminal implements IDisposable
             this.resizeSubject.next({rows: resizeEvent.rows, columns: resizeEvent.columns});
     }
 
-    public writeString(input: string) : void {
-        if(! this.blockInput)
+    public async writeString(input: string) : Promise<void> {
+        if(! this.attached && input === '\u001br') {
+            await this.shellWebsocketService.shellReattach();
+            this.attached = true;
+            this.blockInput = false;
+            return;
+        }
+
+        if(! this.blockInput) {
             this.inputSubject.next(input);
+        }
     }
 
     public writeBytes(input: Uint8Array) : void {
