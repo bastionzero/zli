@@ -104,16 +104,12 @@ export async function connectHandler(
         }
     );
 
-    // If we detect a disconnection, close the connection immediately
     terminal.terminalRunning.subscribe(
         () => {},
+        // If an error occurs in the terminal running observable then log the
+        // error, clean up the connection, and exit zli
         async (error) => {
-            if(error)
-            {
-                logger.error(error);
-                logger.warn('Target may have gone offline or space/connection closed from another client');
-            }
-
+            logger.error(error);
             terminal.dispose();
 
             logger.debug('Cleaning up connection...');
@@ -124,12 +120,14 @@ export async function connectHandler(
 
             logger.debug('Connection closed');
 
-            if(error)
-                await cleanExit(1, logger);
-
-            await cleanExit(0, logger);
+            await cleanExit(1, logger);
         },
-        () => {}
+        // If terminal running observable completes without error, exit zli
+        // without closing the connection
+        async () => {
+            terminal.dispose();
+            await cleanExit(0, logger);
+        }
     );
 
     // To get 'keypress' events you need the following lines
