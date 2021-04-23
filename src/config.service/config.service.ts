@@ -70,15 +70,15 @@ export class ConfigService implements ConfigInterface {
         this.tokenService = new TokenService(this, logger);
     }
 
-    public updateKeySplitting(data: KeySplittingConfigSchema) {
+    public updateKeySplitting(data: KeySplittingConfigSchema): void {
         this.config.set('keySplitting', data);
     }
 
-    public loadKeySplitting() {
+    public loadKeySplitting(): KeySplittingConfigSchema {
         return this.config.get('keySplitting');
     }
 
-    public removeKeySplitting() {
+    public removeKeySplitting(): void {
         this.config.delete('keySplitting');
     }
 
