@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { SshShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssh-shell-websocket.service';
 import { isAgentKeysplittingReady, SsmShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssm-shell-websocket.service';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
@@ -16,7 +16,7 @@ import { SsmTargetSummary } from '../http.service/http.service.types';
 export class ShellTerminal implements IDisposable
 {
     private shellWebsocketService : IShellWebsocketService;
-    private attached: boolean = false;
+    private shellEventDataSubscription: Subscription;
 
     // stdin
     private inputSubject: Subject<string> = new Subject<string>();
@@ -83,9 +83,9 @@ export class ShellTerminal implements IDisposable
         // initial terminal size
         await this.shellWebsocketService.start();
 
-        this.shellWebsocketService.shellEventData.subscribe(
+        this.shellEventDataSubscription = this.shellWebsocketService.shellEventData.subscribe(
             async (shellEvent: ShellEvent) => {
-                this.logger.trace(`Got new shell event update: ${JSON.stringify(shellEvent)}`);
+                this.logger.debug(`Got new shell event: ${shellEvent.type}`);
 
                 switch(shellEvent.type) {
                 case ShellEventType.Ready:
@@ -93,27 +93,32 @@ export class ShellTerminal implements IDisposable
                     break;
                 case ShellEventType.Start:
                     this.blockInput = false;
-                    this.attached = true;
                     this.terminalRunningStream.next(true);
                     break;
                 case ShellEventType.Unattached:
-                    this.logger.warn('Another active session has been detected and input has been suspended. Press ALT+R at any time to resume this terminal');
-                    this.blockInput = true;
-                    this.attached = false;
+                    // When another client connects (web app) handle this by
+                    // exiting this ZLI process without closing the
+                    // connection and effectively transferring ownership of
+                    // the connection to the web app. We do not support
+                    // re-attaching within the same ZLI command.
+                    this.logger.error('Web App session has been detected.');
+                    this.terminalRunningStream.complete();
                     break;
                 case ShellEventType.Disconnect:
+                    this.terminalRunningStream.error('Target Disconnected.');
+                    break;
                 case ShellEventType.Delete:
-                    this.dispose();
+                    this.terminalRunningStream.error('Connection was closed.');
                     break;
                 default:
-                    this.logger.warn(`unhandled shell event type ${shellEvent.type}`);
+                    this.logger.warn(`Unhandled shell event type ${shellEvent.type}`);
                 }
             },
             (error: any) => {
                 this.terminalRunningStream.error(error);
             },
             () => {
-                this.terminalRunningStream.error(undefined);
+                this.terminalRunningStream.error('ShellEventData subscription completed prematurely');
             }
         );
     }
@@ -127,13 +132,6 @@ export class ShellTerminal implements IDisposable
     }
 
     public async writeString(input: string) : Promise<void> {
-        if(! this.attached && input === '\u001br') {
-            await this.shellWebsocketService.shellReattach();
-            this.attached = true;
-            this.blockInput = false;
-            return;
-        }
-
         if(! this.blockInput) {
             this.inputSubject.next(input);
         }
@@ -145,6 +143,11 @@ export class ShellTerminal implements IDisposable
 
     public dispose() : void
     {
+        // First unsubscribe to shell event subscription because this wil be
+        // completed when disposing the shellWebsocketService
+        if(this.shellEventDataSubscription)
+            this.shellEventDataSubscription.unsubscribe();
+
         if(this.shellWebsocketService)
             this.shellWebsocketService.dispose();
 
