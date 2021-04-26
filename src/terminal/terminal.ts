@@ -94,6 +94,8 @@ export class ShellTerminal implements IDisposable
                 case ShellEventType.Start:
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
+                    // Send initial terminal dimensions
+                    this.resize(termSize);
                     break;
                 case ShellEventType.Unattached:
                     // When another client connects (web app) handle this by
