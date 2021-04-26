@@ -64,7 +64,7 @@
     "mixpanel": "^0.13.0",
     "noble-ed25519": "^1.0.3",
     "open": "^7.3.0",
-    "openid-client": "^4.2.1",
+    "openid-client": "^4.7.2",
     "qrcode": "^1.4.4",
     "rxjs": "^6.6.3",
     "semver": "^7.3.2",
