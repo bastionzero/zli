@@ -17,6 +17,7 @@ export class ShellTerminal implements IDisposable
 {
     private shellWebsocketService : IShellWebsocketService;
     private shellEventDataSubscription: Subscription;
+    private currentTerminalSize: TerminalSize;
 
     // stdin
     private inputSubject: Subject<string> = new Subject<string>();
@@ -72,6 +73,7 @@ export class ShellTerminal implements IDisposable
 
     public async start(termSize: TerminalSize)
     {
+        this.currentTerminalSize = termSize;
         this.shellWebsocketService = await this.createShellWebsocketService();
 
         // Handle writing to stdout
@@ -89,13 +91,13 @@ export class ShellTerminal implements IDisposable
 
                 switch(shellEvent.type) {
                 case ShellEventType.Ready:
-                    this.shellWebsocketService.sendShellConnect(termSize.rows, termSize.columns);
+                    this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns);
                     break;
                 case ShellEventType.Start:
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
                     // Send initial terminal dimensions
-                    this.resize(termSize);
+                    this.resize(this.currentTerminalSize);
                     break;
                 case ShellEventType.Unattached:
                     // When another client connects (web app) handle this by
@@ -125,12 +127,17 @@ export class ShellTerminal implements IDisposable
         );
     }
 
-    public resize(resizeEvent: TerminalSize)
+    public resize(terminalSize: TerminalSize)
     {
-        this.logger.trace(`New terminal resize event (rows: ${resizeEvent.rows} cols: ${resizeEvent.columns})`);
+        this.logger.trace(`New terminal resize event (rows: ${terminalSize.rows} cols: ${terminalSize.columns})`);
+
+        // Save the new terminal dimensions even if the shell input is blocked
+        // so that when we start the shell we initialize the terminal dimensions
+        // correctly
+        this.currentTerminalSize = terminalSize;
 
         if(! this.blockInput)
-            this.resizeSubject.next({rows: resizeEvent.rows, columns: resizeEvent.columns});
+            this.resizeSubject.next({rows: terminalSize.rows, columns: terminalSize.columns});
     }
 
     public async writeString(input: string) : Promise<void> {
