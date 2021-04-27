@@ -182,7 +182,7 @@ export class CliDriver
                                 type: 'string',
                                 array: true,
                                 choices: this.ssmTargetStatusChoices,
-                                alias: 's'
+                                alias: 'u'
                             }
                         )
                         .option(
@@ -338,7 +338,7 @@ export class CliDriver
             )
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
-            .option('quiet', {alias: 'q', type: 'boolean', default: false, describe: 'Silence all zli messages, only returns command output'})
+            .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all zli messages, only returns command output'})
             .strict() // if unknown command, show help
             .demandCommand() // if no command, show help
             .help() // auto gen help message

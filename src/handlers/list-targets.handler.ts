@@ -46,7 +46,7 @@ export async function listTargetsHandler(
 
         if(statusArray.length < 1) {
             logger.warn('Status filter flag passed with no arguments, please indicate at least one status');
-            cleanExit(1, logger);
+            await cleanExit(1, logger);
         }
 
         let targetStatusFilter: SsmTargetStatus[] = _.map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
@@ -54,7 +54,7 @@ export async function listTargetsHandler(
 
         if(targetStatusFilter.length < 1) {
             logger.warn('Status filter flag passed with no valid arguments, please indicate at least one valid status');
-            cleanExit(1, logger);
+            await cleanExit(1, logger);
         }
 
         allTargets = allTargets.filter(t => t.type != TargetType.SSM || _.includes(targetStatusFilter, t.status));
