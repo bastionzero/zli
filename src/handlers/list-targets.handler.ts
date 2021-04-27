@@ -1,12 +1,14 @@
 import {
     findSubstring,
     parseTargetType,
-    getTableOfTargets
+    getTableOfTargets,
+    parseTargetStatus
 } from '../utils';
 import { Logger } from '../logger.service/logger';
 import { EnvironmentDetails } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
-import { TargetSummary } from '../types';
+import { SsmTargetStatus, TargetSummary, TargetType } from '../types';
+import _ from 'lodash';
 
 
 export async function listTargetsHandler(
@@ -39,12 +41,32 @@ export async function listTargetsHandler(
         allTargets = allTargets.filter(t => t.type === targetType);
     }
 
+    if(!! argv.status) {
+        const statusArray: string[] = argv.status;
+
+        if(statusArray.length < 1) {
+            logger.warn('Status filter flag passed with no arguments, please indicate at least one status');
+            cleanExit(1, logger);
+        }
+
+        let targetStatusFilter: SsmTargetStatus[] = _.map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
+        targetStatusFilter = _.uniq(targetStatusFilter);
+
+        if(targetStatusFilter.length < 1) {
+            logger.warn('Status filter flag passed with no valid arguments, please indicate at least one valid status');
+            cleanExit(1, logger);
+        }
+
+        allTargets = allTargets.filter(t => t.type != TargetType.SSM || _.includes(targetStatusFilter, t.status));
+    }
+
     if(!! argv.json) {
         // json output
         console.log(JSON.stringify(allTargets));
     } else {
         // regular table output
-        const tableString = getTableOfTargets(allTargets, envs, !! argv.detail , !! argv.showId);
+        // We OR the detail and status flags since we want to show the details in both cases
+        const tableString = getTableOfTargets(allTargets, envs, !! argv.detail || !! argv.status, !! argv.showId);
         console.log(tableString);
     }
 

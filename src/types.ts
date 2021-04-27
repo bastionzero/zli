@@ -15,6 +15,14 @@ export enum IdP {
     Microsoft = 'Microsoft'
 }
 
+export enum SsmTargetStatus {
+    NotActivated = 'NotActivated',
+    Offline = 'Offline',
+    Online = 'Online',
+    Terminated = 'Terminated',
+    Error = 'Error'
+}
+
 export interface TargetSummary
 {
     id: string;
@@ -22,7 +30,7 @@ export interface TargetSummary
     environmentId: string;
     type: TargetType;
     agentVersion: string;
-    status: string;
+    status: SsmTargetStatus;
 }
 
 export interface ParsedTargetString

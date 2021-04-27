@@ -1,4 +1,4 @@
-import { ParsedTargetString, TargetSummary, TargetType } from './types';
+import { ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
 import { max } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
@@ -23,6 +23,23 @@ export function parseTargetType(targetType: string) : TargetType
         return undefined;
 
     return <TargetType> targetType.toUpperCase();
+}
+
+export function parseTargetStatus(targetStatus: string) : SsmTargetStatus {
+    switch (targetStatus.toLowerCase()) {
+    case SsmTargetStatus.NotActivated.toLowerCase():
+        return SsmTargetStatus.NotActivated;
+    case SsmTargetStatus.Offline.toLowerCase():
+        return SsmTargetStatus.Offline;
+    case SsmTargetStatus.Online.toLowerCase():
+        return SsmTargetStatus.Online;
+    case SsmTargetStatus.Terminated.toLowerCase():
+        return SsmTargetStatus.Terminated;
+    case SsmTargetStatus.Error.toLowerCase():
+        return SsmTargetStatus.Error;
+    default:
+        return undefined;
+    }
 }
 
 export function parseTargetString(targetString: string) : ParsedTargetString
@@ -101,7 +118,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
 
         if(showDetail) {
             row.push(target.agentVersion);
-            row.push(target.status);
+            row.push(target.status || 'N/A'); // status is undefined for non-SSM targets
         }
 
         table.push(row);
@@ -130,17 +147,20 @@ export async function disambiguateTarget(
 
     let zippedTargets = _.concat(await ssmTargets, await sshTargets, await dynamicConfigs);
 
+    // Filter out Error and Terminated SSM targets
+    zippedTargets = _.filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));
+
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);
-        zippedTargets = zippedTargets.filter(t => t.type == targetType);
+        zippedTargets = _.filter(zippedTargets,t => t.type == targetType);
     }
 
     let matchedTargets: TargetSummary[];
 
     if(!! parsedTarget.id) {
-        matchedTargets = zippedTargets.filter(t => t.id == parsedTarget.id);
+        matchedTargets = _.filter(zippedTargets,t => t.id == parsedTarget.id);
     } else if(!! parsedTarget.name) {
-        matchedTargets = zippedTargets.filter(t => t.name == parsedTarget.name);
+        matchedTargets = _.filter(zippedTargets,t => t.name == parsedTarget.name);
     }
 
     if(matchedTargets.length == 0) {
@@ -150,7 +170,7 @@ export async function disambiguateTarget(
         parsedTarget.name = matchedTargets[0].name;
         parsedTarget.type = matchedTargets[0].type;
         parsedTarget.envId = matchedTargets[0].environmentId;
-        parsedTarget.envName = (await envs).filter(e => e.id == parsedTarget.envId)[0].name;
+        parsedTarget.envName = _.filter(await envs, e => e.id == parsedTarget.envId)[0].name;
     } else {
         logger.warn('More than one target found with the same targetName');
         logger.info(`Please specify the targetId instead of the targetName (zli lt -n ${parsedTarget.name} -d)`);

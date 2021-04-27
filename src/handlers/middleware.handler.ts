@@ -24,7 +24,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
         .then(result =>
             result.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: 'N/A'};
+                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined};
             })
         );
 
@@ -42,7 +42,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const sshTargets = sshTargetService.ListSshTargets()
         .then(result =>
             result.map<TargetSummary>((ssh, _index, _array) => {
-                return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId, agentVersion: 'N/A', status: 'N/A'};
+                return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId, agentVersion: 'N/A', status: undefined};
             })
         );
 

@@ -1,5 +1,5 @@
 import { ReadStream } from 'fs';
-import { SessionState, TargetType } from '../types';
+import { SessionState, SsmTargetStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {
     displayName?: string;
@@ -85,11 +85,6 @@ export interface SsmTargetSummary {
     // Used as the targetId in keysplitting messages
     agentId: string;
     agentVersion: string;
-}
-
-export enum SsmTargetStatus {
-    Online = 'Online',
-    Offline = 'Offline'
 }
 
 export enum AuthenticationType {
