@@ -81,6 +81,10 @@ export class SsmTunnelService
         this.sendQueue.push(data);
     }
 
+    public async closeTunnel(): Promise<void> {
+        await this.ssmTunnelWebsocketService.closeConnection();
+    }
+
     private async setupEphemeralSshKey(identityFile: string): Promise<void> {
         const bzeroSshKeyPath = this.configService.sshKeyPath();
 

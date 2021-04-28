@@ -43,6 +43,12 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
             ssmTunnelService.sendData(data);
         });
     }
+
+    configService.logoutDetected.subscribe(async () => {
+        logger.debug('Logged out by another zli instance. Terminating ssh tunnel');
+        await ssmTunnelService.closeTunnel();
+        await cleanExit(0, logger);
+    });
 }
 
 export interface SshTunnelParameters {
