@@ -134,6 +134,8 @@ export async function connectHandler(
     // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
     const readline = require('readline');
     readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
+    if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+    }
     process.stdin.on('keypress', (_, key) => terminal.writeString(key.sequence));
 }
