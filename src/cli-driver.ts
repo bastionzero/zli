@@ -26,6 +26,7 @@ import { logoutHandler } from './handlers/logout.handler';
 import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
 import { cleanExit } from './handlers/clean-exit.handler';
+import { listConnectionsHandler } from './handlers/list-connections.handler';
 
 
 export class CliDriver
@@ -319,6 +320,14 @@ export class CliDriver
                     };
 
                     await sshProxyHandler(this.configService, this.logger, sshTunnelParameters, this.keySplittingService, this.envMap);
+                }
+            )
+            .command(
+                ['list-connections', 'lc'],
+                'List all open connections',
+                () => {},
+                async () => {
+                    await listConnectionsHandler(this.configService, this.logger);
                 }
             )
             .command(

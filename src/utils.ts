@@ -1,6 +1,6 @@
 import { ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
 import { max } from 'lodash';
-import { EnvironmentDetails } from './http.service/http.service.types';
+import { ConnectionSummary, EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
 import { cleanExit } from './handlers/clean-exit.handler';
@@ -126,6 +126,26 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     );
 
     return table.toString();
+}
+
+export function getTableOfConnections(connections: ConnectionSummary[]) : string
+{
+    const connIdLength = max(connections.map(c => c.id.length).concat(16));
+    const header: string[] = ['Connection ID'];
+    const columnWidths = [connIdLength + 2];
+
+    // ref: https://github.com/cli-table/cli-table3
+    const table = new Table({ head: header, colWidths: columnWidths });
+
+    connections.forEach(connection => {
+        const row = [connection.id];
+
+        table.push(row);
+    }
+    );
+
+    return table.toString();
+
 }
 
 // Figure out target id based on target name and target type.
