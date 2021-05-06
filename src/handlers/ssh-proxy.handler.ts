@@ -46,6 +46,7 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
 
     configService.logoutDetected.subscribe(async () => {
         logger.debug('Logged out by another zli instance. Terminating ssh tunnel');
+        process.stderr.write(`\nLogged out by another zli instance. Terminating ssh tunnel...\n`);
         await ssmTunnelService.closeTunnel();
         await cleanExit(0, logger);
     });
