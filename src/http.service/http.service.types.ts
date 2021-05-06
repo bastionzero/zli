@@ -242,3 +242,14 @@ export enum VerbType {
     FileTransfer = 'FileTransfer',
     Tunnel = 'Tunnel'
 }
+
+export interface GetAutodiscoveryScriptRequest {
+    targetNameScript: string;
+    apiUrl: string;
+    envId: string;
+    agentVersion: string;
+}
+
+export interface GetAutodiscoveryScriptResponse {
+    autodiscoveryScript: string;
+}

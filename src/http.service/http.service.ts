@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
@@ -11,7 +11,7 @@ export class HttpService
 {
     // ref for got: https://github.com/sindresorhus/got
     protected httpClient: Got;
-    private configService: ConfigService;
+    protected configService: ConfigService;
     private authorized: boolean;
     private logger: Logger;
 
@@ -54,6 +54,11 @@ export class HttpService
     {
         let errorMessage = error.message;
 
+        if(!error.response) {
+            this.logger.error(`HttpService Error:\n${errorMessage}`);
+            return;
+        }
+
         if(error.response.statusCode == 401) {
             this.logger.error(`Authentication Error:\n${errorMessage}`);
         } else {
@@ -66,6 +71,7 @@ export class HttpService
             }
             this.logger.error(`HttpService Error:\n${errorMessage}`);
         }
+
         process.exit(1);
     }
 
@@ -425,5 +431,30 @@ export class PolicyQueryService extends HttpService
         };
 
         return this.Post('target-connect', request);
+    }
+}
+
+export class AutoDiscoveryScriptService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/AutodiscoveryScript', logger);
+    }
+
+    public getAutodiscoveryScript(
+        operatingSystem: string,
+        targetName: string,
+        environmentId: string,
+        agentVersion: string
+    ): Promise<GetAutodiscoveryScriptResponse>
+    {
+        const request: GetAutodiscoveryScriptRequest = {
+            apiUrl: `${this.configService.serviceUrl()}api/v1/`,
+            targetNameScript: `TARGET_NAME=\"${targetName}\"`,
+            envId: environmentId,
+            agentVersion: agentVersion
+        };
+
+        return this.Post(`${operatingSystem}`, request);
     }
 }

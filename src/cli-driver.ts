@@ -26,6 +26,7 @@ import { logoutHandler } from './handlers/logout.handler';
 import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
 import { cleanExit } from './handlers/clean-exit.handler';
+import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
 
 
 export class CliDriver
@@ -328,7 +329,41 @@ export class CliDriver
                 async () => {
                     await configHandler(this.logger, this.configService, this.loggerConfigService);
                 }
-            ).command(
+            )
+            .command(
+                'autodiscovery-script <operatingSystem> <targetName> <environmentName> [agentVersion]',
+                'Returns autodiscovery script',
+                (yargs) => {
+                    return yargs
+                        .positional('operatingSystem', {
+                            type: 'string',
+                            choices: ['centos', 'ubuntu']
+                        })
+                        .positional('targetName', {
+                            type: 'string'
+                        })
+                        .positional('environmentName', {
+                            type: 'string',
+                        })
+                        .positional('agentVersion', {
+                            type: 'string',
+                            default: 'latest'
+                        })
+                        .option(
+                            'outputFile',
+                            {
+                                type: 'string',
+                                demandOption: false,
+                                alias: 'o'
+                            }
+                        )
+                        .example('autodiscovery-script centos sample-target-name Default', '');
+                },
+                async (argv) => {
+                    await autoDiscoveryScriptHandler(argv, this.logger, this.configService, this.envs);
+                }
+            )
+            .command(
                 'logout',
                 'Deauthenticate the client',
                 () => {},
