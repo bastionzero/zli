@@ -28,6 +28,8 @@ import yargs from 'yargs';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
 import { listConnectionsHandler } from './handlers/list-connections.handler';
+import { attachHandler } from './handlers/attach.handler';
+import { closeConnectionHandler } from './handlers/close-connection.handler';
 
 
 export class CliDriver
@@ -329,6 +331,34 @@ export class CliDriver
                 () => {},
                 async () => {
                     await listConnectionsHandler(this.configService, this.logger);
+                }
+            )
+            .command(
+                'attach <connectionId>',
+                'Attach to an open zli connection',
+                (yargs) => {
+                    return yargs
+                        .positional('connectionId', {
+                            type: 'string',
+                        })
+                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id')
+                },
+                async (argv) => {
+                    await attachHandler(this.configService, this.logger, argv.connectionId);
+                }
+            )
+            .command(
+                'close <connectionId>',
+                'Close an open zli connection',
+                (yargs) => {
+                    return yargs
+                        .positional('connectionId', {
+                            type: 'string',
+                        })
+                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id')
+                },
+                async (argv) => {
+                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
                 }
             )
             .command(
