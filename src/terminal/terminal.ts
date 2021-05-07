@@ -26,18 +26,16 @@ export class ShellTerminal implements IDisposable
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private parsedTarget: ParsedTargetString)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private targetType: TargetType, private serverId: string)
     {
     }
 
     private async createShellWebsocketService() : Promise<IShellWebsocketService> {
-        const targetType = this.parsedTarget.type;
-
-        if(targetType === TargetType.SSH) {
+        if(this.targetType === TargetType.SSH) {
             return this.createSshShellWebsocketService();
-        } else if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
+        } else if(this.targetType === TargetType.SSM || this.targetType === TargetType.DYNAMIC) {
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.parsedTarget.id);
+            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.serverId);
             if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
                 return this.createSsmShellWebsocketService(ssmTargetInfo);
             } else {
@@ -45,7 +43,7 @@ export class ShellTerminal implements IDisposable
                 return this.createSshShellWebsocketService();
             }
         } else {
-            throw new Error(`Unhandled target type ${targetType}`);
+            throw new Error(`Unhandled target type ${this.targetType}`);
         }
     }
 

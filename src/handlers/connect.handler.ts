@@ -1,15 +1,14 @@
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { SessionService, ConnectionService, PolicyQueryService } from '../http.service/http.service';
-import { ConnectionState, VerbType } from '../http.service/http.service.types';
+import { VerbType } from '../http.service/http.service.types';
 import { ParsedTargetString, SessionState, TargetType } from '../types';
-import { ShellTerminal } from '../terminal/terminal';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
-import termsize from 'term-size';
 import { targetStringExampleNoPath } from '../utils';
 import _ from 'lodash';
+import { createShellHandler } from './create-shell.handler';
 
 
 export async function connectHandler(
@@ -81,61 +80,7 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    // connect to target and run terminal
-    const terminal = new ShellTerminal(logger, configService, connectionId, parsedTarget);
-    try {
-        await terminal.start(termsize());
-    } catch (err) {
-        logger.error(`Error connecting to terminal: ${err.stack}`);
-        await cleanExit(1, logger);
-    }
+    await createShellHandler(configService, logger, parsedTarget.type, parsedTarget.id, connectionId);
 
     mixpanelService.TrackNewConnection(parsedTarget.type);
-
-    // Terminal resize event logic
-    // https://nodejs.org/api/process.html#process_signal_events -> SIGWINCH
-    // https://github.com/nodejs/node/issues/16194
-    // https://nodejs.org/api/process.html#process_a_note_on_process_i_o
-    process.stdout.on(
-        'resize',
-        () => {
-            const resizeEvent = termsize();
-            terminal.resize(resizeEvent);
-        }
-    );
-
-    terminal.terminalRunning.subscribe(
-        () => {},
-        // If an error occurs in the terminal running observable then log the
-        // error, clean up the connection, and exit zli
-        async (error) => {
-            logger.error(error);
-            terminal.dispose();
-
-            logger.debug('Cleaning up connection...');
-            const conn = await connectionService.GetConnection(connectionId);
-            // if connection not already closed
-            if(conn.state == ConnectionState.Open)
-                await connectionService.CloseConnection(connectionId);
-
-            logger.debug('Connection closed');
-
-            await cleanExit(1, logger);
-        },
-        // If terminal running observable completes without error, exit zli
-        // without closing the connection
-        async () => {
-            terminal.dispose();
-            await cleanExit(0, logger);
-        }
-    );
-
-    // To get 'keypress' events you need the following lines
-    // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
-    const readline = require('readline');
-    readline.emitKeypressEvents(process.stdin);
-    if (process.stdin.isTTY) {
-        process.stdin.setRawMode(true);
-    }
-    process.stdin.on('keypress', (_, key) => terminal.writeString(key.sequence));
 }
