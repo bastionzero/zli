@@ -98,12 +98,11 @@ export class ShellTerminal implements IDisposable
                     this.resize(this.currentTerminalSize);
                     break;
                 case ShellEventType.Unattached:
-                    // When another client connects (web app) handle this by
+                    // When another client connects handle this by
                     // exiting this ZLI process without closing the
                     // connection and effectively transferring ownership of
-                    // the connection to the web app. We do not support
-                    // re-attaching within the same ZLI command.
-                    this.logger.error('Web App session has been detected.');
+                    // the connection to the other client
+                    this.logger.error('Another client has attached to this connection.');
                     this.terminalRunningStream.complete();
                     break;
                 case ShellEventType.Disconnect:
