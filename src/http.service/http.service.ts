@@ -6,6 +6,7 @@ import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
+import { cleanExit } from '../../src/handlers/clean-exit.handler';
 
 export class HttpService
 {
@@ -50,13 +51,13 @@ export class HttpService
         this.httpClient = this.httpClient.extend({ headers: headers });
     }
 
-    private handleHttpException(error: HTTPError) : void
+    private async handleHttpException(error: HTTPError) : Promise<void>
     {
         let errorMessage = error.message;
 
         if(!error.response) {
             this.logger.error(`HttpService Error:\n${errorMessage}`);
-            return;
+            await cleanExit(1, this.logger);
         }
 
         if(error.response.statusCode == 401) {
@@ -72,7 +73,7 @@ export class HttpService
             this.logger.error(`HttpService Error:\n${errorMessage}`);
         }
 
-        process.exit(1);
+        await cleanExit(1, this.logger);
     }
 
     protected getFormDataFromRequest(request: any): FormData {
