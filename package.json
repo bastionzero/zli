@@ -1,6 +1,6 @@
 {
   "name": "zli",
-  "version": "4.15.2",
+  "version": "4.16.0",
   "description": "BastionZero cli",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
