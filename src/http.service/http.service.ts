@@ -12,6 +12,7 @@ export class HttpService
 {
     // ref for got: https://github.com/sindresorhus/got
     protected httpClient: Got;
+    private baseUrl: string;
     protected configService: ConfigService;
     private authorized: boolean;
     private logger: Logger;
@@ -21,9 +22,10 @@ export class HttpService
         this.configService = configService;
         this.authorized = authorized;
         this.logger = logger;
+        this.baseUrl = `${this.configService.serviceUrl()}${serviceRoute}`;
 
         this.httpClient = got.extend({
-            prefixUrl: `${this.configService.serviceUrl()}${serviceRoute}`,
+            prefixUrl: this.baseUrl,
             // Remember to set headers before calling API
             hooks: {
                 beforeRequest: [
@@ -51,8 +53,9 @@ export class HttpService
         this.httpClient = this.httpClient.extend({ headers: headers });
     }
 
-    private async handleHttpException(error: HTTPError) : Promise<void>
+    private async handleHttpException(route: string, error: HTTPError) : Promise<void>
     {
+        this.logger.debug(`Error in ${this.baseUrl}${route}`);
         let errorMessage = error.message;
 
         if(!error.response) {
@@ -97,7 +100,7 @@ export class HttpService
             ).json();
             return resp;
         } catch(error) {
-            this.handleHttpException(error);
+            this.handleHttpException(route, error);
         }
     }
 
@@ -115,7 +118,7 @@ export class HttpService
             ).json();
             return resp;
         } catch(error) {
-            this.handleHttpException(error);
+            this.handleHttpException(route, error);
         }
     }
 
@@ -134,7 +137,7 @@ export class HttpService
             ).json();
             return resp;
         } catch (error) {
-            this.handleHttpException(error);
+            this.handleHttpException(route, error);
         }
     }
 
@@ -167,7 +170,7 @@ export class HttpService
                     resolve();
                 });
             } catch (error) {
-                this.handleHttpException(error);
+                this.handleHttpException(route, error);
                 reject(error);
             }
         });
