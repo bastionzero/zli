@@ -82,7 +82,7 @@ export async function connectHandler(
     }
 
     // connect to target and run terminal
-    const terminal = new ShellTerminal(logger, configService, connectionId, parsedTarget);
+    const terminal = new ShellTerminal(logger, configService, connectionService, connectionId);
     try {
         await terminal.start(termsize());
     } catch (err) {
