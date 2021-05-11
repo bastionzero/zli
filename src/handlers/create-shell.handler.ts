@@ -1,8 +1,8 @@
-import { ConfigService } from "../../src/config.service/config.service";
-import { Logger } from "../../src/logger.service/logger";
-import { ShellTerminal } from "../../src/terminal/terminal";
-import { TargetType } from "../types";
-import { cleanExit } from "./clean-exit.handler";
+import { ConfigService } from '../../src/config.service/config.service';
+import { Logger } from '../../src/logger.service/logger';
+import { ShellTerminal } from '../../src/terminal/terminal';
+import { TargetType } from '../types';
+import { cleanExit } from './clean-exit.handler';
 import termsize from 'term-size';
 
 export async function createShellHandler(

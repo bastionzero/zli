@@ -341,7 +341,7 @@ export class CliDriver
                         .positional('connectionId', {
                             type: 'string',
                         })
-                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id')
+                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id');
                 },
                 async (argv) => {
                     await attachHandler(this.configService, this.logger, argv.connectionId);
@@ -355,7 +355,7 @@ export class CliDriver
                         .positional('connectionId', {
                             type: 'string',
                         })
-                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id')
+                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id');
                 },
                 async (argv) => {
                     await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
