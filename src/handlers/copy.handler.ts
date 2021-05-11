@@ -50,7 +50,7 @@ export async function copyHandler(
 
     // figure out upload or download
     // would be undefined if not parsed properly
-    if(isTargetSource)
+    if(!isTargetSource)
     {
         // Upload case
         // First ensure that the file exists
