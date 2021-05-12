@@ -15,6 +15,10 @@
 
 Relates to JIRA: CWC-XXX
 
+## Relevant release note information
+
+Release Notes:
+
 ## Potential Security Impacts
 
 Does this PR have any security impact?
