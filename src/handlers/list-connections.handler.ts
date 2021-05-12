@@ -1,15 +1,19 @@
 import { ConfigService } from '../../src/config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
 import { SessionService } from '../../src/http.service/http.service';
-import { SessionState } from '../types';
+import { SessionState, TargetSummary } from '../types';
 import { getTableOfConnections } from '../../src/utils';
 import { cleanExit } from './clean-exit.handler';
 import { ConnectionState } from '../../src/http.service/http.service.types';
 
 export async function listConnectionsHandler(
     configService: ConfigService,
-    logger: Logger
+    logger: Logger,
+    ssmTargets: Promise<TargetSummary[]>,
+    sshTargets: Promise<TargetSummary[]>
 ){
+    // await and concatenate
+    const allTargets = [...await ssmTargets, ...await sshTargets];
     // call list session
     const sessionService = new SessionService(configService, logger);
     const listSessions = await sessionService.ListSessions();
@@ -32,7 +36,7 @@ export async function listConnectionsHandler(
         logger.info('There are no open zli connections');
         await cleanExit(0, logger);
     }
-    const tableString = getTableOfConnections(openConnections);
+    const tableString = getTableOfConnections(openConnections, allTargets);
     console.log(tableString);
 
     await cleanExit(0, logger);

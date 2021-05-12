@@ -7,8 +7,8 @@ import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
 import { targetStringExampleNoPath } from '../utils';
+import { createAndRunShell, getCliSpaceId } from '../../src/shell-utils';
 import _ from 'lodash';
-import { createShellHandler } from './create-shell.handler';
 
 
 export async function connectHandler(
@@ -39,21 +39,8 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    // call list session
-    const sessionService = new SessionService(configService, logger);
-    const listSessions = await sessionService.ListSessions();
-
-    // space names are not unique, make sure to find the latest active one
-    const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
-
-    // maybe make a session
-    let cliSessionId: string;
-    if(cliSpace.length === 0) {
-        cliSessionId =  await sessionService.CreateSession('cli-space');
-    } else {
-        // there should only be 1 active 'cli-space' session
-        cliSessionId = cliSpace.pop().id;
-    }
+    // Get the existing if any or create a new cli space id
+    const cliSessionId = await getCliSpaceId(configService, logger);
 
     // We do the following for ssh since we are required to pass
     // in a user although it does not get read at any point
@@ -80,7 +67,7 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    await createShellHandler(configService, logger, parsedTarget.type, parsedTarget.id, connectionId);
+    await createAndRunShell(configService, logger, parsedTarget.type, parsedTarget.id, connectionId);
 
     mixpanelService.TrackNewConnection(parsedTarget.type);
 }

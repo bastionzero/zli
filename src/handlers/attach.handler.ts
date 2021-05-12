@@ -1,9 +1,9 @@
 import { ConnectionService } from '../../src/http.service/http.service';
 import { ConfigService } from '../../src/config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
-import { createShellHandler } from './create-shell.handler';
 import { ConnectionState } from '../../src/http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
+import { createAndRunShell } from '../../src/shell-utils';
 
 export async function attachHandler(
     configService: ConfigService,
@@ -16,5 +16,5 @@ export async function attachHandler(
         logger.error(`Connection ${connectionId} is not open`);
         await cleanExit(1, logger);
     }
-    await createShellHandler(configService, logger, connectionSummary.serverType, connectionSummary.serverId, connectionId);
+    await createAndRunShell(configService, logger, connectionSummary.serverType, connectionSummary.serverId, connectionId);
 }

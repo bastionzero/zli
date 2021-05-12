@@ -77,7 +77,6 @@ export interface ListSsmTargetsRequest
 }
 
 export interface SsmTargetSummary {
-    // The following is serverId
     id: string;
     name: string;
     status: SsmTargetStatus;

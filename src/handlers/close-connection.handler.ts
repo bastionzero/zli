@@ -1,3 +1,4 @@
+import { getCliSpaceId } from '../../src/shell-utils';
 import { ConfigService } from '../../src/config.service/config.service';
 import { ConnectionService } from '../../src/http.service/http.service';
 import { ConnectionState } from '../../src/http.service/http.service.types';
@@ -9,9 +10,15 @@ export async function closeConnectionHandler(
     logger: Logger,
     connectionId: string
 ){
+    const cliSessionId = await getCliSpaceId(configService, logger);
     const connectionService = new ConnectionService(configService, logger);
     logger.debug('Cleaning up connection...');
     const conn = await connectionService.GetConnection(connectionId);
+    // if the connection does belong to the cli space
+    if (conn.sessionId !== cliSessionId){
+        logger.error(`Connection ${connectionId} does not belong to the cli space`);
+        await cleanExit(1, logger);
+    }
     // if connection not already closed
     if(conn.state == ConnectionState.Open){
         await connectionService.CloseConnection(connectionId);

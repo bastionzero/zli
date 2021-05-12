@@ -1,11 +1,12 @@
-import { ConfigService } from '../../src/config.service/config.service';
-import { Logger } from '../../src/logger.service/logger';
-import { ShellTerminal } from '../../src/terminal/terminal';
-import { TargetType } from '../types';
-import { cleanExit } from './clean-exit.handler';
 import termsize from 'term-size';
+import { ConfigService } from './config.service/config.service';
+import { cleanExit } from './handlers/clean-exit.handler';
+import { SessionService } from './http.service/http.service';
+import { Logger } from './logger.service/logger';
+import { ShellTerminal } from './terminal/terminal';
+import { SessionState, TargetType } from './types';
 
-export async function createShellHandler(
+export async function createAndRunShell(
     configService: ConfigService,
     logger: Logger,
     targetType: TargetType,
@@ -58,4 +59,26 @@ export async function createShellHandler(
         process.stdin.setRawMode(true);
     }
     process.stdin.on('keypress', (_, key) => terminal.writeString(key.sequence));
+}
+
+export async function getCliSpaceId(
+    configService: ConfigService,
+    logger: Logger
+): Promise<string> {
+    // call list session
+    const sessionService = new SessionService(configService, logger);
+    const listSessions = await sessionService.ListSessions();
+
+    // space names are not unique, make sure to find the latest active one
+    const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
+
+    // maybe make a session
+    let cliSessionId: string;
+    if(cliSpace.length === 0) {
+        cliSessionId =  await sessionService.CreateSession('cli-space');
+    } else {
+        // there should only be 1 active 'cli-space' session
+        cliSessionId = cliSpace.pop().id;
+    }
+    return cliSessionId;
 }

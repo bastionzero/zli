@@ -74,8 +74,7 @@ export function parseTargetString(targetString: string) : ParsedTargetString
     const targetSomething = colonSplit[0];
 
     // test if targetSomething is GUID
-    const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
-    if(guidPattern.test(targetSomething))
+    if(isGuid(targetSomething))
         result.id = targetSomething;
     else
         result.name = targetSomething;
@@ -84,6 +83,12 @@ export function parseTargetString(targetString: string) : ParsedTargetString
         result.path = colonSplit[1];
 
     return result;
+}
+
+// Checks whether the passed argument is a valid Guid
+export function isGuid(id: string): boolean{
+    const guidPattern = /^[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12}$/;
+    return guidPattern.test(id);
 }
 
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
@@ -128,21 +133,19 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     return table.toString();
 }
 
-export function getTableOfConnections(connections: ConnectionSummary[]) : string
+export function getTableOfConnections(connections: ConnectionSummary[], allTargets: TargetSummary[]) : string
 {
-    const connIdLength = max(connections.map(c => c.id.length).concat(16));
-    const header: string[] = ['Connection ID'];
-    const columnWidths = [connIdLength + 2];
+    const targetNameLength = max(allTargets.map(t => t.name.length).concat(16));
+    const connIdLength = max(connections.map(c => c.id.length).concat(36));
+    const header: string[] = ['Target Name', 'Connection ID', 'Date Created'];
+    const columnWidths = [targetNameLength + 2, connIdLength + 2, 20];
 
-    // ref: https://github.com/cli-table/cli-table3
     const table = new Table({ head: header, colWidths: columnWidths });
-
+    const dateOptions = {year: '2-digit', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', hour12: true};
     connections.forEach(connection => {
-        const row = [connection.id];
-
+        const row = [allTargets.filter(t => t.id == connection.serverId).pop().name, connection.id, new Date(connection.timeCreated).toLocaleString('en-US', dateOptions as any)];
         table.push(row);
-    }
-    );
+    });
 
     return table.toString();
 

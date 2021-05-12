@@ -1,6 +1,7 @@
 import { IdP, SsmTargetStatus, TargetSummary, TargetType } from './types';
 import {
     disambiguateTarget,
+    isGuid,
     targetStringExample
 } from './utils';
 import { ConfigService } from './config.service/config.service';
@@ -151,6 +152,42 @@ export class CliDriver
                 }
             )
             .command(
+                'attach <connectionId>',
+                'Attach to an open zli connection',
+                (yargs) => {
+                    return yargs
+                        .positional('connectionId', {
+                            type: 'string',
+                        })
+                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id');
+                },
+                async (argv) => {
+                    if (!isGuid(argv.connectionId)){
+                        this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
+                        await cleanExit(1, this.logger);
+                    }
+                    await attachHandler(this.configService, this.logger, argv.connectionId);
+                }
+            )
+            .command(
+                'close <connectionId>',
+                'Close an open zli connection',
+                (yargs) => {
+                    return yargs
+                        .positional('connectionId', {
+                            type: 'string',
+                        })
+                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id');
+                },
+                async (argv) => {
+                    if (!isGuid(argv.connectionId)){
+                        this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
+                        await cleanExit(1, this.logger);
+                    }
+                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
+                }
+            )
+            .command(
                 ['list-targets', 'lt'],
                 'List all targets (filters available)',
                 (yargs) => {
@@ -222,6 +259,14 @@ export class CliDriver
                 },
                 async (argv) => {
                     await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                }
+            )
+            .command(
+                ['list-connections', 'lc'],
+                'List all open connections',
+                () => {},
+                async () => {
+                    await listConnectionsHandler(this.configService, this.logger, this.ssmTargets, this.sshTargets);
                 }
             )
             .command(
@@ -323,42 +368,6 @@ export class CliDriver
                     };
 
                     await sshProxyHandler(this.configService, this.logger, sshTunnelParameters, this.keySplittingService, this.envMap);
-                }
-            )
-            .command(
-                ['list-connections', 'lc'],
-                'List all open connections',
-                () => {},
-                async () => {
-                    await listConnectionsHandler(this.configService, this.logger);
-                }
-            )
-            .command(
-                'attach <connectionId>',
-                'Attach to an open zli connection',
-                (yargs) => {
-                    return yargs
-                        .positional('connectionId', {
-                            type: 'string',
-                        })
-                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id');
-                },
-                async (argv) => {
-                    await attachHandler(this.configService, this.logger, argv.connectionId);
-                }
-            )
-            .command(
-                'close <connectionId>',
-                'Close an open zli connection',
-                (yargs) => {
-                    return yargs
-                        .positional('connectionId', {
-                            type: 'string',
-                        })
-                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id');
-                },
-                async (argv) => {
-                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
                 }
             )
             .command(
