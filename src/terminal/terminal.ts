@@ -8,7 +8,7 @@ import { ConfigService } from '../config.service/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-import { ConnectionService, SsmTargetService } from '../http.service/http.service';
+import { SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
 import { SsmTargetSummary } from '../http.service/http.service.types';
 

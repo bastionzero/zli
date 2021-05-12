@@ -1,8 +1,8 @@
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
-import { SessionService, ConnectionService, PolicyQueryService } from '../http.service/http.service';
+import { ConnectionService, PolicyQueryService } from '../http.service/http.service';
 import { VerbType } from '../http.service/http.service.types';
-import { ParsedTargetString, SessionState, TargetType } from '../types';
+import { ParsedTargetString, TargetType } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
