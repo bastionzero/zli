@@ -11,24 +11,11 @@ export async function listConnectionsHandler(
     configService: ConfigService,
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,
-    sshTargets: Promise<TargetSummary[]>
+    sshTargets: Promise<TargetSummary[]>,
+    cliSpaceId: Promise<string>
 ){
-    // call list session
+    const cliSessionId = await cliSpaceId;
     const sessionService = new SessionService(configService, logger);
-    const listSessions = await sessionService.ListSessions();
-
-    // space names are not unique, make sure to find the latest active one
-    const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
-
-    let cliSessionId: string;
-    if(cliSpace.length === 0) {
-        logger.info('There is no cli session available');
-        await cleanExit(0, logger);
-    } else {
-        // there should only be 1 active 'cli-space' session
-        cliSessionId = cliSpace.pop().id;
-    }
-
     const sessionDetails = await sessionService.GetSession(cliSessionId);
     const openConnections = sessionDetails.connections.filter(c => c.state === ConnectionState.Open);
     if (openConnections.length === 0){

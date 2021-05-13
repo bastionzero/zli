@@ -3,6 +3,7 @@ import { ConfigService } from '../config.service/config.service';
 import {
     DynamicAccessConfigService,
     EnvironmentService,
+    SessionService,
     SshTargetService,
     SsmTargetService
 } from '../http.service/http.service';
@@ -12,6 +13,7 @@ import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
 import { LoggerConfigService } from '../logger-config.service/logger-config.service';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { getCliSpaceId } from '../../src/shell-utils';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
@@ -20,6 +22,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const sshTargetService = new SshTargetService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
+    const sessionService = new SessionService(configService, logger);
 
     const dynamicConfigs = dynamicConfigService.ListDynamicAccessConfigs()
         .then(result =>
@@ -48,11 +51,14 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const envs = envService.ListEnvironments();
 
+    const cliSpaceId = getCliSpaceId(sessionService, logger);
+
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
         sshTargets: sshTargets,
-        envs: envs
+        envs: envs,
+        cliSpaceId: cliSpaceId
     };
 }
 

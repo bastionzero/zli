@@ -1,4 +1,3 @@
-import { getCliSpaceId } from '../../src/shell-utils';
 import { ConfigService } from '../../src/config.service/config.service';
 import { ConnectionService } from '../../src/http.service/http.service';
 import { ConnectionState } from '../../src/http.service/http.service.types';
@@ -8,9 +7,14 @@ import { cleanExit } from './clean-exit.handler';
 export async function closeConnectionHandler(
     configService: ConfigService,
     logger: Logger,
-    connectionId: string
+    connectionId: string,
+    cliSpaceId: Promise<string>
 ){
-    const cliSessionId = await getCliSpaceId(configService, logger);
+    const cliSessionId = await cliSpaceId;
+    if ( ! cliSessionId){
+        logger.error(`There is no cli session. Try creating a new connection to a target using the zli`);
+        await cleanExit(1, logger);
+    }
     const connectionService = new ConnectionService(configService, logger);
     logger.debug('Cleaning up connection...');
     const conn = await connectionService.GetConnection(connectionId);

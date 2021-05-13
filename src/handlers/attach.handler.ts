@@ -8,10 +8,20 @@ import { createAndRunShell } from '../../src/shell-utils';
 export async function attachHandler(
     configService: ConfigService,
     logger: Logger,
-    connectionId: string
+    connectionId: string,
+    cliSpaceId: Promise<string>
 ){
     const connectionService = new ConnectionService(configService, logger);
     const connectionSummary = await connectionService.GetConnection(connectionId);
+    const cliSessionId = await cliSpaceId;
+    if ( ! cliSessionId){
+        logger.error(`There is no cli session. Try creating a new connection to a target using the zli`);
+        await cleanExit(1, logger);
+    }
+    if (connectionSummary.sessionId !== cliSessionId){
+        logger.error(`Connection ${connectionId} does not belong to the cli space`);
+        await cleanExit(1, logger);
+    }
     if (connectionSummary.state !== ConnectionState.Open){
         logger.error(`Connection ${connectionId} is not open`);
         await cleanExit(1, logger);

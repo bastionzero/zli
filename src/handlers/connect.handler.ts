@@ -1,13 +1,13 @@
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
-import { ConnectionService, PolicyQueryService } from '../http.service/http.service';
+import { ConnectionService, PolicyQueryService, SessionService } from '../http.service/http.service';
 import { VerbType } from '../http.service/http.service.types';
 import { ParsedTargetString, TargetType } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
 import { targetStringExampleNoPath } from '../utils';
-import { createAndRunShell, getCliSpaceId } from '../../src/shell-utils';
+import { createAndRunShell } from '../../src/shell-utils';
 import _ from 'lodash';
 
 
@@ -15,7 +15,8 @@ export async function connectHandler(
     configService: ConfigService,
     logger: Logger,
     mixpanelService: MixpanelService,
-    parsedTarget: ParsedTargetString) {
+    parsedTarget: ParsedTargetString,
+    cliSpaceId: Promise<string>) {
 
     if(! parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
@@ -40,7 +41,10 @@ export async function connectHandler(
     }
 
     // Get the existing if any or create a new cli space id
-    const cliSessionId = await getCliSpaceId(configService, logger);
+    const sessionService = new SessionService(configService, logger);
+    let cliSessionId = await cliSpaceId;
+    if (cliSessionId === undefined)
+        cliSessionId = await sessionService.CreateSession('cli-space');
 
     // We do the following for ssh since we are required to pass
     // in a user although it does not get read at any point

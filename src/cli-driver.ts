@@ -47,6 +47,7 @@ export class CliDriver
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
+    private cliSpaceId: Promise<string>;
 
     // use the following to shortcut middleware according to command
     private noOauthCommands: string[] = ['config', 'login', 'logout'];
@@ -100,6 +101,7 @@ export class CliDriver
                 this.ssmTargets = fetchDataResponse.ssmTargets;
                 this.sshTargets = fetchDataResponse.sshTargets;
                 this.envs = fetchDataResponse.envs;
+                this.cliSpaceId = fetchDataResponse.cliSpaceId;
             })
             .command(
                 'login <provider>',
@@ -148,7 +150,7 @@ export class CliDriver
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
-                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget, this.cliSpaceId);
                 }
             )
             .command(
@@ -166,7 +168,7 @@ export class CliDriver
                         this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
                         await cleanExit(1, this.logger);
                     }
-                    await attachHandler(this.configService, this.logger, argv.connectionId);
+                    await attachHandler(this.configService, this.logger, argv.connectionId, this.cliSpaceId);
                 }
             )
             .command(
@@ -184,7 +186,7 @@ export class CliDriver
                         this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
                         await cleanExit(1, this.logger);
                     }
-                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
+                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId, this.cliSpaceId);
                 }
             )
             .command(
@@ -278,7 +280,7 @@ export class CliDriver
                         .example('lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets);
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets, this.cliSpaceId);
                 }
             )
             .command(

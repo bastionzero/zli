@@ -62,23 +62,23 @@ export async function createAndRunShell(
 }
 
 export async function getCliSpaceId(
-    configService: ConfigService,
+    sessionService: SessionService,
     logger: Logger
 ): Promise<string> {
-    // call list session
-    const sessionService = new SessionService(configService, logger);
     const listSessions = await sessionService.ListSessions();
 
     // space names are not unique, make sure to find the latest active one
     const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
 
-    // maybe make a session
     let cliSessionId: string;
     if(cliSpace.length === 0) {
-        cliSessionId =  await sessionService.CreateSession('cli-space');
+        return undefined;
+    } else if (cliSpace.length === 1) {
+        cliSessionId = cliSpace[0].id;
     } else {
         // there should only be 1 active 'cli-space' session
         cliSessionId = cliSpace.pop().id;
+        logger.warn(`Found ${cliSpace.length} cli sessions while expecting 1`);
     }
     return cliSessionId;
 }
