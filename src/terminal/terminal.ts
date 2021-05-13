@@ -93,6 +93,10 @@ export class ShellTerminal implements IDisposable
                 case ShellEventType.Start:
                     this.blockInput = false;
                     this.terminalRunningStream.next(true);
+                    // Trigger resize to force the terminal to refresh the output
+                    const tempTerminalSize : TerminalSize = {rows: this.currentTerminalSize.rows + 1, columns: this.currentTerminalSize.columns + 1};
+                    if(! this.blockInput)
+                        this.resizeSubject.next({rows: tempTerminalSize.rows, columns: tempTerminalSize.columns});
                     // Send initial terminal dimensions
                     this.resize(this.currentTerminalSize);
                     break;

@@ -1,7 +1,7 @@
 import { ConfigService } from '../../src/config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
 import { SessionService } from '../../src/http.service/http.service';
-import { ConnectionDetails, SessionState, TargetSummary } from '../types';
+import { ConnectionDetails, TargetSummary } from '../types';
 import { getTableOfConnections } from '../../src/utils';
 import { cleanExit } from './clean-exit.handler';
 import { ConnectionState } from '../../src/http.service/http.service.types';
