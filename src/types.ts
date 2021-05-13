@@ -1,3 +1,5 @@
+import { ConnectionState } from './http.service/http.service.types';
+
 export enum TargetType {
     SSM = 'SSM',
     SSH = 'SSH',
@@ -31,6 +33,17 @@ export interface TargetSummary
     type: TargetType;
     agentVersion: string;
     status: SsmTargetStatus;
+}
+
+export interface ConnectionDetails
+{
+    id: string;
+    timeCreated: number;
+    targetId: string;
+    sessionId: string;
+    state: ConnectionState,
+    serverType: TargetType,
+    userName: string
 }
 
 export interface ParsedTargetString

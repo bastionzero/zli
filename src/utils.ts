@@ -1,6 +1,6 @@
-import { ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
+import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
 import { max } from 'lodash';
-import { ConnectionSummary, EnvironmentDetails } from './http.service/http.service.types';
+import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
 import { cleanExit } from './handlers/clean-exit.handler';
@@ -133,17 +133,18 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     return table.toString();
 }
 
-export function getTableOfConnections(connections: ConnectionSummary[], allTargets: TargetSummary[]) : string
+export function getTableOfConnections(connections: ConnectionDetails[], allTargets: TargetSummary[]) : string
 {
     const targetNameLength = max(allTargets.map(t => t.name.length).concat(16));
     const connIdLength = max(connections.map(c => c.id.length).concat(36));
-    const header: string[] = ['Target Name', 'Connection ID', 'Date Created'];
-    const columnWidths = [targetNameLength + 2, connIdLength + 2, 20];
+    const targetUserLength = max(connections.map(c => c.userName.length).concat(16));
+    const header: string[] = ['Connection ID', 'Target User', 'Target', 'Time Created'];
+    const columnWidths = [connIdLength + 2, targetUserLength + 2, targetNameLength + 2, 20];
 
     const table = new Table({ head: header, colWidths: columnWidths });
     const dateOptions = {year: '2-digit', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', hour12: true};
     connections.forEach(connection => {
-        const row = [allTargets.filter(t => t.id == connection.serverId).pop().name, connection.id, new Date(connection.timeCreated).toLocaleString('en-US', dateOptions as any)];
+        const row = [connection.id, connection.userName, allTargets.filter(t => t.id == connection.targetId).pop().name, new Date(connection.timeCreated).toLocaleString('en-US', dateOptions as any)];
         table.push(row);
     });
 

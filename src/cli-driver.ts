@@ -263,10 +263,22 @@ export class CliDriver
             )
             .command(
                 ['list-connections', 'lc'],
-                'List all open connections',
-                () => {},
-                async () => {
-                    await listConnectionsHandler(this.configService, this.logger, this.ssmTargets, this.sshTargets);
+                'List all open zli connections',
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('lc --json', 'List all open zli connections, output as json, pipeable');
+                },
+                async (argv) => {
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets);
                 }
             )
             .command(

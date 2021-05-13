@@ -68,7 +68,8 @@ export interface ConnectionSummary {
     serverId: string;
     sessionId: string;
     state: ConnectionState,
-    serverType: TargetType
+    serverType: TargetType,
+    userName: string
 }
 
 export interface ListSsmTargetsRequest
