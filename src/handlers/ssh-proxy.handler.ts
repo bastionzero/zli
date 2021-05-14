@@ -8,10 +8,18 @@ import { PolicyQueryService } from '../http.service/http.service';
 import { ParsedTargetString } from '../types';
 import _ from 'lodash';
 import { VerbType } from '../http.service/http.service.types';
+import { targetStringExampleNoPath } from '../../src/utils';
 
 
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {
 
+    if(! sshTunnelParameters.parsedTarget) {
+        // Note; the following are not getting printed to the stdout as this point
+        // ssh controls the stdout. These can only be seen in the logs
+        logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
+        logger.error(targetStringExampleNoPath);
+        await cleanExit(1, logger);
+    }
     const policyQueryService = new PolicyQueryService(configService, logger);
     const response = await policyQueryService.ListTargetUsers(sshTunnelParameters.parsedTarget.id, sshTunnelParameters.parsedTarget.type, {type: VerbType.Tunnel}, undefined);
 
