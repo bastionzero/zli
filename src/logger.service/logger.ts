@@ -34,17 +34,36 @@ export class Logger implements ILogger {
     private logger: WinstonLogger;
     private config: LoggerConfigService;
 
-    constructor(config: LoggerConfigService, debug: boolean, silent: boolean) {
+    constructor(config: LoggerConfigService, debug: boolean, silent: boolean, isStdEnabled: boolean) {
         this.debugFlag = debug;
         this.config = config;
         this.silentFlag = silent;
 
         // Build our logger
-        this.buildLogger();
+        this.buildLogger(isStdEnabled);
     }
 
-    private buildLogger(): void {
+    private buildLogger(isStdEnabled: boolean): void {
         // Helper function to build our logger
+        const transportsOptions = {
+            file: new winston.transports.File({
+                level: 'Debug',
+                filename: this.config.logPath()
+            }),
+            stderr: new winston.transports.Stream({
+                stream: process.stderr,
+                level: 'Error',
+                format: loggingDefaultFormat
+            })
+        };
+        let transports = undefined;
+        // If we do not have control of the stdio we have to connect manually
+        // the log.error() to the stderr in order to print error messages
+        if (!isStdEnabled){
+            transports = [transportsOptions.file, transportsOptions.stderr];
+        }else{
+            transports = [transportsOptions.file];
+        }
         try {
             this.logger = winston.createLogger({
                 levels: loggingLevels,
@@ -56,17 +75,7 @@ export class Logger implements ILogger {
                     winston.format.splat(),
                     winston.format.json()
                 ),
-                transports: [
-                    new winston.transports.File({
-                        level: 'Debug',
-                        filename: this.config.logPath(),
-                    }),
-                    new winston.transports.Stream({
-                        stream: process.stderr,
-                        level: 'Error',
-                        format: loggingDefaultFormat
-                      })
-                ],
+                transports: transports,
             });
         } catch (error) {
             let errorMessage;

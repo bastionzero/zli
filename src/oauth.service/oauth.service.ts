@@ -120,7 +120,7 @@ export class OAuthService implements IDisposable {
         if(tokenSet === undefined)
             return false;
 
-        return tokenSet.expired();
+        return !tokenSet.expired();
     }
 
     public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
