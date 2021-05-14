@@ -14,10 +14,8 @@ import { targetStringExampleNoPath } from '../../src/utils';
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {
 
     if(! sshTunnelParameters.parsedTarget) {
-        // Note; the following are not getting printed to the stdout as this point
-        // ssh controls the stdout. These can only be seen in the logs
-        logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
-        logger.error(targetStringExampleNoPath);
+        const errorMessage = `No targets matched your targetName/targetId or invalid target string, must follow syntax: ${targetStringExampleNoPath}`;
+        process.stderr.write(`\n${errorMessage}\n`);
         await cleanExit(1, logger);
     }
     const policyQueryService = new PolicyQueryService(configService, logger);
