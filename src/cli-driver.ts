@@ -27,7 +27,6 @@ import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
-import { OAuthService } from './oauth.service/oauth.service';
 
 
 export class CliDriver
@@ -81,11 +80,6 @@ export class CliDriver
             .middleware(async (argv) => {
                 if(includes(this.noOauthCommands, argv._[0]))
                     return;
-                const oauth = new OAuthService(this.configService, this.logger);
-                if(argv._[0] == 'ssh-proxy' && !oauth.isAuthenticated()){
-                    this.logger.error('You need to log in, please run \'zli login --help\'');
-                    await cleanExit(1, this.logger);
-                }
                 await oAuthMiddleware(this.configService, this.logger);
             })
             .middleware(async (argv) => {

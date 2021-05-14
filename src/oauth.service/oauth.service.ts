@@ -192,7 +192,7 @@ export class OAuthService implements IDisposable {
                 }
             }
         } else {
-            this.logger.warn('You need to log in, please run \'zli login --help\'');
+            this.logger.error('You need to log in, please run \'zli login --help\'');
             await cleanExit(1, this.logger);
         }
 

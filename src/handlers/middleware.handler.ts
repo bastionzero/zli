@@ -86,10 +86,7 @@ export async function oAuthMiddleware(configService: ConfigService, logger: Logg
 export async function initMiddleware(argv: any) {
     // Configure our logger
     const loggerConfigService = new LoggerConfigService(<string> argv.configName);
-    // When in a tunnel the zli does not have control of the stdio
-    const isStdEnabled = argv._[0] != 'ssh-proxy';
-    const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, isStdEnabled);
-
+    const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, !!process.stdout.isTTY);
     // Config init
     const configService = new ConfigService(<string>argv.configName, logger);
 
