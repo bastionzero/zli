@@ -14,8 +14,8 @@ import { targetStringExampleNoPath } from '../../src/utils';
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {
 
     if(! sshTunnelParameters.parsedTarget) {
-        const errorMessage = `No targets matched your targetName/targetId or invalid target string, must follow syntax: ${targetStringExampleNoPath}`;
-        process.stderr.write(`\n${errorMessage}\n`);
+        logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
+        logger.error(targetStringExampleNoPath);
         await cleanExit(1, logger);
     }
     const policyQueryService = new PolicyQueryService(configService, logger);
@@ -23,24 +23,19 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
 
     if(! response.allowed)
     {
-        const errorMessage = 'You do not have sufficient permission to open a ssh tunnel to the target';
-        logger.error(errorMessage);
-        process.stderr.write(`\n${errorMessage}\n`);
+        logger.error('You do not have sufficient permission to open a ssh tunnel to the target');
         await cleanExit(1, logger);
     }
 
     const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
     if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, sshTunnelParameters.parsedTarget.user)) {
-        const errorMessage = `You do not have permission to tunnel as targetUser: ${sshTunnelParameters.parsedTarget.user}. Current allowed users for you: ${allowedTargetUsers}`;
-        logger.error(errorMessage);
-        process.stderr.write(`\n${errorMessage}\n`);
-
+        logger.error(`You do not have permission to tunnel as targetUser: ${sshTunnelParameters.parsedTarget.user}. Current allowed users for you: ${allowedTargetUsers}`);
         await cleanExit(1, logger);
     }
 
     const ssmTunnelService = new SsmTunnelService(logger, configService, keySplittingService, envMap['enableKeysplitting'] == 'true');
     ssmTunnelService.errors.subscribe(async errorMessage => {
-        process.stderr.write(`\n${errorMessage}\n`);
+        logger.error(errorMessage);
         await cleanExit(1, logger);
     });
 
@@ -51,8 +46,7 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
     }
 
     configService.logoutDetected.subscribe(async () => {
-        logger.debug('Logged out by another zli instance. Terminating ssh tunnel');
-        process.stderr.write(`\nLogged out by another zli instance. Terminating ssh tunnel...\n`);
+        logger.error('\nLogged out by another zli instance. Terminating ssh tunnel\n');
         await ssmTunnelService.closeTunnel();
         await cleanExit(0, logger);
     });

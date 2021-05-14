@@ -60,8 +60,13 @@ export class Logger implements ILogger {
                     new winston.transports.File({
                         level: 'Debug',
                         filename: this.config.logPath(),
-                    })
-                ]
+                    }),
+                    new winston.transports.Stream({
+                        stream: process.stderr,
+                        level: 'Error',
+                        format: loggingDefaultFormat
+                      })
+                ],
             });
         } catch (error) {
             let errorMessage;
