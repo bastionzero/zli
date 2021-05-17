@@ -7,7 +7,7 @@ import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
 import { targetStringExampleNoPath } from '../utils';
-import { createAndRunShell } from '../../src/shell-utils';
+import { createAndRunShell, getCliSpaceId } from '../../src/shell-utils';
 import _ from 'lodash';
 
 
@@ -15,8 +15,7 @@ export async function connectHandler(
     configService: ConfigService,
     logger: Logger,
     mixpanelService: MixpanelService,
-    parsedTarget: ParsedTargetString,
-    cliSpaceId: Promise<string>) {
+    parsedTarget: ParsedTargetString) {
 
     if(! parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
@@ -42,7 +41,7 @@ export async function connectHandler(
 
     // Get the existing if any or create a new cli space id
     const sessionService = new SessionService(configService, logger);
-    let cliSessionId = await cliSpaceId;
+    let cliSessionId = await getCliSpaceId(sessionService, logger);
     if (cliSessionId === undefined)
         cliSessionId = await sessionService.CreateSession('cli-space');
 

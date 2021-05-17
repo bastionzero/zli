@@ -101,7 +101,6 @@ export class CliDriver
                 this.ssmTargets = fetchDataResponse.ssmTargets;
                 this.sshTargets = fetchDataResponse.sshTargets;
                 this.envs = fetchDataResponse.envs;
-                this.cliSpaceId = fetchDataResponse.cliSpaceId;
             })
             .command(
                 'login <provider>',
@@ -150,7 +149,7 @@ export class CliDriver
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
-                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget, this.cliSpaceId);
+                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                 }
             )
             .command(
@@ -168,7 +167,7 @@ export class CliDriver
                         this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
                         await cleanExit(1, this.logger);
                     }
-                    await attachHandler(this.configService, this.logger, argv.connectionId, this.cliSpaceId);
+                    await attachHandler(this.configService, this.logger, argv.connectionId);
                 }
             )
             .command(
@@ -186,7 +185,7 @@ export class CliDriver
                         this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
                         await cleanExit(1, this.logger);
                     }
-                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId, this.cliSpaceId);
+                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
                 }
             )
             .command(
@@ -280,7 +279,7 @@ export class CliDriver
                         .example('lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets, this.cliSpaceId);
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets);
                 }
             )
             .command(

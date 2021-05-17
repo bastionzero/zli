@@ -1,19 +1,21 @@
-import { ConnectionService } from '../../src/http.service/http.service';
+import { ConnectionService, SessionService } from '../../src/http.service/http.service';
 import { ConfigService } from '../../src/config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
 import { ConnectionState } from '../../src/http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
-import { createAndRunShell } from '../../src/shell-utils';
+import { createAndRunShell, getCliSpaceId } from '../../src/shell-utils';
 
 export async function attachHandler(
     configService: ConfigService,
     logger: Logger,
-    connectionId: string,
-    cliSpaceId: Promise<string>
+    connectionId: string
 ){
     const connectionService = new ConnectionService(configService, logger);
     const connectionSummary = await connectionService.GetConnection(connectionId);
-    const cliSessionId = await cliSpaceId;
+
+    const sessionService = new SessionService(configService, logger);
+    const cliSessionId = await getCliSpaceId(sessionService, logger);
+
     if ( ! cliSessionId){
         logger.error(`There is no cli session. Try creating a new connection to a target using the zli`);
         await cleanExit(1, logger);
