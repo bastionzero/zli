@@ -86,6 +86,9 @@ export async function oAuthMiddleware(configService: ConfigService, logger: Logg
 export async function initMiddleware(argv: any) {
     // Configure our logger
     const loggerConfigService = new LoggerConfigService(<string> argv.configName);
+    // isTTY detects whether the process is being run with a text terminal ("TTY") attached
+    // This way we detect whether we should connect logger.error to stderr in order
+    // to be able to print error messages to the user (e.g. ssh-proxy mode)
     const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, !!process.stdout.isTTY);
     // Config init
     const configService = new ConfigService(<string>argv.configName, logger);
