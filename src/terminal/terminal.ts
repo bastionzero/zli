@@ -79,6 +79,12 @@ export class ShellTerminal implements IDisposable
             process.stdout.write(Buffer.from(data, 'base64'));
         });
 
+        // Replay the existing output if any and only then continue with the shell start flow
+        this.shellWebsocketService.replayData.subscribe(data => {// Maybe a "wait for only one input" should be used here instead of subscribe?
+            process.stdout.write(Buffer.from(data, 'base64'));
+            this.shellWebsocketService.sendReplayDone(termSize.rows, termSize.columns);
+        });
+
         // initial terminal size
         await this.shellWebsocketService.start();
 
@@ -88,7 +94,8 @@ export class ShellTerminal implements IDisposable
 
                 switch(shellEvent.type) {
                 case ShellEventType.Ready:
-                    this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns);
+                    const version: number = 1; // Maybe there is a better place for this endpoint versioning?
+                    this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns, version);
                     break;
                 case ShellEventType.Start:
                     this.blockInput = false;
