@@ -66,7 +66,8 @@ export class CliDriver
 
     public start()
     {
-        this.processName = process.argv[0];
+        // ref: https://nodejs.org/api/process.html#process_process_argv0
+        this.processName = process.argv0;
 
         yargs(process.argv.slice(2))
             .scriptName('zli')
