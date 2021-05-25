@@ -94,8 +94,8 @@ export class ShellTerminal implements IDisposable
 
                 switch(shellEvent.type) {
                 case ShellEventType.Ready:
-                    const version: number = 1; // Maybe there is a better place for this endpoint versioning?
-                    this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns, version);
+                    const replayOutput: boolean = true; // Maybe there is a better place for this endpoint versioning?
+                    this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns, replayOutput);
                     break;
                 case ShellEventType.Start:
                     this.blockInput = false;
