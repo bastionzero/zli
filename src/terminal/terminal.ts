@@ -8,7 +8,7 @@ import { ConfigService } from '../config.service/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-import { SsmTargetService } from '../http.service/http.service';
+import { ConnectionService, SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
 import { SsmTargetSummary } from '../http.service/http.service.types';
 
@@ -25,16 +25,20 @@ export class ShellTerminal implements IDisposable
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private targetType: TargetType, private serverId: string)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private connectionService: ConnectionService)
     {
     }
 
     private async createShellWebsocketService() : Promise<IShellWebsocketService> {
-        if(this.targetType === TargetType.SSH) {
+        const connectionInfo = await this.connectionService.GetConnection(this.connectionId);
+        const targetType = connectionInfo.serverType;
+        const targetId = connectionInfo.serverId;
+
+        if(targetType === TargetType.SSH) {
             return this.createSshShellWebsocketService();
-        } else if(this.targetType === TargetType.SSM || this.targetType === TargetType.DYNAMIC) {
+        } else if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.serverId);
+            const ssmTargetInfo = await ssmTargetService.GetSsmTarget(targetId);
             if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
                 return this.createSsmShellWebsocketService(ssmTargetInfo);
             } else {
@@ -42,7 +46,7 @@ export class ShellTerminal implements IDisposable
                 return this.createSshShellWebsocketService();
             }
         } else {
-            throw new Error(`Unhandled target type ${this.targetType}`);
+            throw new Error(`Unhandled target type ${targetType}`);
         }
     }
 

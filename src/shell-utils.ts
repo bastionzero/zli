@@ -1,20 +1,19 @@
 import termsize from 'term-size';
 import { ConfigService } from './config.service/config.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { SessionService } from './http.service/http.service';
+import { ConnectionService, SessionService } from './http.service/http.service';
 import { Logger } from './logger.service/logger';
 import { ShellTerminal } from './terminal/terminal';
-import { SessionState, TargetType } from './types';
+import { SessionState } from './types';
 
 export async function createAndRunShell(
     configService: ConfigService,
     logger: Logger,
-    targetType: TargetType,
-    targetId: string,
-    connectionId: string
+    connectionId: string,
+    connectionService: ConnectionService
 ){
     // connect to target and run terminal
-    const terminal = new ShellTerminal(logger, configService, connectionId, targetType, targetId);
+    const terminal = new ShellTerminal(logger, configService, connectionId, connectionService);
     try {
         await terminal.start(termsize());
     } catch (err) {

@@ -70,7 +70,7 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    await createAndRunShell(configService, logger, parsedTarget.type, parsedTarget.id, connectionId);
+    await createAndRunShell(configService, logger, connectionId, connectionService);
 
     mixpanelService.TrackNewConnection(parsedTarget.type);
 }
