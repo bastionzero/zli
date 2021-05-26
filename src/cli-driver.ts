@@ -436,9 +436,10 @@ export class CliDriver
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
             .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all zli messages, only returns command output'})
-            .strict() // if unknown command, show help
+            .strictCommands() // if unknown command, show help
             .demandCommand() // if no command, show help
             .help() // auto gen help message
+            .showHelpOnFail(false)
             .epilog(`Note:
  - <targetString> format: ${targetStringExample}
  - TargetStrings only require targetUser for SSM and Dynamic targets

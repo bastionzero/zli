@@ -126,7 +126,7 @@ export class OAuthService implements IDisposable {
     public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
     {
         return new Promise<void>(async (resolve, reject) => {
-            setTimeout(() => reject('Log in timeout reached'), 60 * 1000);
+            setTimeout(() => reject(this.logger.error('Login timeout reached')), 60 * 1000);
 
             const client = await this.getClient();
             const code_verifier = generators.codeVerifier();

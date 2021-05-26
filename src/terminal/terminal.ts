@@ -38,7 +38,7 @@ export class ShellTerminal implements IDisposable
             if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
                 return this.createSsmShellWebsocketService(ssmTargetInfo);
             } else {
-                this.logger.warn(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...falling back to non-keysplitting shell`);
+                this.logger.debug(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...falling back to non-keysplitting shell`);
                 return this.createSshShellWebsocketService();
             }
         } else {
