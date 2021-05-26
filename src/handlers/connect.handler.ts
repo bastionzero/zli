@@ -15,7 +15,8 @@ export async function connectHandler(
     configService: ConfigService,
     logger: Logger,
     mixpanelService: MixpanelService,
-    parsedTarget: ParsedTargetString) {
+    parsedTarget: ParsedTargetString
+) {
 
     if(! parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
@@ -70,7 +71,15 @@ export async function connectHandler(
         await cleanExit(1, logger);
     }
 
-    await createAndRunShell(configService, logger, connectionId, connectionService);
+    // Note: For DATs the actual target to connect to will be a dynamically
+    // created ssm target that is provisioned by the DynamicAccessTarget and not
+    // the id of the dynamic access target. The dynamically created ssm target should be
+    // returned in the connectionSummary.targetId for this newly created
+    // connection
+
+    const connectionSummary = await connectionService.GetConnection(connectionId);
+
+    await createAndRunShell(configService, logger, connectionSummary);
 
     mixpanelService.TrackNewConnection(parsedTarget.type);
 }

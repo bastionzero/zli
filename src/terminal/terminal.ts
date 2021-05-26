@@ -8,9 +8,9 @@ import { ConfigService } from '../config.service/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-import { ConnectionService, SsmTargetService } from '../http.service/http.service';
+import { SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
-import { SsmTargetSummary } from '../http.service/http.service.types';
+import { ConnectionSummary, SsmTargetSummary } from '../http.service/http.service.types';
 
 export class ShellTerminal implements IDisposable
 {
@@ -25,14 +25,13 @@ export class ShellTerminal implements IDisposable
     private terminalRunningStream: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
     public terminalRunning: Observable<boolean> = this.terminalRunningStream.asObservable();
 
-    constructor(private logger: Logger, private configService: ConfigService, private connectionId: string, private connectionService: ConnectionService)
+    constructor(private logger: Logger, private configService: ConfigService, private connectionSummary: ConnectionSummary)
     {
     }
 
     private async createShellWebsocketService() : Promise<IShellWebsocketService> {
-        const connectionInfo = await this.connectionService.GetConnection(this.connectionId);
-        const targetType = connectionInfo.serverType;
-        const targetId = connectionInfo.serverId;
+        const targetType = this.connectionSummary.serverType;
+        const targetId = this.connectionSummary.serverId;
 
         if(targetType === TargetType.SSH) {
             return this.createSshShellWebsocketService();
@@ -54,7 +53,7 @@ export class ShellTerminal implements IDisposable
         return new SshShellWebsocketService(
             this.logger,
             new ZliAuthConfigService(this.configService, this.logger),
-            this.connectionId,
+            this.connectionSummary.id,
             this.inputSubject,
             this.resizeSubject
         );
@@ -66,7 +65,7 @@ export class ShellTerminal implements IDisposable
             ssmTargetInfo,
             this.logger,
             new ZliAuthConfigService(this.configService, this.logger),
-            this.connectionId,
+            this.connectionSummary.id,
             this.inputSubject,
             this.resizeSubject
         );
