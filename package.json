@@ -1,6 +1,6 @@
 {
   "name": "@bastionzero/zli",
-  "version": "4.20.4",
+  "version": "4.20.5",
   "description": "BastionZero cli",
   "repository": {
     "type": "git",
@@ -43,18 +43,18 @@
     "typescript": "^4.0.5"
   },
   "dependencies": {
-    "@types/async": "^3.2.5",
     "@microsoft/signalr": "^5.0.0",
+    "@types/async": "^3.2.5",
     "@types/chalk": "^2.2.0",
     "@types/crypto-js": "^4.0.1",
     "@types/figlet": "^1.2.1",
     "@types/lodash": "^4.14.165",
     "@types/node": "^14.14.7",
+    "@types/qrcode": "^1.3.5",
     "@types/semver": "^7.3.4",
+    "@types/sshpk": "^1.10.5",
     "@types/term-size": "^2.0.3",
     "@types/yargs": "^15.0.10",
-    "@types/sshpk": "^1.10.5",
-    "@types/qrcode": "^1.3.5",
     "async": "^3.2.0",
     "chalk": "^4.1.0",
     "cli-table3": "^0.6.0",
@@ -72,11 +72,11 @@
     "rxjs": "^6.6.3",
     "semver": "^7.3.2",
     "sha3": "^2.1.4",
+    "sshpk": "^1.16.1",
     "term-size": "^2.2.1",
     "ts-node": "^9.0.0",
     "winston": "^3.3.3",
-    "yargs": "^16.1.1",
-    "sshpk": "^1.16.1"
+    "yargs": "^16.1.1"
   },
   "pkg": {
     "scripts": [],
