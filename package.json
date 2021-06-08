@@ -1,7 +1,11 @@
 {
-  "name": "zli",
-  "version": "4.20.2",
+  "name": "@bastionzero/zli",
+  "version": "4.20.3",
   "description": "BastionZero cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bastionzero/zli.git"
+  },
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "bin": "dist/src/index.js",
