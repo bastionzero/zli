@@ -6,6 +6,12 @@ Bastionzero is a simple to use zero trust access SaaS for dynamic cloud environm
 
 The zli is a cli client for interacting with the Bastionzero SaaS
 
+## Install
+
+```
+npm i -g @bastionzero/zli
+```
+
 ## Developer processes
 
 ### Build and test
