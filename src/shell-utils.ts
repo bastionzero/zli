@@ -1,3 +1,5 @@
+import { Observable } from 'rxjs';
+import { bufferTime, filter } from 'rxjs/operators';
 import termsize from 'term-size';
 import { ConfigService } from './config.service/config.service';
 import { cleanExit } from './handlers/clean-exit.handler';
@@ -50,14 +52,18 @@ export async function createAndRunShell(
         }
     );
 
-    // To get 'keypress' events you need the following lines
-    // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
-    const readline = require('readline');
-    readline.emitKeypressEvents(process.stdin);
-    if (process.stdin.isTTY) {
+    let source = new Observable<string>(function (observer) {
+        // To get 'keypress' events you need the following lines
+        // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
+        const readline = require('readline');
+        readline.emitKeypressEvents(process.stdin);
         process.stdin.setRawMode(true);
-    }
-    process.stdin.on('keypress', (_, key) => terminal.writeString(key.sequence));
+        process.stdin.on('keypress', (_, key) => observer.next(key.sequence));
+    });
+    source.pipe(bufferTime(50), filter(buffer => buffer.length > 0)).subscribe(keypresses => {
+        // This pipe is in order to allow copy-pasted input to be treated like a single string
+        terminal.writeString(keypresses.join(''));
+    });
 }
 
 export async function getCliSpaceId(
