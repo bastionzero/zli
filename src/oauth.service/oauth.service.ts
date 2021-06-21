@@ -8,6 +8,7 @@ import { Logger } from '../../src/logger.service/logger';
 import { loginHtml } from './templates/login';
 import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../src/handlers/clean-exit.handler';
+import { parse as QueryStringParse } from 'query-string';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
@@ -30,7 +31,21 @@ export class OAuthService implements IDisposable {
         const requestListener: RequestListener = async (req, res) => {
             res.writeHead(200, { 'content-type': 'text/html' });
 
-            switch (req.url.split('?')[0]) {
+            // Example of request url string
+            // /login-callback?param=...
+            const urlParts = req.url.split('?');
+            const queryParams = QueryStringParse(urlParts[1]);
+
+            // example of failed login attempt
+            // http://localhost:3000/login-callback?error=consent_required&error_description=AADSTS65004%3a+User+decline...
+            if(!! queryParams.error)
+            {
+                this.logger.error('User login failed: ' + queryParams.error);
+                this.logger.info('Please try logging in again');
+                await cleanExit(1, this.logger);
+            }
+
+            switch (urlParts[0]) {
             case '/login-callback':
                 const params = client.callbackParams(req);
 
@@ -58,7 +73,7 @@ export class OAuthService implements IDisposable {
                 break;
 
             default:
-                // console.log(`default callback at: ${req.url}`);
+                this.logger.debug(`Unhandled callback at: ${req.url}`);
                 break;
             }
         };
@@ -66,11 +81,11 @@ export class OAuthService implements IDisposable {
         this.logger.debug(`Setting up callback listener at http://${this.host}:${this.configService.callbackListenerPort()}/`);
         this.server = http.createServer(requestListener);
         // Port binding failure will produce error event
-        this.server.on('error', () => {
+        this.server.on('error', async () => {
             this.logger.error('Log in listener could not bind to port');
             this.logger.warn(`Please make sure port ${this.configService.callbackListenerPort()} is open/whitelisted`);
             this.logger.warn('To edit callback port please run: \'zli config\'');
-            process.exit(1);
+            await cleanExit(1, this.logger);
         });
         // open browser after successful port binding
         this.server.on('listening', onListen);

@@ -69,6 +69,7 @@
     "open": "^7.3.0",
     "openid-client": "^4.7.2",
     "qrcode": "^1.4.4",
+    "query-string": "^7.0.0",
     "rxjs": "^6.6.3",
     "semver": "^7.3.2",
     "sha3": "^2.1.4",
