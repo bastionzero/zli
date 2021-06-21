@@ -16,6 +16,7 @@ phases:
     commands:
       - echo Install started on `date`
       - npm i
+      - npm i -g semver
   pre_build:
     commands:
       - echo Pre-Build phase...
@@ -27,14 +28,18 @@ phases:
       - ls -als ~/.ssh/*
       - eval `ssh-agent -s`
       - ssh-add ~/.ssh/*.pem
+      - git submodule update --init --recursive --depth 50
   build:
     commands:
       - echo Build started on `date`
-      - git submodule update --init --recursive --depth 50
+      - echo "Running eslint linter"
       - npm run lint
+      - echo "Building zli"
       - npm run build
-  post_build:
-    commands:
-      - echo Run unit tests started on `date`
+      - echo "Checking VERSION is incremented"
+      - MASTER_VERSION=$(git show master:package.json | jq .version)
+      - BRANCH_VERSION=$(cat package.json| jq .version)
+      - echo Master Version=$MASTER_VERSION, Branch Version=$BRANCH_VERSION
+      - semver "$BRANCH_VERSION" -r ">$MASTER_VERSION"
       - echo "Running zli Unit Tests"
       - npm run test
