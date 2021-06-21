@@ -168,21 +168,31 @@ export class CliDriver
                 }
             )
             .command(
-                'close <connectionId>',
+                'close [connectionId]',
                 'Close an open zli connection',
                 (yargs) => {
                     return yargs
                         .positional('connectionId', {
                             type: 'string',
                         })
-                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id');
+                        .option(
+                            'all',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'a'
+                            }
+                        )
+                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id')
+                        .example('close all', 'close all connections in cli-space');
                 },
                 async (argv) => {
-                    if (!isGuid(argv.connectionId)){
+                    if (! argv.all && ! isGuid(argv.connectionId)){
                         this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
                         await cleanExit(1, this.logger);
                     }
-                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId);
+                    await closeConnectionHandler(this.configService, this.logger, argv.connectionId, argv.all);
                 }
             )
             .command(

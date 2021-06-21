@@ -7,7 +7,7 @@ import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
 import { targetStringExampleNoPath } from '../utils';
-import { createAndRunShell, getCliSpaceId } from '../../src/shell-utils';
+import { createAndRunShell, getCliSpace } from '../../src/shell-utils';
 import _ from 'lodash';
 
 
@@ -42,9 +42,14 @@ export async function connectHandler(
 
     // Get the existing if any or create a new cli space id
     const sessionService = new SessionService(configService, logger);
-    let cliSessionId = await getCliSpaceId(sessionService, logger);
-    if (cliSessionId === undefined)
-        cliSessionId = await sessionService.CreateSession('cli-space');
+    const cliSpace = await getCliSpace(sessionService, logger);
+    let cliSpaceId: string;
+    if (cliSpace === undefined)
+    {
+        cliSpaceId = await sessionService.CreateSession('cli-space');
+    } else {
+        cliSpaceId = cliSpace.id;
+    }
 
     // We do the following for ssh since we are required to pass
     // in a user although it does not get read at any point
@@ -55,7 +60,7 @@ export async function connectHandler(
     // if SSM user does not exist then resp.connectionId will throw a
     // 'TypeError: Cannot read property 'connectionId' of undefined'
     // so we need to catch and return undefined
-    const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSessionId, targetUser).catch(() => undefined);
+    const connectionId = await connectionService.CreateConnection(parsedTarget.type, parsedTarget.id, cliSpaceId, targetUser).catch(() => undefined);
 
     if(! connectionId)
     {

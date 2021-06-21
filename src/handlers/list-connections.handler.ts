@@ -5,7 +5,7 @@ import { ConnectionDetails, TargetSummary } from '../types';
 import { getTableOfConnections } from '../../src/utils';
 import { cleanExit } from './clean-exit.handler';
 import { ConnectionState } from '../../src/http.service/http.service.types';
-import { getCliSpaceId } from '../../src/shell-utils';
+import { getCliSpace } from '../../src/shell-utils';
 
 export async function listConnectionsHandler(
     argv: any,
@@ -15,10 +15,9 @@ export async function listConnectionsHandler(
     sshTargets: Promise<TargetSummary[]>
 ){
     const sessionService = new SessionService(configService, logger);
-    const cliSessionId = await getCliSpaceId(sessionService, logger);
+    const cliSpace = await getCliSpace(sessionService, logger);
 
-    const sessionDetails = await sessionService.GetSession(cliSessionId);
-    const openConnections = sessionDetails.connections.filter(c => c.state === ConnectionState.Open);
+    const openConnections = cliSpace.connections.filter(c => c.state === ConnectionState.Open);
 
     // await and concatenate
     const allTargets = [...await ssmTargets, ...await sshTargets];

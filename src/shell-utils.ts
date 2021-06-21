@@ -4,7 +4,7 @@ import termsize from 'term-size';
 import { ConfigService } from './config.service/config.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { SessionService } from './http.service/http.service';
-import { ConnectionSummary } from './http.service/http.service.types';
+import { ConnectionSummary, SessionDetails } from './http.service/http.service.types';
 import { Logger } from './logger.service/logger';
 import { ShellTerminal } from './terminal/terminal';
 import { SessionState } from './types';
@@ -66,24 +66,22 @@ export async function createAndRunShell(
     });
 }
 
-export async function getCliSpaceId(
+export async function getCliSpace(
     sessionService: SessionService,
     logger: Logger
-): Promise<string> {
+): Promise<SessionDetails> {
     const listSessions = await sessionService.ListSessions();
 
     // space names are not unique, make sure to find the latest active one
     const cliSpace = listSessions.sessions.filter(s => s.displayName === 'cli-space' && s.state == SessionState.Active); // TODO: cli-space name can be changed in config
 
-    let cliSessionId: string;
     if(cliSpace.length === 0) {
         return undefined;
     } else if (cliSpace.length === 1) {
-        cliSessionId = cliSpace[0].id;
+        return cliSpace[0];
     } else {
         // there should only be 1 active 'cli-space' session
-        cliSessionId = cliSpace.pop().id;
-        logger.warn(`Found ${cliSpace.length} cli sessions while expecting 1`);
+        logger.warn(`Found ${cliSpace.length} cli spaces while expecting 1, using latest one`);
+        return cliSpace.pop();
     }
-    return cliSessionId;
 }
