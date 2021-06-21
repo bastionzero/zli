@@ -56,14 +56,14 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     };
 }
 
-export function mixedPanelTrackingMiddleware(configService: ConfigService, argv: any) {
+export function mixpanelTrackingMiddleware(configService: ConfigService, argv: any) {
     // Mixpanel tracking
-    const mixedPanelService = new MixpanelService(configService);
+    const mixpanelService = new MixpanelService(configService);
 
     // Only captures args, not options at the moment. Capturing configName flag
     // does not matter as that is handled by which mixpanel token is used
     // TODO: capture options and flags
-    mixedPanelService.TrackCliCall(
+    mixpanelService.TrackCliCall(
         'CliCommand',
         {
             'cli-version': version,
@@ -72,7 +72,7 @@ export function mixedPanelTrackingMiddleware(configService: ConfigService, argv:
         }
     );
 
-    return mixedPanelService;
+    return mixpanelService;
 }
 
 export async function oAuthMiddleware(configService: ConfigService, logger: Logger) {

@@ -13,7 +13,7 @@ import { LoggerConfigService } from './logger-config.service/logger-config.servi
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, mixedPanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, mixpanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handler';
 import { loginHandler } from './handlers/login.handler';
@@ -46,7 +46,6 @@ export class CliDriver
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
-    private cliSpaceId: Promise<string>;
 
     // use the following to shortcut middleware according to command
     private noOauthCommands: string[] = ['config', 'login', 'logout'];
@@ -87,7 +86,7 @@ export class CliDriver
             .middleware(async (argv) => {
                 if(includes(this.noMixpanelCommands, argv._[0]))
                     return;
-                this.mixpanelService = mixedPanelTrackingMiddleware(this.configService, argv);
+                this.mixpanelService = mixpanelTrackingMiddleware(this.configService, argv);
             })
             .middleware((argv) => {
                 if(includes(this.noFetchCommands, argv._[0]))
