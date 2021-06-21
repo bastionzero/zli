@@ -56,7 +56,7 @@ export async function copyHandler(
         // First ensure that the file exists
         if (!fs.existsSync(localFilePath)) {
             logger.warn(`File ${localFilePath} does not exist!`);
-            process.exit(1);
+            await cleanExit(1, logger);
         }
 
         // Then create our read stream and try to upload it

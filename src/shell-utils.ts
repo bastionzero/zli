@@ -52,7 +52,7 @@ export async function createAndRunShell(
         }
     );
 
-    let source = new Observable<string>(function (observer) {
+    const source = new Observable<string>(function (observer) {
         // To get 'keypress' events you need the following lines
         // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
         const readline = require('readline');

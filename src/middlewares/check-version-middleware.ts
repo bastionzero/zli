@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import got from 'got/dist/source';
 import { SemVer } from 'semver';
+import { cleanExit } from '../handlers/clean-exit.handler';
 
 import { name as appName, version } from '../../package.json';
 import { Logger } from '../../src/logger.service/logger';
@@ -35,7 +36,7 @@ class CheckVersionMiddleware {
             logger.error(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`);
             console.log(chalk.bold(downloadLinks));
 
-            process.exit(1);
+            await cleanExit(1, logger);
         }
 
     }

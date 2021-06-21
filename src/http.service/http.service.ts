@@ -63,17 +63,21 @@ export class HttpService
             await cleanExit(1, this.logger);
         }
 
-        if(error.response.statusCode == 401) {
+        // Pull out the specific error message from the back end
+        if(error.response.body)
+            errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
+
+        if(error.response.statusCode === 401) {
             this.logger.error(`Authentication Error:\n${errorMessage}`);
-        } else {
+        } else if(error.response.statusCode === 502) {
+            this.logger.error('Service is offline');
+        } else if(error.response.statusCode === 500) {
             // Handle 500 errors by printing out our custom exception message
-            if(error.response.statusCode == 500) {
-                errorMessage = JSON.stringify(JSON.parse(error.response.body as string), null, 2);
-            } else if(error.response.statusCode == 502)
-            {
-                this.logger.error('Service is offline');
-            }
-            this.logger.error(`HttpService Error:\n${errorMessage}`);
+            this.logger.error(`Server Error:\n${errorMessage}`);
+        } else if(error.response.statusCode === 404) {
+            this.logger.error(`Resource not found:\n Status code: 404 at ${error.request.requestUrl}`);
+        } else {
+            this.logger.error(`Unknown Error:\nStatusCode: ${error.response.statusCode}\n${errorMessage}`);
         }
 
         await cleanExit(1, this.logger);

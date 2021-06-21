@@ -123,6 +123,10 @@ export class ShellTerminal implements IDisposable
                 case ShellEventType.Delete:
                     this.terminalRunningStream.error('Connection was closed.');
                     break;
+                case ShellEventType.BrokenWebsocket:
+                    this.blockInput = true;
+                    this.logger.warn('BastionZero: 503 service unavailable. Reconnecting...');
+                    break;
                 default:
                     this.logger.warn(`Unhandled shell event type ${shellEvent.type}`);
                 }
@@ -152,6 +156,10 @@ export class ShellTerminal implements IDisposable
     public writeString(input: string) : void {
         if(! this.blockInput) {
             this.inputSubject.next(input);
+        } else {
+            // char code 3 is SIGINT
+            if( input.charCodeAt(0) === 3 )
+                this.terminalRunningStream.error('Terminal killed');
         }
     }
 
