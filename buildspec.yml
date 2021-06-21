@@ -37,8 +37,8 @@ phases:
       - echo "Building zli"
       - npm run build
       - echo "Checking VERSION is incremented"
-      - MASTER_VERSION=$(git show master:package.json | jq .version)
-      - BRANCH_VERSION=$(cat package.json| jq .version)
+      - MASTER_VERSION=$(git show master:package.json | jq -r .version)
+      - BRANCH_VERSION=$(cat package.json| jq -r .version)
       - echo Master Version=$MASTER_VERSION, Branch Version=$BRANCH_VERSION
       - semver "$BRANCH_VERSION" -r ">$MASTER_VERSION"
       - echo "Running zli Unit Tests"
