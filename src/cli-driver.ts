@@ -35,7 +35,6 @@ import { closeConnectionHandler } from './handlers/close-connection.handler';
 
 export class CliDriver
 {
-    private processName: string;
     private configService: ConfigService;
     private keySplittingService: KeySplittingService
     private loggerConfigService: LoggerConfigService;
@@ -66,9 +65,6 @@ export class CliDriver
 
     public start()
     {
-        // ref: https://nodejs.org/api/process.html#process_process_argv0
-        this.processName = process.argv0;
-
         yargs(process.argv.slice(2))
             .scriptName('zli')
             .usage('$0 <cmd> [args]')
@@ -332,7 +328,16 @@ export class CliDriver
                 'Generate ssh configuration to be used with the ssh-proxy command',
                 (_) => {},
                 async (_) => {
-                    sshProxyConfigHandler(this.configService, this.logger, this.processName);
+                    // ref: https://nodejs.org/api/process.html#process_process_argv0
+                    let processName = process.argv0;
+
+                    // handle npm install edge case
+                    // note: node will also show up when running 'npm run start -- ssh-proxy-config'
+                    // so for devs, they should not rely on generating configs from here and should
+                    // map their dev executables in the ProxyCommand output
+                    if(processName.includes('node')) processName = 'zli';
+
+                    sshProxyConfigHandler(this.configService, this.logger, processName);
                 }
             )
             .command(
