@@ -40,7 +40,6 @@ export async function generateKubeconfigHandler(
                     }
                     logger.debug('Generated and saved key file');
                 });
-
                 await fs.writeFile(pathToCert, keys.certificate, function (err: any) {
                     if (err) {
                         logger.error('Error writing cert to file!');

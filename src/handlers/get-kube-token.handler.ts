@@ -1,6 +1,5 @@
-
+import { config } from 'yargs';
 import { ConfigService } from '../config.service/config.service';
-
 
 export async function getKubeTokenHandler(
     configService: ConfigService
