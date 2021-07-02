@@ -8,6 +8,14 @@ import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig
 import path from 'path';
 import { Observable, Subject } from 'rxjs';
 
+export interface KubeConfig {
+    keyPath: string,
+    certPath: string,
+    token: string,
+    localHost: string,
+    localPort: number
+}
+
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type BastionZeroConfigSchema = {
     authUrl: string,
@@ -21,7 +29,8 @@ type BastionZeroConfigSchema = {
     sessionId: string,
     whoami: UserSummary,
     sshKeyPath: string
-    keySplitting: KeySplittingConfigSchema
+    keySplitting: KeySplittingConfigSchema,
+    kubeConfig: KubeConfig
 }
 
 export class ConfigService implements ConfigInterface {
@@ -50,7 +59,8 @@ export class ConfigService implements ConfigInterface {
                 sessionId: undefined,
                 whoami: undefined,
                 sshKeyPath: undefined,
-                keySplitting: getDefaultKeysplittingConfig()
+                keySplitting: getDefaultKeysplittingConfig(),
+                kubeConfig: undefined
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete
@@ -200,6 +210,14 @@ export class ConfigService implements ConfigInterface {
         // Clear previous sessionId
         this.config.delete('sessionId');
         this.config.delete('whoami');
+    }
+
+    public getKubeConfig() {
+        return this.config.get('kubeConfig');
+    }
+
+    public setKubeConfig(kubeConfig: KubeConfig) {
+        this.config.set('kubeConfig', kubeConfig)
     }
 
     private getAppName(configName: string) {

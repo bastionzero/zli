@@ -28,6 +28,7 @@ import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-hand
 import { listConnectionsHandler } from './handlers/list-connections.handler';
 import { attachHandler } from './handlers/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection.handler';
+import { generateKubeconfigHandler } from './handlers/generate-kubeconfig.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -394,19 +395,19 @@ export class CliDriver
                 }
             )
             .command(
-                'getKubeToken',
-                'Get Kube Token for kubectl requests',
+                'generateKubeconfig',
+                'Generate a Kubeconfig',
                 (_) => {},
                 async (_) => {
-                    await getKubeTokenHandler(this.configService);
+                    await generateKubeconfigHandler(this.configService, this.logger);
                 }
             )
             .command(
-                'startKubeDaemon',
-                'Start Kube Daemon',
+                'getKubeToken',
+                'Get the Kube Token',
                 (_) => {},
                 async (_) => {
-                    await startKubeDaemonHandler(this.configService);
+                    await getKubeTokenHandler(this.configService);
                 }
             )
             .command(
