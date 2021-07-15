@@ -1,0 +1,11 @@
+FROM golang:1.16-alpine
+
+RUN mkdir /bctl-server
+WORKDIR /bctl-server
+
+COPY . .
+RUN go install bastionzero.com/bctl-daemon/v1
+
+
+
+ENTRYPOINT [ "go",  "run", "/bctl-server/main.go"]

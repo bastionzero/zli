@@ -34,3 +34,61 @@ type DataToClientMessage struct {
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Headers           map[string]string `json:"headers"`
 }
+
+type ReadyFromServerSignalRMessage struct {
+	Target    string                   `json:"target"`
+	Arguments []ReadyFromServerMessage `json:"arguments"`
+	Type      int                      `json:"type"`
+}
+
+type ReadyFromServerMessage struct {
+	Ready bool `json:"ready"`
+}
+
+type RequestForServerSignalRMessage struct {
+	Target    string                    `json:"target"`
+	Arguments []RequestForServerMessage `json:"arguments"`
+	Type      int                       `json:"type"`
+}
+type RequestForServerMessage struct {
+	Endpoint          string            `json:"endpoint"`
+	Headers           map[string]string `json:"headers"`
+	Method            string            `json:"method"`
+	Body              string            `json:"body"`
+	RequestIdentifier int               `json:"requestIdentifier"`
+}
+
+type ResponseToDaemonSignalRMessage struct {
+	Target    string                    `json:"target"`
+	Arguments []ResponseToDaemonMessage `json:"arguments"`
+	Type      int                       `json:"type"`
+}
+type ResponseToDaemonMessage struct {
+	StatusCode        int               `json:"statusCode"`
+	Content           string            `json:"content"`
+	RequestIdentifier int               `json:"requestIdentifier"`
+	Headers           map[string]string `json:"headers"`
+}
+
+type StartExecToBastionSignalRMessage struct {
+	Target    string                      `json:"target"`
+	Arguments []StartExecToBastionMessage `json:"arguments"`
+	Type      int                         `json:"type"`
+}
+type StartExecToBastionMessage struct {
+	Command  []string `json:"command"`
+	Endpoint string   `json:"endpoint"`
+}
+
+type RequestForStartExecToClusterSingalRMessage struct {
+	Target    string                                `json:"target"`
+	Arguments []RequestForStartExecToClusterMessage `json:"arguments"`
+	Type      int                                   `json:"type"`
+}
+type RequestForStartExecToClusterMessage struct {
+	Endpoint          string            `json:"endpoint"`
+	Headers           map[string]string `json:"headers"`
+	Method            string            `json:"method"`
+	Body              string            `json:"body"`
+	RequestIdentifier int               `json:"requestIdentifier"`
+}

@@ -1,7 +1,6 @@
 package handleREST
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,7 +10,7 @@ import (
 )
 
 // Handler for Regular Rest calls that can be proxied
-func HandleREST(w http.ResponseWriter, r *http.Request, wsClient websocketClient.WebsocketClient) {
+func HandleREST(w http.ResponseWriter, r *http.Request, wsClient *websocketClient.WebsocketClient) {
 	// First extract all the info out of the request
 	headers := make(map[string]string)
 	for name, values := range r.Header {
@@ -54,8 +53,11 @@ func HandleREST(w http.ResponseWriter, r *http.Request, wsClient websocketClient
 
 	// Ensure that the identifer is correct
 	if dataToClientMessageResponse.RequestIdentifier != requestIdentifier {
-		log.Printf("Something went wrong")
+		log.Printf("SOMETHING WENT WRONG!")
+		log.Println(dataToClientMessageResponse)
+		log.Println(requestIdentifier)
 		// TODO: I think we need to rebroadcast this message in this case?
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -66,6 +68,4 @@ func HandleREST(w http.ResponseWriter, r *http.Request, wsClient websocketClient
 	if dataToClientMessageResponse.StatusCode != 200 {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	fmt.Println(dataToClientMessageResponse)
-
 }
