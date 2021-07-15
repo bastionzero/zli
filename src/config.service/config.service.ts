@@ -14,6 +14,7 @@ export interface KubeConfig {
     token: string,
     localHost: string,
     localPort: number
+    localPid: number
 }
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14

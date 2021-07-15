@@ -57,7 +57,8 @@ export async function generateKubeconfigHandler(
                     certPath: pathToCert,
                     token: token,
                     localHost: 'localhost',
-                    localPort: 1234
+                    localPort: 1234,
+                    localPid: null
                 }
                 configService.setKubeConfig(kubeConfig)
                 resolve()
