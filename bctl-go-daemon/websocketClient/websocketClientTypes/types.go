@@ -111,3 +111,23 @@ type SendStdoutToDaemonMessage struct {
 	Stdout            string `json:"stdout"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
+
+type SendStdinToBastionSignalRMessage struct {
+	Target    string                      `json:"target"`
+	Arguments []SendStdinToBastionMessage `json:"arguments"`
+	Type      int                         `json:"type"`
+}
+type SendStdinToBastionMessage struct {
+	Stdin             string `json:"stdin"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}
+
+type SendStdinToClusterSignalRMessage struct {
+	Target    string                      `json:"target"`
+	Arguments []SendStdinToClusterMessage `json:"arguments"`
+	Type      int                         `json:"type"`
+}
+type SendStdinToClusterMessage struct {
+	Stdin             string `json:"stdin"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}

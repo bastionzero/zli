@@ -26,6 +26,7 @@ type WebsocketClient struct {
 	RequestForServerChan    chan websocketClientTypes.RequestForServerSignalRMessage
 	RequestForStartExecChan chan websocketClientTypes.RequestForStartExecToClusterSingalRMessage
 	ExecStdoutChannel       chan websocketClientTypes.SendStdoutToDaemonSignalRMessage
+	ExecStdinChannel        chan websocketClientTypes.SendStdinToClusterSignalRMessage
 	SocketLock              sync.Mutex // Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
 }
 
@@ -130,6 +131,7 @@ func NewWebsocketClient(authHeader string, sessionId string, assumeRole string, 
 	ret.RequestForServerChan = make(chan websocketClientTypes.RequestForServerSignalRMessage)
 	ret.RequestForStartExecChan = make(chan websocketClientTypes.RequestForStartExecToClusterSingalRMessage)
 	ret.ExecStdoutChannel = make(chan websocketClientTypes.SendStdoutToDaemonSignalRMessage)
+	ret.ExecStdinChannel = make(chan websocketClientTypes.SendStdinToClusterSignalRMessage)
 
 	// Define our protocol and version
 	// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
@@ -217,6 +219,17 @@ func NewWebsocketClient(authHeader string, sessionId string, assumeRole string, 
 					}
 					// Broadcase this response to our RequestForStartExecChan
 					ret.ExecStdoutChannel <- *sendStdoutToDaemonSignalRMessage
+				} else if bytes.Contains(formattedMessage, []byte("\"target\":\"SendStdinToCluster\"")) {
+					log.Printf("Handling incoming SendStdinToCluster message")
+					sendStdinToClusterSignalRMessage := new(websocketClientTypes.SendStdinToClusterSignalRMessage)
+
+					err := json.Unmarshal(formattedMessage, sendStdinToClusterSignalRMessage)
+					if err != nil {
+						log.Printf("Error un-marshalling SendStdoutToDaemon: %s", err)
+						return
+					}
+					// Broadcase this response to our RequestForStartExecChan
+					ret.ExecStdinChannel <- *sendStdinToClusterSignalRMessage
 				} else {
 					log.Printf("Unhandled message incoming: %s", formattedMessage)
 				}
@@ -336,6 +349,39 @@ func (client *WebsocketClient) SendSendStdoutToBastionMessage(sendStdoutToBastio
 		toSend := new(websocketClientTypes.SendStdoutToBastionSignalRMessage)
 		toSend.Target = "SendStdoutToBastion"
 		toSend.Arguments = []websocketClientTypes.SendStdoutToBastionMessage{sendStdoutToBastionMessage}
+
+		// Add the type number from the class
+		toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
+
+		// Marshal our message
+		toSendMarshalled, err := json.Marshal(toSend)
+		if err != nil {
+			return err
+		}
+
+		// Write our message
+		if err = client.Client.WriteMessage(websocket.TextMessage, append(toSendMarshalled, 0x1E)); err != nil {
+			log.Printf("Something went wrong :(")
+			return err
+		}
+		// client.SignalRTypeNumber++
+		return nil
+	}
+	// TODO: Return error
+	return nil
+}
+
+func (client *WebsocketClient) SendSendStdinToBastionMessage(sendStdinToBastionMessage websocketClientTypes.SendStdinToBastionMessage) error {
+	if !client.IsServer && client.IsReady {
+		// Lock our mutex and setup the unlock
+		client.SocketLock.Lock()
+		defer client.SocketLock.Unlock()
+
+		log.Printf("Sending stdout to Cluster")
+		// Create the object, add relevent information
+		toSend := new(websocketClientTypes.SendStdinToBastionSignalRMessage)
+		toSend.Target = "SendStdinToBastion"
+		toSend.Arguments = []websocketClientTypes.SendStdinToBastionMessage{sendStdinToBastionMessage}
 
 		// Add the type number from the class
 		toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding

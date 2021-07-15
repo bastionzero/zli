@@ -3,7 +3,6 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -164,7 +163,7 @@ func ServerInit(serviceURL string, authHeader string, sessionId string, clientId
 
 			// Finally build our streams
 			stdoutWriter := NewStdoutWriter(wsClient, requestForStartExecToClusterMessage.RequestIdentifier)
-			stdinReader := NewStdinReader("test")
+			stdinReader := NewStdinReader(wsClient, requestForStartExecToClusterMessage.RequestIdentifier)
 			err = exec.Stream(remotecommand.StreamOptions{
 				Stdin:  stdinReader,
 				Stdout: stdoutWriter,
@@ -312,22 +311,41 @@ func (w *StdoutWriter) Close() error {
 
 // Our custom stdin reader so we can pass it into Stream Options
 type StdinReader struct {
-	data      []byte
-	readIndex int64
+	wsClient          *websocketClient.WebsocketClient
+	RequestIdentifier int
 }
 
-func NewStdinReader(src string) *StdinReader {
-	return &StdinReader{data: []byte(src)}
-}
-
-func (r *StdinReader) Read(p []byte) (n int, err error) {
-	time.Sleep(time.Second * 2)
-	if r.readIndex >= int64(len(r.data)) {
-		err = io.EOF
-		return
+func NewStdinReader(wsClient *websocketClient.WebsocketClient, requestIdentifier int) *StdinReader {
+	return &StdinReader{
+		wsClient:          wsClient,
+		RequestIdentifier: requestIdentifier,
 	}
+}
 
-	n = copy(p, r.data[r.readIndex:])
-	r.readIndex += int64(n)
-	return
+func (r *StdinReader) Read(p []byte) (int, error) {
+	// time.Sleep(time.Second * 2)
+	// if r.readIndex >= int64(len(r.data)) {
+	// 	err = io.EOF
+	// 	return
+	// }
+
+	// n = copy(p, r.data[r.readIndex:])
+	// r.readIndex += int64(n)
+	// return
+
+	// I think we will have to manually check for \n or exit, and then return err = io.EOF and n = 0
+
+	// First set up our listening for the webscoket
+	// go func() {
+	fmt.Println("here before all")
+	sendStdinToClusterSignalRMessage := websocketClientTypes.SendStdinToClusterSignalRMessage{}
+	sendStdinToClusterSignalRMessage = <-r.wsClient.ExecStdinChannel
+	fmt.Println("here before copy")
+
+	n := copy(p, []byte(sendStdinToClusterSignalRMessage.Arguments[0].Stdin))
+	fmt.Println("Here??")
+
+	return n, nil
+
+	// }()
 }

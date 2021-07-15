@@ -158,6 +158,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 	log.Println("Starting connection to cluster for exec")
 	wsClient.SendStartExecToBastionMessage(*startExecToClusterMessage)
 
+	// Set up a go function for stdout
 	go func() {
 		for {
 			// Wait for a new request to come in through our channel
@@ -172,6 +173,26 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 			}
 			// Display the content to the use
 			proxy.stdoutStream.Write([]byte(sendStdoutToDaemonSignalRMessage.Arguments[0].Stdout))
+		}
+	}()
+
+	// Set up a go function for stdin
+	go func() {
+		buf := make([]byte, 16)
+		for {
+			n, err := proxy.stdinStream.Read(buf)
+			// Handle error
+			if err == io.EOF {
+				break
+			}
+			word := string(buf[:n])
+
+			// Now we need to send this stdin to Bastion
+			sendStdinToBastionMessage := websocketClientTypes.SendStdinToBastionMessage{}
+			sendStdinToBastionMessage.Stdin = word
+			sendStdinToBastionMessage.RequestIdentifier = requestIdentifier
+			wsClient.SendSendStdinToBastionMessage(sendStdinToBastionMessage)
+
 		}
 	}()
 
