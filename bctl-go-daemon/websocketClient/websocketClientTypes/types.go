@@ -76,8 +76,9 @@ type StartExecToBastionSignalRMessage struct {
 	Type      int                         `json:"type"`
 }
 type StartExecToBastionMessage struct {
-	Command  []string `json:"command"`
-	Endpoint string   `json:"endpoint"`
+	Command           []string `json:"command"`
+	Endpoint          string   `json:"endpoint"`
+	RequestIdentifier int      `json:"requestIdentifier"`
 }
 
 type RequestForStartExecToClusterSingalRMessage struct {
@@ -86,9 +87,27 @@ type RequestForStartExecToClusterSingalRMessage struct {
 	Type      int                                   `json:"type"`
 }
 type RequestForStartExecToClusterMessage struct {
-	Endpoint          string            `json:"endpoint"`
-	Headers           map[string]string `json:"headers"`
-	Method            string            `json:"method"`
-	Body              string            `json:"body"`
-	RequestIdentifier int               `json:"requestIdentifier"`
+	Command           []string `json:"command"`
+	Endpoint          string   `json:"endpoint"`
+	RequestIdentifier int      `json:"requestIdentifier"`
+}
+
+type SendStdoutToBastionSignalRMessage struct {
+	Target    string                       `json:"target"`
+	Arguments []SendStdoutToBastionMessage `json:"arguments"`
+	Type      int                          `json:"type"`
+}
+type SendStdoutToBastionMessage struct {
+	Stdout            string `json:"stdout"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}
+
+type SendStdoutToDaemonSignalRMessage struct {
+	Target    string                      `json:"target"`
+	Arguments []SendStdoutToDaemonMessage `json:"arguments"`
+	Type      int                         `json:"type"`
+}
+type SendStdoutToDaemonMessage struct {
+	Stdout            string `json:"stdout"`
+	RequestIdentifier int    `json:"requestIdentifier"`
 }

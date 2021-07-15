@@ -149,17 +149,32 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 		return
 	}
 
-	// Now since we made our local connection, initiate a connection with Bastion
+	// Now since we made our local connection to kubectl, initiate a connection with Bastion
+	requestIdentifier := wsClient.GenerateUniqueIdentifier()
 	startExecToClusterMessage := &websocketClientTypes.StartExecToBastionMessage{}
 	startExecToClusterMessage.Command = options.Command
-	fmt.Println(options.Command)
 	startExecToClusterMessage.Endpoint = r.URL.Path
+	startExecToClusterMessage.RequestIdentifier = requestIdentifier
 	log.Println("Starting connection to cluster for exec")
 	wsClient.SendStartExecToBastionMessage(*startExecToClusterMessage)
 
-	fmt.Println(proxy)
+	go func() {
+		for {
+			// Wait for a new request to come in through our channel
+			sendStdoutToDaemonSignalRMessage := websocketClientTypes.SendStdoutToDaemonSignalRMessage{}
+			sendStdoutToDaemonSignalRMessage = <-wsClient.ExecStdoutChannel
 
-	proxy.stdoutStream.Write([]byte("hello world! Custom text!"))
+			// Ensure that the RequestIdentifiers match up
+			if sendStdoutToDaemonSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
+				log.Printf("Unhandled request identifier")
+				// continue
+				// TODO: Fix this
+			}
+			// Display the content to the use
+			proxy.stdoutStream.Write([]byte(sendStdoutToDaemonSignalRMessage.Arguments[0].Stdout))
+		}
+	}()
+
 	select {}
 
 }
