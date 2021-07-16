@@ -17,11 +17,13 @@ import (
 )
 
 // This will be the client that we use to store our websocket connection
-type WebsocketClient struct {
-	Client                  *websocket.Conn
-	IsServer                bool
-	IsReady                 bool
-	SignalRTypeNumber       int
+type CommonWebsocketClient struct {
+	Client            *websocket.Conn
+	IsServer          bool
+	IsReady           bool
+	SignalRTypeNumber int
+
+	// These are all the types of channels we have available
 	DataToClientChan        chan websocketClientTypes.DataToClientMessage
 	RequestForServerChan    chan websocketClientTypes.RequestForServerSignalRMessage
 	RequestForStartExecChan chan websocketClientTypes.RequestForStartExecToClusterSingalRMessage
@@ -36,9 +38,9 @@ type UniqueRand struct {
 	generated map[int]bool
 }
 
-func NewWebsocketClient(authHeader string, sessionId string, assumeRole string, serviceURL string, clientIdentifier string) *WebsocketClient {
+func NewWebsocketClient(authHeader string, sessionId string, assumeRole string, serviceURL string, clientIdentifier string) *CommonWebsocketClient {
 	// Constructor to create a new websocket client object
-	ret := WebsocketClient{}
+	ret := CommonWebsocketClient{}
 
 	// Make our headers
 	headers := make(map[string]string)
@@ -62,7 +64,6 @@ func NewWebsocketClient(authHeader string, sessionId string, assumeRole string, 
 		// Servers are always ready as they start the connnection
 		ret.IsReady = true
 	}
-
 	// First negotiate in order to get a url to connect to
 	httpClient := &http.Client{}
 	negotiateUrl := "https://" + serviceURL + "/api/v1/hub/kube/negotiate"
