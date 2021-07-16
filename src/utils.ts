@@ -1,10 +1,9 @@
 import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
-import { max } from 'lodash';
+import { max, filter, concat } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
 import { cleanExit } from './handlers/clean-exit.handler';
-import _ from 'lodash';
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
@@ -169,22 +168,22 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = _.concat(await ssmTargets, await sshTargets, await dynamicConfigs);
+    let zippedTargets = concat(await ssmTargets, await sshTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
-    zippedTargets = _.filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));
+    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);
-        zippedTargets = _.filter(zippedTargets,t => t.type == targetType);
+        zippedTargets = filter(zippedTargets,t => t.type == targetType);
     }
 
     let matchedTargets: TargetSummary[];
 
     if(!! parsedTarget.id) {
-        matchedTargets = _.filter(zippedTargets,t => t.id == parsedTarget.id);
+        matchedTargets = filter(zippedTargets,t => t.id == parsedTarget.id);
     } else if(!! parsedTarget.name) {
-        matchedTargets = _.filter(zippedTargets,t => t.name == parsedTarget.name);
+        matchedTargets = filter(zippedTargets,t => t.name == parsedTarget.name);
     }
 
     if(matchedTargets.length == 0) {
@@ -194,7 +193,7 @@ export async function disambiguateTarget(
         parsedTarget.name = matchedTargets[0].name;
         parsedTarget.type = matchedTargets[0].type;
         parsedTarget.envId = matchedTargets[0].environmentId;
-        parsedTarget.envName = _.filter(await envs, e => e.id == parsedTarget.envId)[0].name;
+        parsedTarget.envName = filter(await envs, e => e.id == parsedTarget.envId)[0].name;
     } else {
         logger.warn('More than one target found with the same targetName');
         logger.info(`Please specify the targetId instead of the targetName (zli lt -n ${parsedTarget.name} -d)`);

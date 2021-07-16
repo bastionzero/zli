@@ -8,7 +8,7 @@ import { Logger } from '../logger.service/logger';
 import { EnvironmentDetails } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
 import { SsmTargetStatus, TargetSummary, TargetType } from '../types';
-import _ from 'lodash';
+import { map, includes, uniq } from 'lodash';
 
 
 export async function listTargetsHandler(
@@ -49,15 +49,15 @@ export async function listTargetsHandler(
             await cleanExit(1, logger);
         }
 
-        let targetStatusFilter: SsmTargetStatus[] = _.map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
-        targetStatusFilter = _.uniq(targetStatusFilter);
+        let targetStatusFilter: SsmTargetStatus[] = map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
+        targetStatusFilter = uniq(targetStatusFilter);
 
         if(targetStatusFilter.length < 1) {
             logger.warn('Status filter flag passed with no valid arguments, please indicate at least one valid status');
             await cleanExit(1, logger);
         }
 
-        allTargets = allTargets.filter(t => t.type != TargetType.SSM || _.includes(targetStatusFilter, t.status));
+        allTargets = allTargets.filter(t => t.type != TargetType.SSM || includes(targetStatusFilter, t.status));
     }
 
     if(!! argv.json) {

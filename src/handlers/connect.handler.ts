@@ -8,7 +8,7 @@ import { cleanExit } from './clean-exit.handler';
 
 import { targetStringExampleNoPath } from '../utils';
 import { createAndRunShell, getCliSpace } from '../../src/shell-utils';
-import _ from 'lodash';
+import { includes } from 'lodash';
 
 
 export async function connectHandler(
@@ -34,7 +34,7 @@ export async function connectHandler(
     }
 
     const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
-    if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, parsedTarget.user)) {
+    if(response.allowedTargetUsers && ! includes(allowedTargetUsers, parsedTarget.user)) {
         logger.error(`You do not have permission to connect as targetUser: ${parsedTarget.user}`);
         logger.info(`Current allowed users for you: ${allowedTargetUsers}`);
         await cleanExit(1, logger);

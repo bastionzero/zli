@@ -3,10 +3,9 @@ import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { SsmTunnelService } from '../ssm-tunnel/ssm-tunnel.service';
 import { cleanExit } from './clean-exit.handler';
-import { Dictionary } from 'lodash';
+import { Dictionary, includes } from 'lodash';
 import { PolicyQueryService } from '../http.service/http.service';
 import { ParsedTargetString } from '../types';
-import _ from 'lodash';
 import { VerbType } from '../http.service/http.service.types';
 import { targetStringExampleNoPath } from '../../src/utils';
 
@@ -28,7 +27,7 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
     }
 
     const allowedTargetUsers = response.allowedTargetUsers.map(u => u.userName);
-    if(response.allowedTargetUsers && ! _.includes(allowedTargetUsers, sshTunnelParameters.parsedTarget.user)) {
+    if(response.allowedTargetUsers && ! includes(allowedTargetUsers, sshTunnelParameters.parsedTarget.user)) {
         logger.error(`You do not have permission to tunnel as targetUser: ${sshTunnelParameters.parsedTarget.user}. Current allowed users for you: ${allowedTargetUsers}`);
         await cleanExit(1, logger);
     }
