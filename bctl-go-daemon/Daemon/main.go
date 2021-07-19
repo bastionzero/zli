@@ -1,15 +1,18 @@
-package daemon
+package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
 	"net/http"
 	"strings"
 
-	"bastionzero.com/bctl-daemon/v1/Daemon/handlers/handleExec"
-	"bastionzero.com/bctl-daemon/v1/Daemon/handlers/handleREST"
-	"bastionzero.com/bctl-daemon/v1/websocketClient"
+	"bastionzero.com/bctl/v1/Daemon/src/DaemonWebsocket"
+	"bastionzero.com/bctl/v1/Daemon/src/HandleExec"
+	"bastionzero.com/bctl/v1/Daemon/src/HandleREST"
+
+	"github.com/google/uuid"
 )
 
 type contextKey struct {
@@ -22,36 +25,84 @@ func SaveConnInContext(ctx context.Context, c net.Conn) context.Context {
 	return context.WithValue(ctx, ConnContextKey, c)
 }
 
-// Main Daemon Thread to execute
-func DaemonInit(serviceURL string, authHeader string, sessionId string, assumeRole string, daemonPort string) {
+func main() {
+	// TODO: Remove this requirement
+	sessionIdPtr := flag.String("sessionId", "", "Session ID From Zli")
+	authHeaderPtr := flag.String("authHeader", "", "Auth Header From Zli")
+
+	// Our expected flags we need to start
+	// TODO: Add a token here that can be used as a way to auth to Bastion,
+	// TODO: we should get all these vars also from the env as a backup as we can assume we are inside a container
+	serviceURLPtr := flag.String("serviceURL", "", "Service URL to use")
+	assumeRolePtr := flag.String("assumeRole", "", "Kube Role to Assume")
+	assumeClusterPtr := flag.String("assumeCluster", "", "Kube Cluster to Connect to")
+	daemonPortPtr := flag.String("daemonPort", "", "Daemon Port To Use")
+	localhostTokenPtr := flag.String("localhostToken", "", "Localhost Token to Validate Kubectl commands")
+
+	// Parse and TODO: ensure they all exist
+	flag.Parse()
+
 	// Open a Websocket to Bastion
-	log.Printf("Opening websocket to Bastion: %s", serviceURL)
-	wsClient := websocketClient.NewWebsocketClient(authHeader, sessionId, assumeRole, serviceURL, "")
+	log.Printf("Opening websocket to Bastion: %s", *serviceURLPtr)
+	wsClient := DaemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr)
 
 	go func() {
 		// Define our http handlers
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			rootCallback(w, r, wsClient)
+			rootCallback(w, r, *localhostTokenPtr, wsClient)
 		})
 
 		// Start the server on the given port
-		server := http.Server{
-			Addr:        ":" + daemonPort,
-			ConnContext: SaveConnInContext,
-		}
-		log.Fatal(server.ListenAndServe())
+		// server := http.Server{
+		// 	Addr:        ":" + *daemonPortPtr,
+		// 	ConnContext: SaveConnInContext,
+		// }
+
+		// Open our key/cert
+		// keyFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem")
+		// certFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem")
+
+		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, "/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem", "/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem", nil))
 	}()
 	select {}
 }
 
-func rootCallback(w http.ResponseWriter, r *http.Request, wsClient *websocketClient.WebsocketClient) {
+func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string, wsClient *DaemonWebsocket.DaemonWebsocket) {
 	log.Printf("Handling %s - %s\n", r.URL.Path, r.Method)
 
-	// Determin if its an exec or normal rest
-	// For now assume normal
-	if strings.Contains(r.URL.Path, "exec") {
-		handleExec.HandleExec(w, r, wsClient)
+	// Trim off and localhost token
+	// TODO: Fix this
+	localhostToken = strings.Replace(localhostToken, "++++", "", -1)
+
+	// First verify our token and extract any commands if we can
+	tokenToValidate := r.Header.Get("Authorization")
+	tokenToValidate = strings.Replace(tokenToValidate, "Bearer ", "", -1)
+
+	// Remove the `Bearer `
+	tokensSplit := strings.Split(tokenToValidate, "++++")
+
+	// Validate the token
+	if tokensSplit[0] != localhostToken {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Check if we have a command to extract
+	// TODO: Maybe we can push this work to the bastion
+	commandBeingRun := "N/A"
+	logId := "N/A"
+	if len(tokensSplit) == 3 {
+		commandBeingRun = tokensSplit[1]
+		logId = tokensSplit[2]
 	} else {
-		handleREST.HandleREST(w, r, wsClient)
+		commandBeingRun = "N/A"
+		logId = uuid.New().String()
+	}
+
+	// Determin if its an exec or normal rest
+	if strings.Contains(r.URL.Path, "exec") {
+		HandleExec.HandleExec(w, r, wsClient)
+	} else {
+		HandleREST.HandleREST(w, r, commandBeingRun, logId, wsClient)
 	}
 }

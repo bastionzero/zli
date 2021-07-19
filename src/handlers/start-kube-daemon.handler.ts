@@ -36,15 +36,16 @@ export async function startKubeDaemonHandler(connectUser: string, connectCluster
     // Start the go subprocess
     // TODO: This will chance when we compile it inside zli
     const options = {
-        cwd: "/Users/sidpremkumar/Documents/CommonwealthCrypto/Random/bctl-go-daemon/",
-        // detached: true,
-        // shell: false,
+        cwd: "/Users/sidpremkumar/Documents/CommonwealthCrypto/zli/bctl-go-daemon/Daemon",
+        detached: true,
+        shell: true,
         stdio: ['ignore', 'ignore', 'ignore']
     };
 
     // Build our args 
-    let args = ['run', 'main.go', `-sessionId=${configService.sessionId()}`, `-assumeRole=${connectUser}`, `-assumeCluster=${connectCluster}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace("https://", "")}`, `-authHeader="${configService.getAuthHeader()}"`]
-    console.log(`go ${args.join(' ')}`)
+    let args = ['run', 'main.go', `-sessionId=${configService.sessionId()}`, `-assumeRole=${connectUser}`, `-assumeCluster=${connectCluster}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace("https://", "")}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`]
+
+    // console.log(`go ${args.join(' ')}`)
 
     // Testing websocket
     // const socket = await buildWebsocket(configService, connectUser, logger)
@@ -53,18 +54,15 @@ export async function startKubeDaemonHandler(connectUser: string, connectCluster
     // await delay(2000) /// waiting 1 second.
 
 
+    const daemonProcess = await spawn('go', args, options);
 
-    // const daemonProcess = spawn('go', ['run', 'main.go'], options);
+    // Now save the Pid so we can kill the process next time we start it
+    kubeConfig["localPid"] = daemonProcess.pid;
+    configService.setKubeConfig(kubeConfig);
 
-    // // Now save the Pid so we can kill the process next time we start it
-    // kubeConfig["localPid"] = daemonProcess.pid;
-    // configService.setKubeConfig(kubeConfig);
-    // console.log(daemonProcess)
+    logger.info(`Started kube daemon at ${kubeConfig["localHost"]}:${kubeConfig['localPort']} for ${connectUser}@${connectCluster}`);
 
-    // logger.info(`Started kube daemon at ${kubeConfig["localHost"]}:${kubeConfig['localPort']} for ${connectUser}@${connectCluster}`);
-
-    // console.log(daemonProcess.pid);
-    // process.exit(0)
+    process.exit(0)
 }
 
 async function generateUUID(): Promise<string> {

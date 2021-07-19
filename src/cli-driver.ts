@@ -29,6 +29,7 @@ import { listConnectionsHandler } from './handlers/list-connections.handler';
 import { attachHandler } from './handlers/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kubeconfig.handler';
+import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -400,6 +401,14 @@ export class CliDriver
                 (_) => {},
                 async (_) => {
                     await generateKubeconfigHandler(this.configService, this.logger);
+                }
+            )
+            .command(
+                'generateKubeYaml',
+                'Generate a Kube Yaml to Apply to a Cluster',
+                (_) => {},
+                async (_) => {
+                    await generateKubeYamlHandler(this.logger);
                 }
             )
             .command(

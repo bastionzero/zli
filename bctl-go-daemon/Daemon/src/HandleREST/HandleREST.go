@@ -1,16 +1,15 @@
-package handleREST
+package HandleREST
 
 import (
 	"io/ioutil"
 	"log"
 	"net/http"
 
-	"bastionzero.com/bctl-daemon/v1/websocketClient"
-	"bastionzero.com/bctl-daemon/v1/websocketClient/websocketClientTypes"
+	"bastionzero.com/bctl/v1/Daemon/src/DaemonWebsocket"
 )
 
 // Handler for Regular Rest calls that can be proxied
-func HandleREST(w http.ResponseWriter, r *http.Request, wsClient *websocketClient.WebsocketClient) {
+func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *DaemonWebsocket.DaemonWebsocket) {
 	// First extract all the info out of the request
 	headers := make(map[string]string)
 	for name, values := range r.Header {
@@ -37,9 +36,9 @@ func HandleREST(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 	requestIdentifier := wsClient.GenerateUniqueIdentifier()
 
 	// Now put our request together and make the request
-	dataFromClientMessage := websocketClientTypes.DataFromClientMessage{}
-	dataFromClientMessage.LogId = "e80d6510-fb36-4de1-9478-397d80ac43d8"
-	dataFromClientMessage.KubeCommand = "N/A"
+	dataFromClientMessage := DaemonWebsocket.DataFromClientMessage{}
+	dataFromClientMessage.LogId = logId
+	dataFromClientMessage.KubeCommand = commandBeingRun
 	dataFromClientMessage.Endpoint = endpointWithQuery
 	dataFromClientMessage.Headers = headers
 	dataFromClientMessage.Method = method
@@ -48,7 +47,7 @@ func HandleREST(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 	wsClient.SendDataFromClientMessage(dataFromClientMessage)
 
 	// Wait for the response
-	dataToClientMessageResponse := websocketClientTypes.DataToClientMessage{}
+	dataToClientMessageResponse := DaemonWebsocket.DataToClientMessage{}
 	dataToClientMessageResponse = <-wsClient.DataToClientChan
 
 	// Ensure that the identifer is correct

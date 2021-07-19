@@ -1,11 +1,17 @@
 FROM golang:1.16-alpine
 
-RUN mkdir /bctl-server
+RUN mkdir -p /bctl-server/Server
 WORKDIR /bctl-server
 
+
 COPY . .
-RUN go install bastionzero.com/bctl-daemon/v1
+RUN cd Server && \
+    go get k8s.io/client-go/kubernetes && \
+    go get k8s.io/client-go/tools/remotecommand && \
+    go get k8s.io/client-go/rest && \
+    go get k8s.io/client-go/kubernetes/scheme && \
+    go get k8s.io/api/core/v1 && \
+    go install bastionzero.com/bctl/v1/Server 
 
-
-
-ENTRYPOINT [ "go",  "run", "/bctl-server/main.go"]
+WORKDIR /bctl-server/Server
+ENTRYPOINT [ "go",  "run", "/bctl-server/Server/main.go", "-serviceURL=sid.bastionzero.com"]

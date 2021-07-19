@@ -1,6 +1,7 @@
 package CommonWebsocketClient
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -42,7 +43,7 @@ func NewCommonWebsocketClient(serviceUrl string, hubEndpoint string, params map[
 
 	// First negotiate in order to get a url to connect to
 	httpClient := &http.Client{}
-	negotiateUrl := "https://" + serviceUrl + "/api/v1/hub/kube/negotiate"
+	negotiateUrl := "https://" + serviceUrl + hubEndpoint + "/negotiate"
 	req, _ := http.NewRequest("POST", negotiateUrl, nil)
 
 	// Add the expected headers
@@ -127,9 +128,18 @@ func NewCommonWebsocketClient(serviceUrl string, hubEndpoint string, params map[
 				log.Println("ERROR IN WEBSOCKET MESSAGE: ", err)
 				return
 			}
+			// Always trim off the termination char if its there
+			if message[len(message)-1] == messageTerminator {
+				message = message[0 : len(message)-1]
+			}
 
-			// And alert on our channel
-			ret.WebsocketMessageChan <- message
+			// Also check to see if we have multiple messages
+			seporatedMessages := bytes.Split(message, []byte{messageTerminator})
+
+			for _, formattedMessage := range seporatedMessages {
+				// And alert on our channel
+				ret.WebsocketMessageChan <- formattedMessage
+			}
 		}
 	}()
 

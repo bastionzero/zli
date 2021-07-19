@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 
 	"bastionzero.com/bctl/v1/Server/src/ControlWebsocket"
+	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket"
 )
 
 func check(e error) {
@@ -16,21 +16,30 @@ func check(e error) {
 // Main ServerInit Thread to execute
 // serviceURL string, authHeader string, sessionId string, clientIdentifier string
 func main() {
-
-	// TODO: Remove this requierment
-	sessionIdPtr := flag.String("sessionId", "", "Session ID From Zli")
-	authHeaderPtr := flag.String("authHeader", "", "Auth Header From Zli")
+	// TODO: Remove this requirement
+	// sessionIdPtr := flag.String("sessionId", "", "Session ID From Zli")
+	// authHeaderPtr := flag.String("authHeader", "", "Auth Header From Zli")
 
 	// Our expected flags we need to start
-	// TODO: Add a token here that can be used as a way to auth to Bastion
+	// TODO: Add a token here that can be used as a way to auth to Bastion,
+	// TODO: we should get all these vars also from the env as a backup as we can assume we are inside a container
 	serviceURLPtr := flag.String("serviceURL", "", "Service URL to use")
 
 	// Parse and TODO: ensure they all exist
 	flag.Parse()
 
-	fmt.Print(serviceURLPtr)
+	wsClient := ControlWebsocket.NewControlWebsocketClient(*serviceURLPtr)
 
-	ControlWebsocket.NewControlWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr)
+	// Subscribe to our handlers
+	go func() {
+		for {
+			message := <-wsClient.ProvisionWebsocketChan
+
+			// We have an incoming websocket request, attempt to make a new Daemon Websocket Client for the request
+			token := "1234" // TODO figure this out
+			DaemonServerWebsocket.NewDaemonServerWebsocketClient(*serviceURLPtr, message.ConnectionId, token)
+		}
+	}()
 
 	// // First load in our Kube variables
 	// serviceAccountTokenBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
@@ -186,7 +195,7 @@ func main() {
 
 	// Sleep forever
 	// Ref: https://stackoverflow.com/questions/36419054/go-projects-main-goroutine-sleep-forever
-	// select {}
+	select {}
 
 }
 

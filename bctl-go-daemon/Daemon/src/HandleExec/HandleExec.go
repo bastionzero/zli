@@ -1,4 +1,4 @@
-package handleExec
+package HandleExec
 
 import (
 	"context"
@@ -8,10 +8,14 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
-	"bastionzero.com/bctl-daemon/v1/websocketClient"
-	"bastionzero.com/bctl-daemon/v1/websocketClient/websocketClientTypes"
+	// "bastionzero.com/bctl-daemon/v1/websocketClient"
+	// "bastionzero.com/bctl-daemon/v1/websocketClient/websocketClientTypes"
+
+	"bastionzero.com/bctl/v1/Daemon/src/DaemonWebsocket"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
@@ -108,7 +112,7 @@ type Options struct {
 }
 
 // Handler for Regular Exec calls that can be proxied
-func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClient.WebsocketClient) {
+func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *DaemonWebsocket.DaemonWebsocket) {
 	// Extract the options of the exec
 	options := extractExecOptions(r)
 	fmt.Printf("Starting Exec for command: %s\n", options.Command)
@@ -151,9 +155,9 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
 	requestIdentifier := wsClient.GenerateUniqueIdentifier()
-	startExecToClusterMessage := &websocketClientTypes.StartExecToBastionMessage{}
+	startExecToClusterMessage := &DaemonWebsocket.StartExecToBastionMessage{}
 	startExecToClusterMessage.Command = options.Command
-	startExecToClusterMessage.Endpoint = r.URL.Path
+	startExecToClusterMessage.Endpoint = r.URL.String()
 	startExecToClusterMessage.RequestIdentifier = requestIdentifier
 	log.Println("Starting connection to cluster for exec")
 	wsClient.SendStartExecToBastionMessage(*startExecToClusterMessage)
@@ -162,17 +166,23 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 	go func() {
 		for {
 			// Wait for a new request to come in through our channel
-			sendStdoutToDaemonSignalRMessage := websocketClientTypes.SendStdoutToDaemonSignalRMessage{}
-			sendStdoutToDaemonSignalRMessage = <-wsClient.ExecStdoutChannel
+			sendStdoutToDaemonFromBastionSignalRMessage := DaemonWebsocket.SendStdoutToDaemonFromBastionSignalRMessage{}
+			sendStdoutToDaemonFromBastionSignalRMessage = <-wsClient.ExecStdoutChan
 
 			// Ensure that the RequestIdentifiers match up
-			if sendStdoutToDaemonSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
+			if sendStdoutToDaemonFromBastionSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
 				log.Printf("Unhandled request identifier")
 				// continue
 				// TODO: Fix this
 			}
-			// Display the content to the use
-			proxy.stdoutStream.Write([]byte(sendStdoutToDaemonSignalRMessage.Arguments[0].Stdout))
+			// TODO: Check if this is EOF, so we can end the stream
+			if strings.Contains(sendStdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout, "exit") {
+				conn.Close()
+			} else {
+				// Display the content to the use
+				proxy.stdoutStream.Write([]byte(sendStdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout))
+			}
+
 		}
 	}()
 
@@ -188,7 +198,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *websocketClien
 			word := string(buf[:n])
 
 			// Now we need to send this stdin to Bastion
-			sendStdinToBastionMessage := websocketClientTypes.SendStdinToBastionMessage{}
+			sendStdinToBastionMessage := DaemonWebsocket.SendStdinToBastionMessage{}
 			sendStdinToBastionMessage.Stdin = word
 			sendStdinToBastionMessage.RequestIdentifier = requestIdentifier
 			wsClient.SendSendStdinToBastionMessage(sendStdinToBastionMessage)
