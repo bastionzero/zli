@@ -1,14 +1,18 @@
-package DaemonServerWebsocket
+package HandleExec
+
+import (
+	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket/DaemonServerWebsocketTypes"
+)
 
 // Our customer stdout writer so we can pass it into StreamOptions
 type StdoutWriter struct {
 	ch                chan byte
-	wsClient          *DaemonServerWebsocket
+	wsClient          *DaemonServerWebsocketTypes.DaemonServerWebsocket
 	RequestIdentifier int
 }
 
 // Constructor
-func NewStdoutWriter(wsClient *DaemonServerWebsocket, requestIdentifier int) *StdoutWriter {
+func NewStdoutWriter(wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *StdoutWriter {
 	return &StdoutWriter{
 		ch:                make(chan byte, 1024),
 		wsClient:          wsClient,
@@ -23,7 +27,7 @@ func (w *StdoutWriter) Chan() <-chan byte {
 // Our custom write function, this will send the data over the websocket
 func (w *StdoutWriter) Write(p []byte) (int, error) {
 	// Send this data over our websocket
-	sendStdoutToBastionMessage := &SendStdoutToBastionMessage{}
+	sendStdoutToBastionMessage := &DaemonServerWebsocketTypes.SendStdoutToBastionMessage{}
 	sendStdoutToBastionMessage.RequestIdentifier = w.RequestIdentifier
 	sendStdoutToBastionMessage.Stdout = string(p)
 	w.wsClient.SendSendStdoutToBastionMessage(*sendStdoutToBastionMessage)

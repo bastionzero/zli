@@ -149,6 +149,24 @@ export class CliDriver
                 }
             )
             .command(
+                'disconnect <targetType>',
+                'Disconnect from a target',
+                (yargs) => {
+                    return yargs
+                        .positional('targetType', {
+                            type: 'string',
+                        })
+                        .example('disconnect cluster', 'Disconnect a local kube cluster daemon')
+                },
+                async (argv) => {
+                    if (argv.targetType == 'cluster') {
+                        this.logger.info("disconnect from cluster?")
+                    } else {
+                        this.logger.info(`Unhandled target type passed ${argv.targetType}`)
+                    }
+                }
+            )
+            .command(
                 'attach <connectionId>',
                 'Attach to an open zli connection',
                 (yargs) => {

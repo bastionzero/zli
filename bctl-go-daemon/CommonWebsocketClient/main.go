@@ -142,9 +142,7 @@ func NewCommonWebsocketClient(serviceUrl string, hubEndpoint string, params map[
 			}
 		}
 	}()
-
 	return &ret
-
 }
 
 // type UniqueRand struct {

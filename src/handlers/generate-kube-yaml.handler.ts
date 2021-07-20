@@ -65,7 +65,7 @@ spec:
             serviceAccountName: bctl-server-sa
             containers:
             - name: bctl-server
-              image: 238681891460.dkr.ecr.us-east-1.amazonaws.com/bctlserver:2.0
+              image: 238681891460.dkr.ecr.us-east-1.amazonaws.com/bctlserver:prod
               imagePullPolicy: Always
               ports:
               - containerPort: 6001
@@ -79,6 +79,8 @@ spec:
                 value: "Google"
               - name: ENV
                 value: "Default"
+              - name: KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH
+                value: "/var/run/secrets/kubernetes.io/serviceaccount/token"
               resources:
                 requests:
                   memory: 1G

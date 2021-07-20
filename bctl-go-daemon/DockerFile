@@ -13,5 +13,25 @@ RUN cd Server && \
     go get k8s.io/api/core/v1 && \
     go install bastionzero.com/bctl/v1/Server 
 
+# Install rsync for devs, and python3 for our systemd alt
+RUN apk add rsync python3
+
+# Make our log dir
+RUN mkdir /var/log/cwc/
+
+# Install our systemd alt
+RUN wget https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -O /usr/local/bin/systemctl && \
+    chmod +x /usr/local/bin/systemctl && \
+    echo 'alias sd=/usr/local/bin/systemctl' >> ~/.bashrc;
+
+# Copy our service file
+RUN mkdir -p /etc/systemd/system
+COPY bctl-server.service /etc/systemd/system/
+
+# Make start an executable
+RUN chmod +x /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
+
+
 WORKDIR /bctl-server/Server
 ENTRYPOINT [ "go",  "run", "/bctl-server/Server/main.go", "-serviceURL=sid.bastionzero.com"]
+# ENTRYPOINT [ "sleep", "infinity" ]
