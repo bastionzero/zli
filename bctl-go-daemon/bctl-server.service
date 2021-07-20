@@ -1,0 +1,10 @@
+[Unit]
+Description=Bctl-Server
+
+[Service]
+ExecStart=/bctl-server/Server/start.sh
+StandardOutput=file:/var/log/cwc/bctl-server.log
+StandardError=file:/var/log/cwc/bctl-server.log
+
+[Install]
+WantedBy=multi-user.target
