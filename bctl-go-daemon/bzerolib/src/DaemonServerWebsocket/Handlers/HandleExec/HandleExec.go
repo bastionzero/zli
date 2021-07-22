@@ -1,7 +1,6 @@
 package HandleExec
 
 import (
-	"fmt"
 	"log"
 	"net/url"
 
@@ -11,56 +10,27 @@ import (
 )
 
 // TODO: Maybe this should return an error
-func HandleExec(requestForStartExecToClusterSingalRMessage DaemonServerWebsocketTypes.RequestForStartExecToClusterSingalRMessage, serviceAccountToken string, kubeHost string, wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket) {
-	requestForStartExecToClusterMessage := DaemonServerWebsocketTypes.RequestForStartExecToClusterMessage{}
-	requestForStartExecToClusterMessage = requestForStartExecToClusterSingalRMessage.Arguments[0]
+func HandleExec(startExecToClusterFromBastionSignalRMessage DaemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage, serviceAccountToken string, kubeHost string, wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket) {
+	startExecToClusterMessage := DaemonServerWebsocketTypes.StartExecToClusterFromBastionMessage{}
+	startExecToClusterMessage = startExecToClusterFromBastionSignalRMessage.Arguments[0]
 
 	// Now open up our local exec session
-	// podName := "bzero-nabeel-d639d5e2-856b6f49f-vqz8h"
-
 	// Create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
 	}
 
+	// Add our impersonation information
+	// TODO: Make this not hardcoded, bastion should send info here
 	config.Impersonate = rest.ImpersonationConfig{
-		UserName: "cwc-dev-developer",
+		UserName: startExecToClusterMessage.Role,
 		Groups:   []string{"system:authenticated"},
 	}
 	config.BearerToken = serviceAccountToken
 
-	// // Build our client
-	// restKubeClient, err := kubernetes.NewForConfig(config)
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-
-	// Build our post request
-	// req := restKubeClient.CoreV1().RESTClient().Post().Resource("pods").Name(podName).
-	// 	Namespace("default").SubResource("exec")
-	// option := &v1.PodExecOptions{
-	// 	Container: "bastion",
-	// 	Command:   requestForStartExecToClusterMessage.Command,
-	// 	Stdin:     true,
-	// 	Stdout:    true,
-	// 	Stderr:    true,
-	// 	TTY:       true,
-	// }
-	// // if stdin == nil { // TODO?
-	// //     option.Stdin = false
-	// // }
-	// req.VersionedParams(
-	// 	option,
-	// 	scheme.ParameterCodec,
-	// )
-	// TODO: Request params need to be send along with this initial request
-	// {StartExecToCluster [{[/bin/bash] /api/v1/namespaces/default/pods/bzero-dev-84b449b778-vmrwg/exec 1318}] 1}
-	// https://172.20.0.1:443/api/v1/namespaces/default/pods/bzero-dev-84b449b778-vmrwg/exec?command=%2Fbin%2Fbash&container=bastion&stderr=true&stdin=true&stdout=true&tty=true
-
-	execUrl := kubeHost + requestForStartExecToClusterMessage.Endpoint
+	execUrl := kubeHost + startExecToClusterMessage.Endpoint
 	execUrlParsed, _ := url.Parse(execUrl)
-	fmt.Println(execUrl)
 
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", execUrlParsed)
@@ -70,12 +40,16 @@ func HandleExec(requestForStartExecToClusterSingalRMessage DaemonServerWebsocket
 	}
 
 	// Finally build our streams
-	stdoutWriter := NewStdoutWriter(wsClient, requestForStartExecToClusterMessage.RequestIdentifier)
-	stdinReader := NewStdinReader(wsClient, requestForStartExecToClusterMessage.RequestIdentifier)
+	stdoutWriter := NewStdoutWriter(wsClient, startExecToClusterMessage.RequestIdentifier)
+	stderrWriter := NewStderrWriter(wsClient, startExecToClusterMessage.RequestIdentifier)
+	stdinReader := NewStdinReader(wsClient, startExecToClusterMessage.RequestIdentifier)
+	terminalSizeQueue := NewTerminalSizeQueue(wsClient, startExecToClusterMessage.RequestIdentifier)
 	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  stdinReader,
-		Stdout: stdoutWriter,
-		Stderr: stdoutWriter,
+		Stdin:             stdinReader,
+		Stdout:            stdoutWriter,
+		Stderr:            stderrWriter,
+		TerminalSizeQueue: terminalSizeQueue,
+		Tty:               true, // TODO: We dont always want tty
 	})
 	if err != nil {
 		log.Println("Error creating Spdy stream")

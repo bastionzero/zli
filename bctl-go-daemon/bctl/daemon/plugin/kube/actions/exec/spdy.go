@@ -120,6 +120,137 @@ func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYSer
 	// Wait for our streams to come in
 	expired := time.NewTimer(DefaultStreamCreationTimeout)
 	defer expired.Stop()
+	proxy, err := waitForStreams(r.Context(), streamCh, options.ExpectedStreams, expired.C)
+	if err != nil {
+		fmt.Println("FATAL ERROR!")
+		return
+	}
+
+	// Now since we made our local connection to kubectl, initiate a connection with Bastion
+	requestIdentifier := wsClient.GenerateUniqueIdentifier()
+	startExecToClusterFromBastionMessage := &DaemonWebsocket.StartExecToBastionFromDaemonMessage{}
+	startExecToClusterFromBastionMessage.Command = options.Command
+	startExecToClusterFromBastionMessage.Endpoint = r.URL.String()
+	startExecToClusterFromBastionMessage.RequestIdentifier = requestIdentifier
+	log.Println("Starting connection to cluster for exec")
+	wsClient.SendStartExecToBastionFromDaemonMessage(*startExecToClusterFromBastionMessage)
+
+	// Set up a go function for stdout
+	go func() {
+		for {
+			// Wait for a new request to come in through our channel
+			stdoutToDaemonFromBastionSignalRMessage := DaemonWebsocket.StdoutToDaemonFromBastionSignalRMessage{}
+			stdoutToDaemonFromBastionSignalRMessage = <-wsClient.ExecStdoutChan
+
+			// Ensure that the RequestIdentifiers match up
+			if stdoutToDaemonFromBastionSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
+				// Rebroadcast the message
+				wsClient.AlertOnExecStdoutChan(stdoutToDaemonFromBastionSignalRMessage)
+			} else {
+				// TODO: Check if this is EOF, so we can end the stream
+				// Im not sure if this is the best way to close the
+				if strings.Contains(string(stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout), "exit") {
+					conn.Close()
+					return
+				} else {
+					// Display the content to the use
+					log.Printf("%s", stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout)
+					proxy.stdoutStream.Write(stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout)
+				}
+			}
+		}
+	}()
+
+	// Set up a go function for stderr
+	go func() {
+		for {
+			// Wait for a new request to come in through our channel
+			stderrToDaemonFromBastionSignalRMessage := DaemonWebsocket.StderrToDaemonFromBastionSignalRMessage{}
+			stderrToDaemonFromBastionSignalRMessage = <-wsClient.ExecStderrChan
+
+			// Ensure that the RequestIdentifiers match up
+			if stderrToDaemonFromBastionSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
+				// Rebroadcast the message
+				wsClient.AlertOnExecStderrChan(stderrToDaemonFromBastionSignalRMessage)
+			} else {
+				proxy.stderrStream.Write(stderrToDaemonFromBastionSignalRMessage.Arguments[0].Stderr)
+			}
+		}
+	}()
+
+	// Set up a go function for stdin
+	go func() {
+		buf := make([]byte, 16)
+		for {
+			n, err := proxy.stdinStream.Read(buf)
+			// Handle error
+			if err == io.EOF {
+				// TODO: This means to close the stream
+				return
+			}
+			// word := string(buf[:n])
+
+			// Now we need to send this stdin to Bastion
+			stdinToBastionFromDaemonMessage := DaemonWebsocket.StdinToBastionFromDaemonMessage{}
+			stdinToBastionFromDaemonMessage.Stdin = buf[:n]
+			stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+			wsClient.SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage)
+		}
+	}()
+
+	// Set up a go function for resize
+	go func() {
+		// buf := make([]byte, 16)
+		for {
+			decoder := json.NewDecoder(proxy.resizeStream)
+			// n, err := proxy.resizeStream.Read(buf)
+			// if err != nil {
+			// 	return
+			// }
+
+			size := TerminalSize{}
+			if err := decoder.Decode(&size); err != nil {
+				// if err != io.EOF {
+				// 	log.Warningf("Failed to decode resize event: %v", err)
+				// }
+				// t.cancel()
+				log.Printf("Error decoding resize message: %s")
+				return
+			} else {
+				// Emit this as a new resize event
+				resizeTerminalToBastionFromDaemonMessage := DaemonWebsocket.ResizeTerminalToBastionFromDaemonMessage{}
+				resizeTerminalToBastionFromDaemonMessage.Height = size.Height
+				resizeTerminalToBastionFromDaemonMessage.Width = size.Width
+				resizeTerminalToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+				wsClient.SendResizeTerminalToBastionFromDaemonMessage(resizeTerminalToBastionFromDaemonMessage)
+			}
+		}
+	}()
+
+}
+
+func extractExecOptions(r *http.Request) Options {
+	tty := r.FormValue(ExecTTYParam) == "true"
+	stdin := r.FormValue(ExecStdinParam) == "true"
+	stdout := r.FormValue(ExecStdoutParam) == "true"
+	stderr := r.FormValue(ExecStderrParam) == "true"
+
+	// count the streams client asked for, starting with 1
+	expectedStreams := 1
+	if stdin {
+		expectedStreams++
+	}
+	if stdout {
+		expectedStreams++
+	}
+	if stderr {
+		expectedStreams++
+	}
+	if tty { // TODO: && handler.supportsTerminalResizing()
+		expectedStreams++
+	}
+
+	fmt.Printf("Expected streams: %d\n", expectedStreams)
 
 	// Wait for streams to come in and return SPDY service
 	if err := service.waitForStreams(request.Context(), streamCh, options.ExpectedStreams, expired.C); err != nil {

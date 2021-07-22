@@ -104,6 +104,12 @@ export interface ClusterSummary {
     lastAgentUpdate: Date;
 }
 
+export interface ClusterSummary {
+    id: string;
+    clusterName: string;
+    status: KubeClusterStatus;
+}
+
 export interface EnvironmentDetails {
     id: string;
     organizationId: string;

@@ -6,7 +6,6 @@ import (
 
 // Our customer stdout writer so we can pass it into StreamOptions
 type StdoutWriter struct {
-	ch                chan byte
 	wsClient          *DaemonServerWebsocketTypes.DaemonServerWebsocket
 	RequestIdentifier int
 }
@@ -14,35 +13,24 @@ type StdoutWriter struct {
 // Constructor
 func NewStdoutWriter(wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *StdoutWriter {
 	return &StdoutWriter{
-		ch:                make(chan byte, 1024),
 		wsClient:          wsClient,
 		RequestIdentifier: requestIdentifier,
 	}
 }
 
-func (w *StdoutWriter) Chan() <-chan byte {
-	return w.ch
-}
-
 // Our custom write function, this will send the data over the websocket
 func (w *StdoutWriter) Write(p []byte) (int, error) {
 	// Send this data over our websocket
-	sendStdoutToBastionMessage := &DaemonServerWebsocketTypes.SendStdoutToBastionMessage{}
-	sendStdoutToBastionMessage.RequestIdentifier = w.RequestIdentifier
-	sendStdoutToBastionMessage.Stdout = string(p)
-	w.wsClient.SendSendStdoutToBastionMessage(*sendStdoutToBastionMessage)
+	stdoutToBastionFromClusterMessage := &DaemonServerWebsocketTypes.StdoutToBastionFromClusterMessage{}
+	stdoutToBastionFromClusterMessage.RequestIdentifier = w.RequestIdentifier
+	stdoutToBastionFromClusterMessage.Stdout = p
+	w.wsClient.SendStdoutToBastionFromClusterMessage(*stdoutToBastionFromClusterMessage)
 
 	// Calculate what needs to be returned
-	n := 0
-	for _, b := range p {
-		w.ch <- b
-		n++
-	}
-	return n, nil
+	return len(p), nil
 }
 
 // Close the writer by closing the channel
 func (w *StdoutWriter) Close() error {
-	close(w.ch)
 	return nil
 }

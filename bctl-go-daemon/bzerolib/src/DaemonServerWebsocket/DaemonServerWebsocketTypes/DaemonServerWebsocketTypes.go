@@ -10,49 +10,61 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type RequestForServerSignalRMessage struct {
-	Target    string                    `json:"target"`
-	Arguments []RequestForServerMessage `json:"arguments"`
-	Type      int                       `json:"type"`
+type RequestToClusterFromBastionSignalRMessage struct {
+	Target    string                               `json:"target"`
+	Arguments []RequestToClusterFromBastionMessage `json:"arguments"`
+	Type      int                                  `json:"type"`
 }
-type RequestForServerMessage struct {
+type RequestToClusterFromBastionMessage struct {
 	Endpoint          string            `json:"endpoint"`
 	Headers           map[string]string `json:"headers"`
 	Method            string            `json:"method"`
-	Body              string            `json:"body"`
+	Body              []byte            `json:"body"`
 	RequestIdentifier int               `json:"requestIdentifier"`
+	Role              string            `json"role"`
 }
 
-type ResponseToDaemonSignalRMessage struct {
-	Target    string                    `json:"target"`
-	Arguments []ResponseToDaemonMessage `json:"arguments"`
-	Type      int                       `json:"type"`
+type ResponseToBastionFromClusterSignalRMessage struct {
+	Target    string                                `json:"target"`
+	Arguments []ResponseToBastionFromClusterMessage `json:"arguments"`
+	Type      int                                   `json:"type"`
 }
-type ResponseToDaemonMessage struct {
+type ResponseToBastionFromClusterMessage struct {
 	StatusCode        int               `json:"statusCode"`
-	Content           string            `json:"content"`
+	Content           []byte            `json:"content"`
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Headers           map[string]string `json:"headers"`
 }
 
-type RequestForStartExecToClusterSingalRMessage struct {
-	Target    string                                `json:"target"`
-	Arguments []RequestForStartExecToClusterMessage `json:"arguments"`
-	Type      int                                   `json:"type"`
+type StartExecToClusterFromBastionSignalRMessage struct {
+	Target    string                                 `json:"target"`
+	Arguments []StartExecToClusterFromBastionMessage `json:"arguments"`
+	Type      int                                    `json:"type"`
 }
-type RequestForStartExecToClusterMessage struct {
+type StartExecToClusterFromBastionMessage struct {
 	Command           []string `json:"command"`
 	Endpoint          string   `json:"endpoint"`
 	RequestIdentifier int      `json:"requestIdentifier"`
+	Role              string   `json"role"`
 }
 
-type SendStdoutToBastionSignalRMessage struct {
-	Target    string                       `json:"target"`
-	Arguments []SendStdoutToBastionMessage `json:"arguments"`
-	Type      int                          `json:"type"`
+type StdoutToBastionFromClusterSignalRMessage struct {
+	Target    string                              `json:"target"`
+	Arguments []StdoutToBastionFromClusterMessage `json:"arguments"`
+	Type      int                                 `json:"type"`
 }
-type SendStdoutToBastionMessage struct {
-	Stdout            string `json:"stdout"`
+type StdoutToBastionFromClusterMessage struct {
+	Stdout            []byte `json:"stdout"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}
+
+type StderrToBastionFromClusterSignalRMessage struct {
+	Target    string                              `json:"target"`
+	Arguments []StderrToBastionFromClusterMessage `json:"arguments"`
+	Type      int                                 `json:"type"`
+}
+type StderrToBastionFromClusterMessage struct {
+	Stderr            []byte `json:"stderr"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
 
@@ -62,17 +74,28 @@ type SendStdoutToDaemonSignalRMessage struct {
 	Type      int                         `json:"type"`
 }
 type SendStdoutToDaemonMessage struct {
-	Stdout            string `json:"stdout"`
+	Stdout            []byte `json:"stdout"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
 
-type SendStdinToClusterSignalRMessage struct {
-	Target    string                      `json:"target"`
-	Arguments []SendStdinToClusterMessage `json:"arguments"`
-	Type      int                         `json:"type"`
+type StdinToClusterFromBastionSignalRMessage struct {
+	Target    string                             `json:"target"`
+	Arguments []StdinToClusterFromBastionMessage `json:"arguments"`
+	Type      int                                `json:"type"`
 }
-type SendStdinToClusterMessage struct {
-	Stdin             string `json:"stdin"`
+type StdinToClusterFromBastionMessage struct {
+	Stdin             []byte `json:"stdin"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}
+
+type ResizeTerminalToClusterFromBastionSignalRMessage struct {
+	Target    string                                      `json:"target"`
+	Arguments []ResizeTerminalToClusterFromBastionMessage `json:"arguments"`
+	Type      int                                         `json:"type"`
+}
+type ResizeTerminalToClusterFromBastionMessage struct {
+	Width             uint16 `json:"width"`
+	Height            uint16 `json:"height"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
 
@@ -82,28 +105,67 @@ type DaemonServerWebsocket struct {
 
 	// These are all the    types of channels we have available
 	// Basic REST Call related
-	RequestForServerChan chan RequestForServerMessage
+	RequestForServerChan     chan RequestToClusterFromBastionMessage
+	RequestForServerChanLock sync.Mutex
 
 	// Exec Related
-	RequestForStartExecChan chan RequestForStartExecToClusterSingalRMessage
-	ExecStdoutChan          chan SendStdoutToDaemonSignalRMessage
-	// RequestForServerChan    chan CommonWebsocketClient.RequestForServerSignalRMessage
-	// RequestForStartExecChan chan CommonWebsocketClient.RequestForStartExecToClusterSingalRMessage
-	ExecStdinChannel chan SendStdinToClusterSignalRMessage
+	RequestForStartExecChan     chan StartExecToClusterFromBastionSignalRMessage
+	RequestForStartExecChanLock sync.Mutex
+	ExecStdoutChan              chan SendStdoutToDaemonSignalRMessage
+	ExecStdoutChanLock          sync.Mutex
+	ExecStdinChannel            chan StdinToClusterFromBastionSignalRMessage
+	ExecStdinChannelLock        sync.Mutex
+	ExecResizeChannel           chan ResizeTerminalToClusterFromBastionSignalRMessage
+	ExecResizeChannelLock       sync.Mutex
 
 	SocketLock sync.Mutex // Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
 }
 
-func (client *DaemonServerWebsocket) SendResponseToDaemonMessage(responseToDaemonMessage ResponseToDaemonMessage) error {
+func (client *DaemonServerWebsocket) AlertOnRequestForServerChan(requestToClusterFromBastionMessage RequestToClusterFromBastionMessage) {
+	// Lock our mutex and setup the unlock
+	client.RequestForServerChanLock.Lock()
+	defer client.RequestForServerChanLock.Unlock()
+	client.RequestForServerChan <- requestToClusterFromBastionMessage
+}
+
+func (client *DaemonServerWebsocket) AlertOnRequestForStartExecChan(startExecToClusterFromBastionSignalRMessage StartExecToClusterFromBastionSignalRMessage) {
+	// Lock our mutex and setup the unlock
+	client.RequestForStartExecChanLock.Lock()
+	defer client.RequestForStartExecChanLock.Unlock()
+	client.RequestForStartExecChan <- startExecToClusterFromBastionSignalRMessage
+}
+
+func (client *DaemonServerWebsocket) AlertOnExecStdoutChan(sendStdoutToDaemonSignalRMessage SendStdoutToDaemonSignalRMessage) {
+	// Lock our mutex and setup the unlock
+	client.ExecStdoutChanLock.Lock()
+	defer client.ExecStdoutChanLock.Unlock()
+	client.ExecStdoutChan <- sendStdoutToDaemonSignalRMessage
+}
+
+func (client *DaemonServerWebsocket) AlertOnExecStdinChan(stdinToClusterFromBastionSignalRMessage StdinToClusterFromBastionSignalRMessage) {
+	// Lock our mutex and setup the unlock
+	client.ExecStdinChannelLock.Lock()
+	defer client.ExecStdinChannelLock.Unlock()
+	client.ExecStdinChannel <- stdinToClusterFromBastionSignalRMessage
+}
+
+func (client *DaemonServerWebsocket) AlertOnExecResizeChan(resizeTerminalToClusterFromBastionSingalRMessage ResizeTerminalToClusterFromBastionSignalRMessage) {
+	// Lock our mutex and setup the unlock
+	client.ExecResizeChannelLock.Lock()
+	defer client.ExecResizeChannelLock.Unlock()
+	client.ExecResizeChannel <- resizeTerminalToClusterFromBastionSingalRMessage
+}
+
+func (client *DaemonServerWebsocket) SendResponseToBastionFromClusterMessage(responseToBastionFromClusterMessage ResponseToBastionFromClusterMessage) error {
 	// Lock our mutex and setup the unlock
 	client.SocketLock.Lock()
 	defer client.SocketLock.Unlock()
 
-	log.Printf("Sending data to Daemon")
+	log.Printf("Sending Response to To Bastion")
 	// Create the object, add relevent information
-	toSend := new(ResponseToDaemonSignalRMessage)
-	toSend.Target = "ResponseToDaemon"
-	toSend.Arguments = []ResponseToDaemonMessage{responseToDaemonMessage}
+	toSend := new(ResponseToBastionFromClusterSignalRMessage)
+	toSend.Target = "ResponseToBastionFromCluster"
+	toSend.Arguments = []ResponseToBastionFromClusterMessage{responseToBastionFromClusterMessage}
 
 	// Add the type number from the class
 	toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
@@ -122,16 +184,45 @@ func (client *DaemonServerWebsocket) SendResponseToDaemonMessage(responseToDaemo
 	return nil
 }
 
-func (client *DaemonServerWebsocket) SendSendStdoutToBastionMessage(sendStdoutToBastionMessage SendStdoutToBastionMessage) error {
+func (client *DaemonServerWebsocket) SendStdoutToBastionFromClusterMessage(stdoutToBastionFromClusterMessage StdoutToBastionFromClusterMessage) error {
 	// Lock our mutex and setup the unlock
 	client.SocketLock.Lock()
 	defer client.SocketLock.Unlock()
 
-	log.Printf("Sending stdout to Cluster")
+	log.Printf("Sending Stdout to Bastion")
 	// Create the object, add relevent information
-	toSend := new(SendStdoutToBastionSignalRMessage)
-	toSend.Target = "SendStdoutToBastionFromCluster"
-	toSend.Arguments = []SendStdoutToBastionMessage{sendStdoutToBastionMessage}
+	toSend := new(StdoutToBastionFromClusterSignalRMessage)
+	toSend.Target = "StdoutToBastionFromCluster"
+	toSend.Arguments = []StdoutToBastionFromClusterMessage{stdoutToBastionFromClusterMessage}
+
+	// Add the type number from the class
+	toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
+
+	// Marshal our message
+	toSendMarshalled, err := json.Marshal(toSend)
+	if err != nil {
+		return err
+	}
+
+	// Write our message
+	if err = client.WebsocketClient.Client.WriteMessage(websocket.TextMessage, append(toSendMarshalled, 0x1E)); err != nil {
+		log.Printf("Something went wrong :(")
+		return err
+	}
+	// client.SignalRTypeNumber++
+	return nil
+}
+
+func (client *DaemonServerWebsocket) SendStderrToBastionFromClusterMessage(stderrToBastionFromClusterMessage StderrToBastionFromClusterMessage) error {
+	// Lock our mutex and setup the unlock
+	client.SocketLock.Lock()
+	defer client.SocketLock.Unlock()
+
+	log.Printf("Sending Stderr to Bastion")
+	// Create the object, add relevent information
+	toSend := new(StderrToBastionFromClusterSignalRMessage)
+	toSend.Target = "StderrToBastionFromCluster"
+	toSend.Arguments = []StderrToBastionFromClusterMessage{stderrToBastionFromClusterMessage}
 
 	// Add the type number from the class
 	toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding

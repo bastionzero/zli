@@ -20,6 +20,8 @@ import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handl
 import { loginHandler } from './handlers/login.handler';
 import { connectHandler } from './handlers/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets.handler';
+import { listClustersHandler } from './handlers/list-clusters.handler';
+import { copyHandler } from './handlers/copy.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/start-kube-daemon.handler';
@@ -409,8 +411,63 @@ export class CliDriver
                 }
             )
             .command(
-                ['list-clusters', 'lk'],
+                ['list-kube-clusters', 'lk'],
                 'List all clusters (filters available)',
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'status',
+                            {
+                                type: 'string',
+                                array: true,
+                                choices: this.ssmTargetStatusChoices,
+                                alias: 'u'
+                            }
+                        )
+                        .option(
+                            'name',
+                            {
+                                type: 'string',
+                                demandOption: false,
+                                alias: 'n'
+                            }
+                        )
+                        .option(
+                            'detail',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'd'
+                            }
+                        )
+                        .option(
+                            'showId',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'i'
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('lc -i', 'List all clusters and show unique ids')
+                },
+                async (argv) => {
+                    await listClustersHandler(this.logger, argv, this.clusterTargets);
+                }
+            )
+            .command(
+                ['list-connections', 'lc'],
+                'List all open zli connections',
                 (yargs) => {
                     return yargs
                         .option(

@@ -34,12 +34,20 @@ func (r *StdinReader) Read(p []byte) (int, error) {
 	// go func() {
 
 	// TODO: We need a special message to send our EOF
-	sendStdinToClusterSignalRMessage := DaemonServerWebsocketTypes.SendStdinToClusterSignalRMessage{}
-	sendStdinToClusterSignalRMessage = <-r.wsClient.ExecStdinChannel
+	stdinToClusterFromBastionSignalRMessage := DaemonServerWebsocketTypes.StdinToClusterFromBastionSignalRMessage{}
+	stdinToClusterFromBastionSignalRMessage = <-r.wsClient.ExecStdinChannel
+	stdinToClusterFromBastionMessage := DaemonServerWebsocketTypes.StdinToClusterFromBastionMessage{}
+	stdinToClusterFromBastionMessage = stdinToClusterFromBastionSignalRMessage.Arguments[0]
+	if stdinToClusterFromBastionMessage.RequestIdentifier == r.RequestIdentifier {
+		n := copy(p, stdinToClusterFromBastionMessage.Stdin)
+		return n, nil
+	} else {
+		// Rebroadcast the message
+		r.wsClient.AlertOnExecStdinChan(stdinToClusterFromBastionSignalRMessage)
+	}
 
-	n := copy(p, []byte(sendStdinToClusterSignalRMessage.Arguments[0].Stdin))
-
-	return n, nil
+	// Stdin is not over yet, but no bytes were read
+	return 0, nil
 
 	// }()
 }
