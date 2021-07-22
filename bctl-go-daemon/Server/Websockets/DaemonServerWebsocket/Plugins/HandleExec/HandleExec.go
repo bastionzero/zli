@@ -1,17 +1,17 @@
-package HandleExec
+package handleExec
 
 import (
 	"log"
 	"net/url"
 
-	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket/DaemonServerWebsocketTypes"
+	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 // TODO: Maybe this should return an error
-func HandleExec(startExecToClusterFromBastionSignalRMessage DaemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage, serviceAccountToken string, kubeHost string, wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket) {
-	startExecToClusterMessage := DaemonServerWebsocketTypes.StartExecToClusterFromBastionMessage{}
+func HandleExec(startExecToClusterFromBastionSignalRMessage daemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage, serviceAccountToken string, kubeHost string, wsClient *daemonServerWebsocketTypes.DaemonServerWebsocket) {
+	startExecToClusterMessage := daemonServerWebsocketTypes.StartExecToClusterFromBastionMessage{}
 	startExecToClusterMessage = startExecToClusterFromBastionSignalRMessage.Arguments[0]
 
 	// Now open up our local exec session

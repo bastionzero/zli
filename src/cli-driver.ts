@@ -528,7 +528,9 @@ export class CliDriver
                                 alias: 'c',
                                 default: null
                             }
-                        );
+                        )
+                        .example('generate kubeYaml testcluster', '')
+                        .example('generate kubeConfig', '');
                 },
                 async (argv) => {
                     if (argv.typeOfConfig == 'kubeConfig') {

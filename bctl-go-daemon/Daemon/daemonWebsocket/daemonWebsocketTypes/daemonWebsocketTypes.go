@@ -1,4 +1,4 @@
-package DaemonWebsocket
+package daemonWebsocketTypes
 
 type ReadyToClientFromBastionSignalRMessage struct {
 	Target    string                            `json:"target"`

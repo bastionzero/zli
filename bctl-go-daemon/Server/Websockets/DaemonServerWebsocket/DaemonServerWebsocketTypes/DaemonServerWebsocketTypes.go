@@ -1,11 +1,11 @@
-package DaemonServerWebsocketTypes
+package daemonServerWebsocketTypes
 
 import (
 	"encoding/json"
 	"log"
 	"sync"
 
-	"bastionzero.com/bctl/v1/CommonWebsocketClient"
+	"bastionzero.com/bctl/v1/commonWebsocketClient"
 
 	"github.com/gorilla/websocket"
 )
@@ -99,9 +99,17 @@ type ResizeTerminalToClusterFromBastionMessage struct {
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
 
+type CloseConnectionToClusterFromBastionSignalRMessage struct {
+	Target    string                                       `json:"target"`
+	Arguments []CloseConnectionToClusterFromBastionMessage `json:"arguments"`
+	Type      int                                          `json:"type"`
+}
+type CloseConnectionToClusterFromBastionMessage struct {
+}
+
 // Daemon Websock
 type DaemonServerWebsocket struct {
-	WebsocketClient *CommonWebsocketClient.WebsocketClient
+	WebsocketClient *commonWebsocketClient.WebsocketClient
 
 	// These are all the    types of channels we have available
 	// Basic REST Call related

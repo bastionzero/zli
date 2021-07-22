@@ -1,28 +1,31 @@
-package DaemonWebsocket
+package daemonWebsocket
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log"
 	"math/rand"
 	"sync"
 
-	"bastionzero.com/bctl/v1/CommonWebsocketClient"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket/daemonWebsocketTypes"
+	"bastionzero.com/bctl/v1/commonWebsocketClient"
+
 	"github.com/gorilla/websocket"
 )
 
 type DaemonWebsocket struct {
-	WebsocketClient *CommonWebsocketClient.WebsocketClient
+	WebsocketClient *commonWebsocketClient.WebsocketClient
 
 	// Flag to indicate once we've provisioned a websocket
 	IsReady bool
 
 	// These are all the    types of channels we have available
-	ResponseToDaemonChan     chan ResponseToDaemonFromBastionMessage
+	ResponseToDaemonChan     chan daemonWebsocketTypes.ResponseToDaemonFromBastionMessage
 	ResponseToDaemonChanLock sync.Mutex
-	ExecStdoutChan           chan StdoutToDaemonFromBastionSignalRMessage
+	ExecStdoutChan           chan daemonWebsocketTypes.StdoutToDaemonFromBastionSignalRMessage
 	ExecStdoutChanLock       sync.Mutex
-	ExecStderrChan           chan StderrToDaemonFromBastionSignalRMessage
+	ExecStderrChan           chan daemonWebsocketTypes.StderrToDaemonFromBastionSignalRMessage
 	ExecStderrChanLock       sync.Mutex
 
 	SocketLock sync.Mutex // Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
@@ -48,64 +51,72 @@ func NewDaemonWebsocketClient(sessionId string, authHeader string, serviceURL st
 	hubEndpoint := "/api/v1/hub/kube"
 
 	// Add our response channels
-	ret.ResponseToDaemonChan = make(chan ResponseToDaemonFromBastionMessage)
-	ret.ExecStdoutChan = make(chan StdoutToDaemonFromBastionSignalRMessage)
-	ret.ExecStderrChan = make(chan StderrToDaemonFromBastionSignalRMessage)
+	ret.ResponseToDaemonChan = make(chan daemonWebsocketTypes.ResponseToDaemonFromBastionMessage)
+	ret.ExecStdoutChan = make(chan daemonWebsocketTypes.StdoutToDaemonFromBastionSignalRMessage)
+	ret.ExecStderrChan = make(chan daemonWebsocketTypes.StderrToDaemonFromBastionSignalRMessage)
 
-	ret.WebsocketClient = CommonWebsocketClient.NewCommonWebsocketClient(serviceURL, hubEndpoint, params, headers)
+	ret.WebsocketClient = commonWebsocketClient.NewCommonWebsocketClient(serviceURL, hubEndpoint, params, headers)
+
+	// Make our cancel context, unused for now
+	ctx, _ := context.WithCancel(context.Background())
 
 	// Set up our handler to deal with incoming messages
 	go func() {
 		for {
-			message := <-ret.WebsocketClient.WebsocketMessageChan
-			if bytes.Contains(message, []byte("\"target\":\"ReadyToClientFromBastion\"")) {
-				log.Printf("Handling incoming ReadyToClient message")
-				readyToClientFromBastionSignalRMessage := new(ReadyToClientFromBastionSignalRMessage)
-				err := json.Unmarshal(message, readyToClientFromBastionSignalRMessage)
-				if err != nil {
-					log.Printf("Error un-marshalling ReadyToClientFromBastion: %s", err)
-					return
-				}
-				if readyToClientFromBastionSignalRMessage.Arguments[0].Ready == true {
-					log.Printf("Server is ready!")
-					ret.IsReady = true
+			select {
+			case <-ctx.Done():
+				return
+			case message := <-ret.WebsocketClient.WebsocketMessageChan:
+				if bytes.Contains(message, []byte("\"target\":\"ReadyToClientFromBastion\"")) {
+					log.Printf("Handling incoming ReadyToClient message")
+					readyToClientFromBastionSignalRMessage := new(daemonWebsocketTypes.ReadyToClientFromBastionSignalRMessage)
+					err := json.Unmarshal(message, readyToClientFromBastionSignalRMessage)
+					if err != nil {
+						log.Printf("Error un-marshalling ReadyToClientFromBastion: %s", err)
+						break
+					}
+					if readyToClientFromBastionSignalRMessage.Arguments[0].Ready == true {
+						log.Printf("Server is ready!")
+						ret.IsReady = true
+					} else {
+						log.Printf("Server is still not ready")
+					}
+				} else if bytes.Contains(message, []byte("\"target\":\"ResponseToDaemonFromBastion\"")) {
+					log.Printf("Handling incoming ResponseToDaemonFromBastion message")
+					responseToDaemonFromBastionSignalRMessage := new(daemonWebsocketTypes.ResponseToDaemonFromBastionSignalRMessage)
+					err := json.Unmarshal(message, responseToDaemonFromBastionSignalRMessage)
+					if err != nil {
+						log.Printf("Error un-marshalling ResponseToDaemonFromBastion: %s", err)
+						break
+					}
+					// Broadcase this response to our DataToClientChan
+					ret.AlertOnResponseToDaemonChan(responseToDaemonFromBastionSignalRMessage.Arguments[0])
+				} else if bytes.Contains(message, []byte("\"target\":\"StdoutToDaemonFromBastion\"")) {
+					log.Printf("Handling incoming StdoutToDaemonFromBastion message")
+					stdoutToDaemonFromBastionSignalRMessage := new(daemonWebsocketTypes.StdoutToDaemonFromBastionSignalRMessage)
+
+					err := json.Unmarshal(message, stdoutToDaemonFromBastionSignalRMessage)
+					if err != nil {
+						log.Printf("Error un-marshalling StdoutToDaemonFromBastion: %s", err)
+						break
+					}
+					// Broadcase this response to our RequestForStartExecChan
+					ret.AlertOnExecStdoutChan(*stdoutToDaemonFromBastionSignalRMessage)
+				} else if bytes.Contains(message, []byte("\"target\":\"StderrToDaemonFromBastion\"")) {
+					log.Printf("Handling incoming StderrToDaemonFromBastion message")
+					stderrToDaemonFromBastionSignalRMessage := new(daemonWebsocketTypes.StderrToDaemonFromBastionSignalRMessage)
+
+					err := json.Unmarshal(message, stderrToDaemonFromBastionSignalRMessage)
+					if err != nil {
+						log.Printf("Error un-marshalling StderrToDaemonFromBastion: %s", err)
+						break
+					}
+					// Broadcase this response to our RequestForStartExecChan
+					ret.AlertOnExecStderrChan(*stderrToDaemonFromBastionSignalRMessage)
 				} else {
-					log.Printf("Server is still not ready")
+					log.Printf("Unhandled incoming message: %s", string(message))
 				}
-			} else if bytes.Contains(message, []byte("\"target\":\"ResponseToDaemonFromBastion\"")) {
-				log.Printf("Handling incoming ResponseToDaemonFromBastion message")
-				responseToDaemonFromBastionSignalRMessage := new(ResponseToDaemonFromBastionSignalRMessage)
-				err := json.Unmarshal(message, responseToDaemonFromBastionSignalRMessage)
-				if err != nil {
-					log.Printf("Error un-marshalling ResponseToDaemonFromBastion: %s", err)
-					return
-				}
-				// Broadcase this response to our DataToClientChan
-				ret.AlertOnResponseToDaemonChan(responseToDaemonFromBastionSignalRMessage.Arguments[0])
-			} else if bytes.Contains(message, []byte("\"target\":\"StdoutToDaemonFromBastion\"")) {
-				log.Printf("Handling incoming StdoutToDaemonFromBastion message")
-				stdoutToDaemonFromBastionSignalRMessage := new(StdoutToDaemonFromBastionSignalRMessage)
-
-				err := json.Unmarshal(message, stdoutToDaemonFromBastionSignalRMessage)
-				if err != nil {
-					log.Printf("Error un-marshalling StdoutToDaemonFromBastion: %s", err)
-					return
-				}
-				// Broadcase this response to our RequestForStartExecChan
-				ret.AlertOnExecStdoutChan(*stdoutToDaemonFromBastionSignalRMessage)
-			} else if bytes.Contains(message, []byte("\"target\":\"StderrToDaemonFromBastion\"")) {
-				log.Printf("Handling incoming StderrToDaemonFromBastion message")
-				stderrToDaemonFromBastionSignalRMessage := new(StderrToDaemonFromBastionSignalRMessage)
-
-				err := json.Unmarshal(message, stderrToDaemonFromBastionSignalRMessage)
-				if err != nil {
-					log.Printf("Error un-marshalling StderrToDaemonFromBastion: %s", err)
-					return
-				}
-				// Broadcase this response to our RequestForStartExecChan
-				ret.AlertOnExecStderrChan(*stderrToDaemonFromBastionSignalRMessage)
-			} else {
-				log.Printf("Unhandled incoming message: %s", string(message))
+				break
 			}
 		}
 	}()
@@ -113,21 +124,21 @@ func NewDaemonWebsocketClient(sessionId string, authHeader string, serviceURL st
 	return &ret
 }
 
-func (client *DaemonWebsocket) AlertOnExecStderrChan(stderrToDaemonFromBastionSignalRMessage StderrToDaemonFromBastionSignalRMessage) {
+func (client *DaemonWebsocket) AlertOnExecStderrChan(stderrToDaemonFromBastionSignalRMessage daemonWebsocketTypes.StderrToDaemonFromBastionSignalRMessage) {
 	// Lock our mutex and setup the unlock
 	client.ExecStderrChanLock.Lock()
 	defer client.ExecStderrChanLock.Unlock()
 	client.ExecStderrChan <- stderrToDaemonFromBastionSignalRMessage
 }
 
-func (client *DaemonWebsocket) AlertOnExecStdoutChan(stdoutToDaemonFromBastionSignalRMessage StdoutToDaemonFromBastionSignalRMessage) {
+func (client *DaemonWebsocket) AlertOnExecStdoutChan(stdoutToDaemonFromBastionSignalRMessage daemonWebsocketTypes.StdoutToDaemonFromBastionSignalRMessage) {
 	// Lock our mutex and setup the unlock
 	client.ExecStdoutChanLock.Lock()
 	defer client.ExecStdoutChanLock.Unlock()
 	client.ExecStdoutChan <- stdoutToDaemonFromBastionSignalRMessage
 }
 
-func (client *DaemonWebsocket) AlertOnResponseToDaemonChan(responseToDaemonFromBastionMessage ResponseToDaemonFromBastionMessage) {
+func (client *DaemonWebsocket) AlertOnResponseToDaemonChan(responseToDaemonFromBastionMessage daemonWebsocketTypes.ResponseToDaemonFromBastionMessage) {
 	// Lock our mutex and setup the unlock
 	client.ResponseToDaemonChanLock.Lock()
 	defer client.ResponseToDaemonChanLock.Unlock()
@@ -135,7 +146,7 @@ func (client *DaemonWebsocket) AlertOnResponseToDaemonChan(responseToDaemonFromB
 }
 
 // Function to send data Bastion from a RequestToBastionFromDaemonMessage object
-func (client *DaemonWebsocket) SendRequestToBastionFromDaemonMessage(dataFromClientMessage RequestToBastionFromDaemonMessage) error {
+func (client *DaemonWebsocket) SendRequestToBastionFromDaemonMessage(dataFromClientMessage daemonWebsocketTypes.RequestToBastionFromDaemonMessage) error {
 	if client.IsReady {
 
 		// Lock our mutex and setup the unlock
@@ -145,9 +156,9 @@ func (client *DaemonWebsocket) SendRequestToBastionFromDaemonMessage(dataFromCli
 		log.Printf("Sending data to Bastion")
 
 		// Create the object, add relevent information
-		toSend := new(RequestToBastionFromDaemonSignalRMessage)
+		toSend := new(daemonWebsocketTypes.RequestToBastionFromDaemonSignalRMessage)
 		toSend.Target = "RequestToBastionFromDaemon"
-		toSend.Arguments = []RequestToBastionFromDaemonMessage{dataFromClientMessage}
+		toSend.Arguments = []daemonWebsocketTypes.RequestToBastionFromDaemonMessage{dataFromClientMessage}
 
 		// Add the type number from the class
 		toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
@@ -183,7 +194,7 @@ func (c *DaemonWebsocket) GenerateUniqueIdentifier() int {
 }
 
 // Function to send Exec stdin to Bastion
-func (client *DaemonWebsocket) SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage StdinToBastionFromDaemonMessage) error {
+func (client *DaemonWebsocket) SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage daemonWebsocketTypes.StdinToBastionFromDaemonMessage) error {
 	if client.IsReady {
 		// Lock our mutex and setup the unlock
 		client.SocketLock.Lock()
@@ -191,9 +202,9 @@ func (client *DaemonWebsocket) SendStdinToBastionFromDaemonMessage(stdinToBastio
 
 		log.Printf("Sending stdin to Cluster")
 		// Create the object, add relevent information
-		toSend := new(StdinToBastionFromDaemonSignalRMessage)
+		toSend := new(daemonWebsocketTypes.StdinToBastionFromDaemonSignalRMessage)
 		toSend.Target = "StdinToBastionFromDaemon"
-		toSend.Arguments = []StdinToBastionFromDaemonMessage{stdinToBastionFromDaemonMessage}
+		toSend.Arguments = []daemonWebsocketTypes.StdinToBastionFromDaemonMessage{stdinToBastionFromDaemonMessage}
 
 		// Add the type number from the class
 		toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
@@ -217,7 +228,7 @@ func (client *DaemonWebsocket) SendStdinToBastionFromDaemonMessage(stdinToBastio
 }
 
 // Function to send Exec resize events to Bastion
-func (client *DaemonWebsocket) SendResizeTerminalToBastionFromDaemonMessage(resizeTerminalToBastionFromDaemonMessage ResizeTerminalToBastionFromDaemonMessage) error {
+func (client *DaemonWebsocket) SendResizeTerminalToBastionFromDaemonMessage(resizeTerminalToBastionFromDaemonMessage daemonWebsocketTypes.ResizeTerminalToBastionFromDaemonMessage) error {
 	if client.IsReady {
 		// Lock our mutex and setup the unlock
 		client.SocketLock.Lock()
@@ -225,9 +236,9 @@ func (client *DaemonWebsocket) SendResizeTerminalToBastionFromDaemonMessage(resi
 
 		log.Printf("Sending stdin to Cluster")
 		// Create the object, add relevent information
-		toSend := new(ResizeTerminalToBastionFromDaemonSignalRMessage)
+		toSend := new(daemonWebsocketTypes.ResizeTerminalToBastionFromDaemonSignalRMessage)
 		toSend.Target = "ResizeTerminalToBastionFromDaemon"
-		toSend.Arguments = []ResizeTerminalToBastionFromDaemonMessage{resizeTerminalToBastionFromDaemonMessage}
+		toSend.Arguments = []daemonWebsocketTypes.ResizeTerminalToBastionFromDaemonMessage{resizeTerminalToBastionFromDaemonMessage}
 
 		// Add the type number from the class
 		toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
@@ -250,7 +261,7 @@ func (client *DaemonWebsocket) SendResizeTerminalToBastionFromDaemonMessage(resi
 	return nil
 }
 
-func (client *DaemonWebsocket) SendStartExecToBastionFromDaemonMessage(startExecToBastionMessage StartExecToBastionFromDaemonMessage) error {
+func (client *DaemonWebsocket) SendStartExecToBastionFromDaemonMessage(startExecToBastionMessage daemonWebsocketTypes.StartExecToBastionFromDaemonMessage) error {
 	if client.IsReady {
 		// Lock our mutex and setup the unlock
 		client.SocketLock.Lock()
@@ -258,9 +269,9 @@ func (client *DaemonWebsocket) SendStartExecToBastionFromDaemonMessage(startExec
 
 		log.Printf("Sending data to Cluster")
 		// Create the object, add relevent information
-		toSend := new(StartExecToBastionFromDaemonSignalRMessage)
+		toSend := new(daemonWebsocketTypes.StartExecToBastionFromDaemonSignalRMessage)
 		toSend.Target = "StartExecToBastionFromDaemon"
-		toSend.Arguments = []StartExecToBastionFromDaemonMessage{startExecToBastionMessage}
+		toSend.Arguments = []daemonWebsocketTypes.StartExecToBastionFromDaemonMessage{startExecToBastionMessage}
 
 		// Add the type number from the class
 		toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding

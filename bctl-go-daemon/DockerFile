@@ -11,7 +11,7 @@ RUN cd Server && \
     go get k8s.io/client-go/rest && \
     go get k8s.io/client-go/kubernetes/scheme && \
     go get k8s.io/api/core/v1 && \
-    go get github.com/NYTimes/gziphandle && \
+    go get github.com/NYTimes/gziphandler && \
     go install bastionzero.com/bctl/v1/Server 
 
 # Install rsync for devs, and python3 for our systemd alt
@@ -26,8 +26,9 @@ RUN wget https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement
     echo 'alias sd=/usr/local/bin/systemctl' >> ~/.bashrc;
 
 # Copy our service file
-RUN mkdir -p /etc/systemd/system
-COPY bctl-server.service /etc/systemd/system/
+RUN mkdir -p /etc/systemd/system/ && \
+    touch /etc/systemd/system/bctl-server.service && \
+    mv /bctl-server/bctl-server.service /etc/systemd/system/bctl-server.service
 
 # Make start an executable
 RUN chmod +x /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
