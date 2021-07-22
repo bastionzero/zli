@@ -15,6 +15,7 @@ import { cleanExit } from './handlers/clean-exit.handler';
 
 // Handlers
 import { initMiddleware, oAuthMiddleware, mixedPanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
+import { getKubeTokenHandler } from './handlers/get-kube-token.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handler';
 import { loginHandler } from './handlers/login.handler';
@@ -546,6 +547,14 @@ export class CliDriver
                 () => {},
                 async () => {
                     await logoutHandler(this.configService, this.logger);
+                }
+            )
+            .command(
+                'get-kube-token',
+                'Get the Kube Token',
+                (_) => {},
+                async (_) => {
+                    await getKubeTokenHandler(this.configService);
                 }
             )
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
