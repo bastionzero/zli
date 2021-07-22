@@ -137,6 +137,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *DaemonWebsocke
 		// The upgrader is responsible for notifying the client of any errors that
 		// occurred during upgrading. All we can do is return here at this point
 		// if we weren't successful in upgrading.
+		// TODO REturn a better error
 		fmt.Println("FATAL ERROR!")
 		return
 	}
@@ -149,6 +150,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *DaemonWebsocke
 	defer expired.Stop()
 	proxy, err := waitForStreams(r.Context(), streamCh, options.ExpectedStreams, expired.C)
 	if err != nil {
+		// tODO: handle this better
 		fmt.Println("FATAL ERROR!")
 		return
 	}
@@ -215,8 +217,6 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *DaemonWebsocke
 				// TODO: This means to close the stream
 				return
 			}
-			// word := string(buf[:n])
-
 			// Now we need to send this stdin to Bastion
 			stdinToBastionFromDaemonMessage := DaemonWebsocket.StdinToBastionFromDaemonMessage{}
 			stdinToBastionFromDaemonMessage.Stdin = buf[:n]

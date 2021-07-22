@@ -70,12 +70,6 @@ func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 				}
 			}
 
-			// w.Header().Set("Content-Encoding", "gzip")
-			// gz := gzip.NewWriter(w)
-			// defer gz.Close()
-			// gzr := gzipResponseWriter{Writer: gz, ResponseWriter: w}
-
-			// w.Header().Set("Content-Type", "application/json")
 			w.Write(responseToDaemonFromBastionMessageResponse.Content)
 			if responseToDaemonFromBastionMessageResponse.StatusCode != 200 {
 				log.Println("ERROR HANDLING REST SENDNIG 500")

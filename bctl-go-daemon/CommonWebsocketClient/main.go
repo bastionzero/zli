@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -28,84 +29,18 @@ type WebsocketClient struct {
 
 // All SignalR Messages are teminated with this byte
 const messageTerminator byte = 0x1E
+const sleepIntervalInSeconds = 5
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
 func NewCommonWebsocketClient(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string) *WebsocketClient {
 
 	ret := WebsocketClient{}
 
-	// First negotiate in order to get a url to connect to
-	httpClient := &http.Client{}
-	negotiateUrl := "https://" + serviceUrl + hubEndpoint + "/negotiate"
-	req, _ := http.NewRequest("POST", negotiateUrl, nil)
-
-	// Add the expected headers
-	for name, values := range headers {
-		// Loop over all values for the name.
-		req.Header.Set(name, values)
-	}
-
-	// Set any query params
-	q := req.URL.Query()
-	for key, values := range params {
-		q.Add(key, values)
-	}
-
-	// Add our clientProtocol param
-	q.Add("clientProtocol", "1.5")
-	req.URL.RawQuery = q.Encode()
-
-	// Make the request and wait for the body to close
-	log.Printf("Starting negotiation with URL %s", negotiateUrl)
-	res, _ := httpClient.Do(req)
-	defer res.Body.Close()
-
-	// Extract out the connection token
-	bodyBytes, _ := ioutil.ReadAll(res.Body)
-	var m map[string]interface{}
-	err := json.Unmarshal(bodyBytes, &m)
-	if err != nil {
-		// TODO: Add error handling around this, we should at least retry and then bubble up the error to the user
-		log.Println("Error un-marshalling response! TODO Fix me")
-		panic(err)
-	}
-	connectionId := m["connectionId"]
-
-	// Add the connection id to the list of params
-	params["id"] = connectionId.(string)
-	params["clientProtocol"] = "1.5"
-	params["transport"] = "WebSockets"
-
-	// Make an interrupt channel
-	// TODO: Think this can be removed
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	// Build our url u , add our params as well
-	u := url.URL{Scheme: "wss", Host: serviceUrl, Path: hubEndpoint}
-	q = u.Query()
-	for key, value := range params {
-		q.Set(key, value)
-	}
-	u.RawQuery = q.Encode()
-
-	log.Printf("Negotiation finished, received %d. Connecting to %s", res.StatusCode, u.String())
-
 	// Connect to the websocket, catch any errors
-	// TODO: Get ride of this header req
-	ret.Client, _, err = websocket.DefaultDialer.Dial(u.String(), http.Header{"Authorization": []string{headers["Authorization"]}})
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
+	ret.ConnectToWebsocket(serviceUrl, hubEndpoint, headers, params)
 
 	// Make our response channel
 	ret.WebsocketMessageChan = make(chan []byte)
-
-	// Define our protocol and version
-	// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
-	if err = ret.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), 0x1E)); err != nil {
-		return nil
-	}
 
 	// Make a done channel - not really sure what this does
 	done := make(chan struct{})
@@ -118,23 +53,109 @@ func NewCommonWebsocketClient(serviceUrl string, hubEndpoint string, params map[
 			_, message, err := ret.Client.ReadMessage()
 			if err != nil {
 				// TODO: Handle this error better
-				log.Println("ERROR IN WEBSOCKET MESSAGE: ", err)
-				// TODO: This is where we need to try and reconnect
-				return
-			}
-			// Always trim off the termination char if its there
-			if message[len(message)-1] == messageTerminator {
-				message = message[0 : len(message)-1]
-			}
+				log.Println("Error in websocket, will attempt to reconnect: ", err)
+				ret.ConnectToWebsocket(serviceUrl, hubEndpoint, headers, params)
 
-			// Also check to see if we have multiple messages
-			seporatedMessages := bytes.Split(message, []byte{messageTerminator})
+			} else {
+				// Always trim off the termination char if its there
+				if message[len(message)-1] == messageTerminator {
+					message = message[0 : len(message)-1]
+				}
 
-			for _, formattedMessage := range seporatedMessages {
-				// And alert on our channel
-				ret.WebsocketMessageChan <- formattedMessage
+				// Also check to see if we have multiple messages
+				seporatedMessages := bytes.Split(message, []byte{messageTerminator})
+
+				for _, formattedMessage := range seporatedMessages {
+					// And alert on our channel
+					ret.WebsocketMessageChan <- formattedMessage
+				}
 			}
 		}
 	}()
 	return &ret
+}
+
+func (wsClient *WebsocketClient) ConnectToWebsocket(serviceUrl string, hubEndpoint string, headers map[string]string, params map[string]string) {
+	connected := false
+	for connected == false {
+
+		// First negotiate in order to get a url to connect to
+		httpClient := &http.Client{}
+		negotiateUrl := "https://" + serviceUrl + hubEndpoint + "/negotiate"
+		req, _ := http.NewRequest("POST", negotiateUrl, nil)
+
+		// Add the expected headers
+		for name, values := range headers {
+			// Loop over all values for the name.
+			req.Header.Set(name, values)
+		}
+
+		// Set any query params
+		q := req.URL.Query()
+		for key, values := range params {
+			q.Add(key, values)
+		}
+
+		// Add our clientProtocol param
+		q.Add("clientProtocol", "1.5")
+		req.URL.RawQuery = q.Encode()
+
+		// Make the request and wait for the body to close
+		log.Printf("Starting negotiation with URL %s", negotiateUrl)
+		res, _ := httpClient.Do(req)
+		defer res.Body.Close()
+
+		// Extract out the connection token
+		bodyBytes, _ := ioutil.ReadAll(res.Body)
+		var m map[string]interface{}
+		err := json.Unmarshal(bodyBytes, &m)
+		if err != nil {
+			// TODO: Add error handling around this, we should at least retry and then bubble up the error to the user
+			log.Printf("Error un-marshalling negotiate response: %s", m)
+			connected = false
+		} else {
+			connectionId := m["connectionId"]
+
+			// Add the connection id to the list of params
+			params["id"] = connectionId.(string)
+			params["clientProtocol"] = "1.5"
+			params["transport"] = "WebSockets"
+
+			// Make an interrupt channel
+			// TODO: Think this can be removed
+			interrupt := make(chan os.Signal, 1)
+			signal.Notify(interrupt, os.Interrupt)
+
+			// Build our url u , add our params as well
+			websocketUrl := url.URL{Scheme: "wss", Host: serviceUrl, Path: hubEndpoint}
+			q = websocketUrl.Query()
+			for key, value := range params {
+				q.Set(key, value)
+			}
+			websocketUrl.RawQuery = q.Encode()
+
+			log.Printf("Negotiation finished, received %d. Connecting to %s", res.StatusCode, websocketUrl.String())
+
+			wsClient.Client, _, err = websocket.DefaultDialer.Dial(websocketUrl.String(), http.Header{"Authorization": []string{headers["Authorization"]}})
+
+			// Define our protocol and version
+			// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
+			if err := wsClient.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), 0x1E)); err != nil {
+				log.Println("Error when trying to agree on version for SignalR!")
+				connected = false
+				wsClient.Client.Close()
+			}
+		}
+
+		if err != nil {
+			connected = false
+		} else {
+			connected = true
+			break
+		}
+
+		// Sleep in between
+		log.Printf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds)
+		time.Sleep(time.Second * sleepIntervalInSeconds)
+	}
 }
