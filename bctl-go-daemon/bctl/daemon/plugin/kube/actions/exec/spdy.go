@@ -122,6 +122,7 @@ func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYSer
 	defer expired.Stop()
 	proxy, err := waitForStreams(r.Context(), streamCh, options.ExpectedStreams, expired.C)
 	if err != nil {
+		// tODO: handle this better
 		fmt.Println("FATAL ERROR!")
 		return
 	}
@@ -188,8 +189,6 @@ func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYSer
 				// TODO: This means to close the stream
 				return
 			}
-			// word := string(buf[:n])
-
 			// Now we need to send this stdin to Bastion
 			stdinToBastionFromDaemonMessage := DaemonWebsocket.StdinToBastionFromDaemonMessage{}
 			stdinToBastionFromDaemonMessage.Stdin = buf[:n]

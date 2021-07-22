@@ -60,7 +60,6 @@ func HandleREST(requestForServer DaemonServerWebsocketTypes.RequestToClusterFrom
 
 	// Parse out the body
 	bodyBytes, _ := ioutil.ReadAll(res.Body)
-	log.Printf("HERE: %s", string(bodyBytes))
 	responseToBastionFromCluster.Content = bodyBytes
 
 	// Finally send our response
