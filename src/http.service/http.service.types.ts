@@ -1,4 +1,5 @@
-import { SessionState, SsmTargetStatus, TargetType } from '../types';
+import { ReadStream } from 'fs';
+import { SessionState, SsmTargetStatus, KubeClusterStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {
     displayName?: string;
@@ -91,6 +92,12 @@ export enum AuthenticationType {
     Password = 'Password',
     PrivateKey = 'PrivateKey',
     UseExisting = 'UseExisting'
+}
+
+export interface ClusterSummary {
+    id: string;
+    clusterName: string;
+    status: KubeClusterStatus;
 }
 
 export interface EnvironmentDetails {
@@ -218,4 +225,10 @@ export interface GetAutodiscoveryScriptResponse {
 export interface ShellConnectionAuthDetails {
     connectionNodeId: string;
     authToken: string;
+}
+export interface GetKubeUnregisteredAgentYamlRequest {
+    clusterName: string;
+}
+export interface GetKubeUnregisteredAgentYamlResponse {
+    yaml: string;
 }

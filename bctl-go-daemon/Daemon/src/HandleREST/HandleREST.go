@@ -11,10 +11,14 @@ import (
 // Handler for Regular Rest calls that can be proxied
 func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *DaemonWebsocket.DaemonWebsocket) {
 	// First extract all the info out of the request
+	// gzipRequest := false
 	headers := make(map[string]string)
 	for name, values := range r.Header {
 		// Loop over all values for the name.
 		for _, value := range values {
+			// if name == "Accept-Encoding" && strings.Contains(value, "gzip") {
+			// 	gzipRequest = true
+			// }
 			headers[name] = value
 		}
 	}
@@ -36,35 +40,48 @@ func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	requestIdentifier := wsClient.GenerateUniqueIdentifier()
 
 	// Now put our request together and make the request
-	dataFromClientMessage := DaemonWebsocket.DataFromClientMessage{}
+	dataFromClientMessage := DaemonWebsocket.RequestToBastionFromDaemonMessage{}
 	dataFromClientMessage.LogId = logId
 	dataFromClientMessage.KubeCommand = commandBeingRun
 	dataFromClientMessage.Endpoint = endpointWithQuery
 	dataFromClientMessage.Headers = headers
 	dataFromClientMessage.Method = method
-	dataFromClientMessage.Body = string(bodyInBytes)
+	dataFromClientMessage.Body = bodyInBytes
 	dataFromClientMessage.RequestIdentifier = requestIdentifier
-	wsClient.SendDataFromClientMessage(dataFromClientMessage)
+	wsClient.SendRequestToBastionFromDaemonMessage(dataFromClientMessage)
 
 	// Wait for the response
-	dataToClientMessageResponse := DaemonWebsocket.DataToClientMessage{}
-	dataToClientMessageResponse = <-wsClient.DataToClientChan
+	receivedRequestIdentifier := -1
+	for receivedRequestIdentifier != requestIdentifier {
+		responseToDaemonFromBastionMessageResponse := DaemonWebsocket.ResponseToDaemonFromBastionMessage{}
+		responseToDaemonFromBastionMessageResponse = <-wsClient.ResponseToDaemonChan
 
-	// Ensure that the identifer is correct
-	if dataToClientMessageResponse.RequestIdentifier != requestIdentifier {
-		log.Printf("SOMETHING WENT WRONG!")
-		log.Println(dataToClientMessageResponse)
-		log.Println(requestIdentifier)
-		// TODO: I think we need to rebroadcast this message in this case?
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+		receivedRequestIdentifier = responseToDaemonFromBastionMessageResponse.RequestIdentifier
+		// Ensure that the identifer is correct
+		if receivedRequestIdentifier != requestIdentifier {
+			// Rebroadbast the message
+			wsClient.AlertOnResponseToDaemonChan(responseToDaemonFromBastionMessageResponse)
+		} else {
+			// Now let the kubectl client know the response
+			// First do headers
+			for name, value := range responseToDaemonFromBastionMessageResponse.Headers {
+				if name != "Content-Length" {
+					w.Header().Set(name, value)
+				}
+			}
 
-	// Now let the kubectl client know the response
-	// First do headers
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(dataToClientMessageResponse.Content))
-	if dataToClientMessageResponse.StatusCode != 200 {
-		w.WriteHeader(http.StatusInternalServerError)
+			// w.Header().Set("Content-Encoding", "gzip")
+			// gz := gzip.NewWriter(w)
+			// defer gz.Close()
+			// gzr := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+
+			// w.Header().Set("Content-Type", "application/json")
+			w.Write(responseToDaemonFromBastionMessageResponse.Content)
+			if responseToDaemonFromBastionMessageResponse.StatusCode != 200 {
+				log.Println("ERROR HANDLING REST SENDNIG 500")
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}
+
 	}
 }

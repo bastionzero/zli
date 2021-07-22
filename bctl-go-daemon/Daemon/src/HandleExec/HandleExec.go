@@ -155,34 +155,53 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *DaemonWebsocke
 
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
 	requestIdentifier := wsClient.GenerateUniqueIdentifier()
-	startExecToClusterMessage := &DaemonWebsocket.StartExecToBastionMessage{}
-	startExecToClusterMessage.Command = options.Command
-	startExecToClusterMessage.Endpoint = r.URL.String()
-	startExecToClusterMessage.RequestIdentifier = requestIdentifier
+	startExecToClusterFromBastionMessage := &DaemonWebsocket.StartExecToBastionFromDaemonMessage{}
+	startExecToClusterFromBastionMessage.Command = options.Command
+	startExecToClusterFromBastionMessage.Endpoint = r.URL.String()
+	startExecToClusterFromBastionMessage.RequestIdentifier = requestIdentifier
 	log.Println("Starting connection to cluster for exec")
-	wsClient.SendStartExecToBastionMessage(*startExecToClusterMessage)
+	wsClient.SendStartExecToBastionFromDaemonMessage(*startExecToClusterFromBastionMessage)
 
 	// Set up a go function for stdout
 	go func() {
 		for {
 			// Wait for a new request to come in through our channel
-			sendStdoutToDaemonFromBastionSignalRMessage := DaemonWebsocket.SendStdoutToDaemonFromBastionSignalRMessage{}
-			sendStdoutToDaemonFromBastionSignalRMessage = <-wsClient.ExecStdoutChan
+			stdoutToDaemonFromBastionSignalRMessage := DaemonWebsocket.StdoutToDaemonFromBastionSignalRMessage{}
+			stdoutToDaemonFromBastionSignalRMessage = <-wsClient.ExecStdoutChan
 
 			// Ensure that the RequestIdentifiers match up
-			if sendStdoutToDaemonFromBastionSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
-				log.Printf("Unhandled request identifier")
-				// continue
-				// TODO: Fix this
-			}
-			// TODO: Check if this is EOF, so we can end the stream
-			if strings.Contains(sendStdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout, "exit") {
-				conn.Close()
+			if stdoutToDaemonFromBastionSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
+				// Rebroadcast the message
+				wsClient.AlertOnExecStdoutChan(stdoutToDaemonFromBastionSignalRMessage)
 			} else {
-				// Display the content to the use
-				proxy.stdoutStream.Write([]byte(sendStdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout))
+				// TODO: Check if this is EOF, so we can end the stream
+				// Im not sure if this is the best way to close the
+				if strings.Contains(string(stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout), "exit") {
+					conn.Close()
+					return
+				} else {
+					// Display the content to the use
+					log.Printf("%s", stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout)
+					proxy.stdoutStream.Write(stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout)
+				}
 			}
+		}
+	}()
 
+	// Set up a go function for stderr
+	go func() {
+		for {
+			// Wait for a new request to come in through our channel
+			stderrToDaemonFromBastionSignalRMessage := DaemonWebsocket.StderrToDaemonFromBastionSignalRMessage{}
+			stderrToDaemonFromBastionSignalRMessage = <-wsClient.ExecStderrChan
+
+			// Ensure that the RequestIdentifiers match up
+			if stderrToDaemonFromBastionSignalRMessage.Arguments[0].RequestIdentifier != requestIdentifier {
+				// Rebroadcast the message
+				wsClient.AlertOnExecStderrChan(stderrToDaemonFromBastionSignalRMessage)
+			} else {
+				proxy.stderrStream.Write(stderrToDaemonFromBastionSignalRMessage.Arguments[0].Stderr)
+			}
 		}
 	}()
 
@@ -193,20 +212,47 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *DaemonWebsocke
 			n, err := proxy.stdinStream.Read(buf)
 			// Handle error
 			if err == io.EOF {
-				break
+				// TODO: This means to close the stream
+				return
 			}
-			word := string(buf[:n])
+			// word := string(buf[:n])
 
 			// Now we need to send this stdin to Bastion
-			sendStdinToBastionMessage := DaemonWebsocket.SendStdinToBastionMessage{}
-			sendStdinToBastionMessage.Stdin = word
-			sendStdinToBastionMessage.RequestIdentifier = requestIdentifier
-			wsClient.SendSendStdinToBastionMessage(sendStdinToBastionMessage)
-
+			stdinToBastionFromDaemonMessage := DaemonWebsocket.StdinToBastionFromDaemonMessage{}
+			stdinToBastionFromDaemonMessage.Stdin = buf[:n]
+			stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+			wsClient.SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage)
 		}
 	}()
 
-	select {}
+	// Set up a go function for resize
+	go func() {
+		// buf := make([]byte, 16)
+		for {
+			decoder := json.NewDecoder(proxy.resizeStream)
+			// n, err := proxy.resizeStream.Read(buf)
+			// if err != nil {
+			// 	return
+			// }
+
+			size := TerminalSize{}
+			if err := decoder.Decode(&size); err != nil {
+				// if err != io.EOF {
+				// 	log.Warningf("Failed to decode resize event: %v", err)
+				// }
+				// t.cancel()
+				log.Printf("Error decoding resize message: %s")
+				return
+			} else {
+				// Emit this as a new resize event
+				resizeTerminalToBastionFromDaemonMessage := DaemonWebsocket.ResizeTerminalToBastionFromDaemonMessage{}
+				resizeTerminalToBastionFromDaemonMessage.Height = size.Height
+				resizeTerminalToBastionFromDaemonMessage.Width = size.Width
+				resizeTerminalToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+				wsClient.SendResizeTerminalToBastionFromDaemonMessage(resizeTerminalToBastionFromDaemonMessage)
+			}
+		}
+	}()
 
 }
 

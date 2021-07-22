@@ -11,6 +11,7 @@ RUN cd Server && \
     go get k8s.io/client-go/rest && \
     go get k8s.io/client-go/kubernetes/scheme && \
     go get k8s.io/api/core/v1 && \
+    go get github.com/NYTimes/gziphandle && \
     go install bastionzero.com/bctl/v1/Server 
 
 # Install rsync for devs, and python3 for our systemd alt
@@ -33,5 +34,5 @@ RUN chmod +x /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start
 
 
 WORKDIR /bctl-server/Server
-ENTRYPOINT [ "go",  "run", "/bctl-server/Server/main.go", "-serviceURL=sid.bastionzero.com"]
-# ENTRYPOINT [ "sleep", "infinity" ]
+# ENTRYPOINT [ "go",  "run", "/bctl-server/Server/main.go", "-serviceURL=sid.bastionzero.com"]
+ENTRYPOINT [ "sleep", "infinity" ]

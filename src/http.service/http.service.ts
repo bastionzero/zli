@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, ShellConnectionAuthDetails, SsmTargetSummary, TargetUser, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary} from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
@@ -364,5 +364,28 @@ export class AutoDiscoveryScriptService extends HttpService
         };
 
         return this.Post(`${operatingSystem}`, request);
+    }
+}
+
+export class KubeService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/kube', logger);
+    }
+
+    public getKubeUnregisteredAgentYaml(
+        clusterName: string
+    ): Promise<GetKubeUnregisteredAgentYamlResponse>
+    {
+        const request: GetKubeUnregisteredAgentYamlRequest = {
+            clusterName: clusterName,
+        };
+
+        return this.FormPost('get-agent-yaml', request);
+    }
+
+    public ListKubeClusters(): Promise<ClusterSummary[]> {
+        return this.Post('list', {});
     }
 }

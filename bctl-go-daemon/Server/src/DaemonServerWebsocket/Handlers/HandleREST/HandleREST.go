@@ -1,6 +1,7 @@
 package HandleREST
 
 import (
+	"bytes"
 	"crypto/tls"
 	"io/ioutil"
 	"log"
@@ -9,18 +10,14 @@ import (
 	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket/DaemonServerWebsocketTypes"
 )
 
-func HandleREST(requestForServer DaemonServerWebsocketTypes.RequestForServerMessage, serviceAccountToken string, kubeHost string, wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket) {
-	// requestForServer := RequestForServerMessage{}
-	// if len(requestForServerSignalRMessage.Arguments) == 0 {
-	// 	break
-	// }
-	// requestForServer = requestForServerSignalRMessage.Arguments[0]
-	log.Printf("Handling incoming RequestForServer. For endpoint %s", requestForServer.Endpoint)
+func HandleREST(requestForServer DaemonServerWebsocketTypes.RequestToClusterFromBastionMessage, serviceAccountToken string, kubeHost string, wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket) {
+	log.Printf("Handling incoming RequestForServerFromBastion. For endpoint %s", requestForServer.Endpoint)
 
 	// Perform the api request
 	httpClient := &http.Client{}
 	finalUrl := kubeHost + requestForServer.Endpoint
-	req, _ := http.NewRequest(requestForServer.Method, finalUrl, nil)
+	bodyBytesReader := bytes.NewReader(requestForServer.Body)
+	req, _ := http.NewRequest(requestForServer.Method, finalUrl, bodyBytesReader)
 
 	// Add any headers
 	for name, values := range requestForServer.Headers {
@@ -30,7 +27,7 @@ func HandleREST(requestForServer DaemonServerWebsocketTypes.RequestForServerMess
 
 	// Add our impersonation and token headers
 	req.Header.Set("Authorization", "Bearer "+serviceAccountToken)
-	req.Header.Set("Impersonate-User", "cwc-dev-developer")
+	req.Header.Set("Impersonate-User", requestForServer.Role)
 	req.Header.Set("Impersonate-Group", "system:authenticated")
 
 	// Make the request and wait for the body to close
@@ -49,9 +46,9 @@ func HandleREST(requestForServer DaemonServerWebsocketTypes.RequestForServerMess
 	defer res.Body.Close()
 
 	// Now we need to send that data back to the client
-	responseToDaemon := DaemonServerWebsocketTypes.ResponseToDaemonMessage{}
-	responseToDaemon.StatusCode = res.StatusCode
-	responseToDaemon.RequestIdentifier = requestForServer.RequestIdentifier
+	responseToBastionFromCluster := DaemonServerWebsocketTypes.ResponseToBastionFromClusterMessage{}
+	responseToBastionFromCluster.StatusCode = res.StatusCode
+	responseToBastionFromCluster.RequestIdentifier = requestForServer.RequestIdentifier
 
 	// Build the header response
 	header := make(map[string]string)
@@ -59,14 +56,15 @@ func HandleREST(requestForServer DaemonServerWebsocketTypes.RequestForServerMess
 		// TODO: This does not seem correct, we should add all headers even if they are dups
 		header[key] = value[0]
 	}
-	responseToDaemon.Headers = header
+	responseToBastionFromCluster.Headers = header
 
 	// Parse out the body
 	bodyBytes, _ := ioutil.ReadAll(res.Body)
-	responseToDaemon.Content = string(bodyBytes)
+	log.Printf("HERE: %s", string(bodyBytes))
+	responseToBastionFromCluster.Content = bodyBytes
 
 	// Finally send our response
-	wsClient.SendResponseToDaemonMessage(responseToDaemon) // This returns err
+	wsClient.SendResponseToBastionFromClusterMessage(responseToBastionFromCluster) // This returns err
 	// check(err)
 
 	log.Println("Responded to message")

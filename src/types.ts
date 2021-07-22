@@ -26,6 +26,14 @@ export enum SsmTargetStatus {
     Error = 'Error'
 }
 
+export enum KubeClusterStatus {
+    NotActivated = 'NotActivated',
+    Offline = 'Offline',
+    Online = 'Online',
+    Terminated = 'Terminated',
+    Error = 'Error'
+}
+
 export interface TargetSummary
 {
     id: string;
@@ -34,6 +42,13 @@ export interface TargetSummary
     type: TargetType;
     agentVersion: string;
     status: SsmTargetStatus;
+}
+
+export interface ClusterSummary
+{
+    id: string;
+    name: string;
+    status: KubeClusterStatus;
 }
 
 export interface ConnectionDetails

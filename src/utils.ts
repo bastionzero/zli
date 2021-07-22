@@ -40,6 +40,23 @@ export function parseTargetStatus(targetStatus: string) : SsmTargetStatus {
     }
 }
 
+export function parseClusterStatus(clusterStatus: string) : KubeClusterStatus {
+    switch (clusterStatus.toLowerCase()) {
+    case KubeClusterStatus.NotActivated.toLowerCase():
+        return KubeClusterStatus.NotActivated;
+    case KubeClusterStatus.Offline.toLowerCase():
+        return KubeClusterStatus.Offline;
+    case KubeClusterStatus.Online.toLowerCase():
+        return KubeClusterStatus.Online;
+    case KubeClusterStatus.Terminated.toLowerCase():
+        return KubeClusterStatus.Terminated;
+    case KubeClusterStatus.Error.toLowerCase():
+        return KubeClusterStatus.Error;
+    default:
+        return undefined;
+    }
+}
+
 export function parseTargetString(targetString: string) : ParsedTargetString
 {
     // case sensitive check for [targetUser@]<targetId | targetName>[:targetPath]
@@ -124,6 +141,34 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
             row.push(target.status || 'N/A'); // status is undefined for non-SSM targets
         }
 
+        table.push(row);
+    }
+    );
+
+    return table.toString();
+}
+
+export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boolean = false, showGuid: boolean = false) : string {
+    const clusterNameLength = max(clusters.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
+    const statusNameLength = max(clusters.map(e => e.status.length).concat(16));
+    const header: string[] = ['Cluster Name', 'Status'];
+    const columnWidths = [clusterNameLength + 2, statusNameLength + 2];
+
+    if(showGuid || showDetail)
+    {
+        // For now showGuid and showDetail do the same thing
+        header.push('Id');
+        columnWidths.push(38);
+    }
+
+    // ref: https://github.com/cli-table/cli-table3
+    const table = new Table({ head: header, colWidths: columnWidths });
+
+    clusters.forEach(cluster => {
+        const row = [cluster.name, cluster.status];
+        if(showGuid || showDetail) {
+            row.push(cluster.id);
+        }
         table.push(row);
     }
     );

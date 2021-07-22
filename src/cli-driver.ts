@@ -1,4 +1,4 @@
-import { IdP, SsmTargetStatus, TargetSummary, TargetType } from './types';
+import { IdP, SsmTargetStatus, TargetSummary, ClusterSummary, TargetType } from './types';
 import {
     disambiguateTarget,
     isGuid,
@@ -22,7 +22,6 @@ import { connectHandler } from './handlers/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
-import { getKubeTokenHandler } from './handlers/get-kube-token.handler';
 import { startKubeDaemonHandler } from './handlers/start-kube-daemon.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
 import { listConnectionsHandler } from './handlers/list-connections.handler';
@@ -46,6 +45,7 @@ export class CliDriver
 
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
+    private clusterTargets: Promise<ClusterSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
 
     // use the following to shortcut middleware according to command
@@ -95,6 +95,7 @@ export class CliDriver
 
                 const fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
+                this.clusterTargets = fetchDataResponse.clusterTargets;
                 this.ssmTargets = fetchDataResponse.ssmTargets;
                 this.envs = fetchDataResponse.envs;
             })
@@ -287,6 +288,61 @@ export class CliDriver
                 }
             )
             .command(
+                ['list-kube-clusters', 'lk'],
+                'List all clusters (filters available)',
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'status',
+                            {
+                                type: 'string',
+                                array: true,
+                                choices: this.ssmTargetStatusChoices,
+                                alias: 'u'
+                            }
+                        )
+                        .option(
+                            'name',
+                            {
+                                type: 'string',
+                                demandOption: false,
+                                alias: 'n'
+                            }
+                        )
+                        .option(
+                            'detail',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'd'
+                            }
+                        )
+                        .option(
+                            'showId',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'i'
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('lc -i', 'List all clusters and show unique ids')
+                },
+                async (argv) => {
+                    await listClustersHandler(this.logger, argv, this.clusterTargets);
+                }
+            )
+            .command(
                 ['list-connections', 'lc'],
                 'List all open zli connections',
                 (yargs) => {
@@ -414,27 +470,30 @@ export class CliDriver
                 }
             )
             .command(
-                'generateKubeconfig',
-                'Generate a Kubeconfig',
-                (_) => {},
-                async (_) => {
-                    await generateKubeconfigHandler(this.configService, this.logger);
-                }
-            )
-            .command(
-                'generateKubeYaml',
-                'Generate a Kube Yaml to Apply to a Cluster',
-                (_) => {},
-                async (_) => {
-                    await generateKubeYamlHandler(this.logger);
-                }
-            )
-            .command(
-                'getKubeToken',
-                'Get the Kube Token',
-                (_) => {},
-                async (_) => {
-                    await getKubeTokenHandler(this.configService);
+                'generate <typeOfConfig> <clusterName>',
+                'Generate a different types of configuration files',
+                (yargs) => {
+                    return yargs
+                        .positional('typeOfConfig', {
+                            type: 'string',
+                            choices: ['kubeConfig', 'kubeYaml']
+                        
+                        }).option(
+                            'clusterName',
+                            {
+                                type: 'string',
+                                demandOption: false,
+                                alias: 'c',
+                                default: null
+                            }
+                        );
+                },
+                async (argv) => {
+                    if (argv.typeOfConfig == 'kubeConfig') {
+                        await generateKubeconfigHandler(this.configService, this.logger);
+                    } else if (argv.typeOfConfig == 'kubeYaml') {
+                        await generateKubeYamlHandler(argv, this.configService, this.logger);
+                    }
                 }
             )
             .command(

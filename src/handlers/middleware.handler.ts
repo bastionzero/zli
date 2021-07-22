@@ -3,9 +3,10 @@ import { ConfigService } from '../config.service/config.service';
 import {
     DynamicAccessConfigService,
     EnvironmentService,
-    SsmTargetService
+    SsmTargetService,
+    KubeService
 } from '../http.service/http.service';
-import { TargetSummary, TargetType } from '../types';
+import { TargetSummary, ClusterSummary, TargetType } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { version } from '../../package.json';
 import { oauthMiddleware } from '../middlewares/oauth-middleware';
@@ -16,6 +17,7 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
     const ssmTargetService = new SsmTargetService(configService, logger);
+    const kubeService = new KubeService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
 
@@ -57,6 +59,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
+        clusterTargets: clusterTargets,
         envs: envs
     };
 }

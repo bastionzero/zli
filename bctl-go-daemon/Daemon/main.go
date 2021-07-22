@@ -1,8 +1,10 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"flag"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -25,14 +27,35 @@ func SaveConnInContext(ctx context.Context, c net.Conn) context.Context {
 	return context.WithValue(ctx, ConnContextKey, c)
 }
 
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func makeGzipHandler(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			fn(w, r)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		gzr := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+		fn(gzr, r)
+	}
+}
+
 func main() {
 	// TODO: Remove this requirement
 	sessionIdPtr := flag.String("sessionId", "", "Session ID From Zli")
 	authHeaderPtr := flag.String("authHeader", "", "Auth Header From Zli")
 
 	// Our expected flags we need to start
-	// TODO: Add a token here that can be used as a way to auth to Bastion,
-	// TODO: we should get all these vars also from the env as a backup as we can assume we are inside a container
 	serviceURLPtr := flag.String("serviceURL", "", "Service URL to use")
 	assumeRolePtr := flag.String("assumeRole", "", "Kube Role to Assume")
 	assumeClusterPtr := flag.String("assumeCluster", "", "Kube Cluster to Connect to")

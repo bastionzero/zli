@@ -1,70 +1,91 @@
 package DaemonWebsocket
 
-type ReadyFromServerSignalRMessage struct {
-	Target    string                   `json:"target"`
-	Arguments []ReadyFromServerMessage `json:"arguments"`
-	Type      int                      `json:"type"`
+type ReadyToClientFromBastionSignalRMessage struct {
+	Target    string                            `json:"target"`
+	Arguments []ReadyToClientFromBastionMessage `json:"arguments"`
+	Type      int                               `json:"type"`
 }
 
-type ReadyFromServerMessage struct {
+type ReadyToClientFromBastionMessage struct {
 	Ready bool `json:"ready"`
 }
 
-type DataToClientSignalRMessage struct {
-	Type      int                   `json:"type"`
-	Target    string                `json:"target"`
-	Arguments []DataToClientMessage `json:"arguments"`
+type ResponseToDaemonFromBastionSignalRMessage struct {
+	Type      int                                  `json:"type"`
+	Target    string                               `json:"target"`
+	Arguments []ResponseToDaemonFromBastionMessage `json:"arguments"`
 }
 
-type DataToClientMessage struct {
+type ResponseToDaemonFromBastionMessage struct {
 	StatusCode        int               `json:"statusCode"`
-	Content           string            `json:"content"`
+	Content           []byte            `json:"content"`
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Headers           map[string]string `json:"headers"`
 }
 
-type DataFromClientSignalRMessage struct {
-	Target    string                  `json:"target"`
-	Arguments []DataFromClientMessage `json:"arguments"`
-	Type      int                     `json:"type"`
+type RequestToBastionFromDaemonSignalRMessage struct {
+	Target    string                              `json:"target"`
+	Arguments []RequestToBastionFromDaemonMessage `json:"arguments"`
+	Type      int                                 `json:"type"`
 }
-type DataFromClientMessage struct {
+type RequestToBastionFromDaemonMessage struct {
 	LogId             string            `json:"logId"`
 	KubeCommand       string            `json:"kubeCommand"`
 	Endpoint          string            `json:"endpoint"`
 	Headers           map[string]string `json:"Headers"`
 	Method            string            `json:"Method"`
-	Body              string            `json:"Body"`
+	Body              []byte            `json:"Body"`
 	RequestIdentifier int               `json:"RequestIdentifier"`
 }
 
-type StartExecToBastionSignalRMessage struct {
-	Target    string                      `json:"target"`
-	Arguments []StartExecToBastionMessage `json:"arguments"`
-	Type      int                         `json:"type"`
+type StartExecToBastionFromDaemonSignalRMessage struct {
+	Target    string                                `json:"target"`
+	Arguments []StartExecToBastionFromDaemonMessage `json:"arguments"`
+	Type      int                                   `json:"type"`
 }
-type StartExecToBastionMessage struct {
+type StartExecToBastionFromDaemonMessage struct {
 	Command           []string `json:"command"`
 	Endpoint          string   `json:"endpoint"`
 	RequestIdentifier int      `json:"requestIdentifier"`
 }
 
-type SendStdinToBastionSignalRMessage struct {
-	Target    string                      `json:"target"`
-	Arguments []SendStdinToBastionMessage `json:"arguments"`
-	Type      int                         `json:"type"`
+type StdinToBastionFromDaemonSignalRMessage struct {
+	Target    string                            `json:"target"`
+	Arguments []StdinToBastionFromDaemonMessage `json:"arguments"`
+	Type      int                               `json:"type"`
 }
-type SendStdinToBastionMessage struct {
-	Stdin             string `json:"stdin"`
+type StdinToBastionFromDaemonMessage struct {
+	Stdin             []byte `json:"stdin"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
 
-type SendStdoutToDaemonFromBastionSignalRMessage struct {
-	Target    string                                 `json:"target"`
-	Arguments []SendStdoutToDaemonFromBastionMessage `json:"arguments"`
-	Type      int                                    `json:"type"`
+type StdoutToDaemonFromBastionSignalRMessage struct {
+	Target    string                             `json:"target"`
+	Arguments []StdoutToDaemonFromBastionMessage `json:"arguments"`
+	Type      int                                `json:"type"`
 }
-type SendStdoutToDaemonFromBastionMessage struct {
-	Stdout            string `json:"stdout"`
+type StdoutToDaemonFromBastionMessage struct {
+	Stdout            []byte `json:"stdout"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}
+
+type StderrToDaemonFromBastionSignalRMessage struct {
+	Target    string                             `json:"target"`
+	Arguments []StderrToDaemonFromBastionMessage `json:"arguments"`
+	Type      int                                `json:"type"`
+}
+type StderrToDaemonFromBastionMessage struct {
+	Stderr            []byte `json:"stderr"`
+	RequestIdentifier int    `json:"requestIdentifier"`
+}
+
+type ResizeTerminalToBastionFromDaemonSignalRMessage struct {
+	Target    string                                     `json:"target"`
+	Arguments []ResizeTerminalToBastionFromDaemonMessage `json:"arguments"`
+	Type      int                                        `json:"type"`
+}
+type ResizeTerminalToBastionFromDaemonMessage struct {
+	Width             uint16 `json:"width"`
+	Height            uint16 `json:"height"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
