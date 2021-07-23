@@ -701,9 +701,20 @@ export class CliDriver
                     await logoutHandler(this.configService, this.logger);
                 }
             )
+<<<<<<< HEAD
             .command('$0', 'Kubectl wrapper catch all', () => {}, async (_) => {
                 await bctlHandler(this.configService, this.logger);
             })
+=======
+            .command(
+                'get-kube-token',
+                'Get the Kube Token',
+                (_) => {},
+                async (_) => {
+                    await getKubeTokenHandler(this.configService);
+                }
+            )
+>>>>>>> 0b9d6af (Many small fixes (#126))
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
             .option('silent', {alias: 's', type: 'boolean', default: false, describe: 'Silence all zli messages, only returns command output'})

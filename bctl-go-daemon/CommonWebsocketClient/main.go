@@ -1,7 +1,8 @@
-package CommonWebsocketClient
+package commonWebsocketClient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -21,7 +22,12 @@ type WebsocketClient struct {
 	IsReady           bool
 	SignalRTypeNumber int
 
-	SocketLock sync.Mutex // Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
+	// Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
+	SocketLock sync.Mutex
+
+	// These objects are used for closing the websocket
+	Cancel context.CancelFunc
+	Close  bool
 
 	// This will be our one response channel whenever we get a websocket message
 	WebsocketMessageChan chan []byte
@@ -42,33 +48,44 @@ func NewCommonWebsocketClient(serviceUrl string, hubEndpoint string, params map[
 	// Make our response channel
 	ret.WebsocketMessageChan = make(chan []byte)
 
-	// Make a done channel - not really sure what this does
-	done := make(chan struct{})
+	// Make our cancel context
+	ctx, cancel := context.WithCancel(context.Background())
+	ret.Cancel = cancel
+	ret.Close = false
 
 	// Set up our listener to alert on the channel when we get a message
 	go func() {
-		defer close(done)
 		for {
-			// Keep reading messages that come in
-			_, message, err := ret.Client.ReadMessage()
-			if err != nil {
-				// TODO: Handle this error better
-				log.Println("Error in websocket, will attempt to reconnect: ", err)
-				ret.ConnectToWebsocket(serviceUrl, hubEndpoint, headers, params)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// Keep reading messages that come in
+				_, message, err := ret.Client.ReadMessage()
+				if err != nil && ret.Close == false {
+					// If we see an error, and we are not trying to close the connection
+					// TODO: Handle this error better
+					log.Println("Error in websocket, will attempt to reconnect: ", err)
+					ret.IsReady = false
+					ret.ConnectToWebsocket(serviceUrl, hubEndpoint, headers, params)
+				} else if ret.Close == true {
+					// If we are trying to close to connection, end the goroutine
+					return
+				} else {
+					// Always trim off the termination char if its there
+					if message[len(message)-1] == messageTerminator {
+						message = message[0 : len(message)-1]
+					}
 
-			} else {
-				// Always trim off the termination char if its there
-				if message[len(message)-1] == messageTerminator {
-					message = message[0 : len(message)-1]
+					// Also check to see if we have multiple messages
+					seporatedMessages := bytes.Split(message, []byte{messageTerminator})
+
+					for _, formattedMessage := range seporatedMessages {
+						// And alert on our channel
+						ret.WebsocketMessageChan <- formattedMessage
+					}
 				}
-
-				// Also check to see if we have multiple messages
-				seporatedMessages := bytes.Split(message, []byte{messageTerminator})
-
-				for _, formattedMessage := range seporatedMessages {
-					// And alert on our channel
-					ret.WebsocketMessageChan <- formattedMessage
-				}
+				break
 			}
 		}
 	}()
@@ -151,6 +168,7 @@ func (wsClient *WebsocketClient) ConnectToWebsocket(serviceUrl string, hubEndpoi
 			connected = false
 		} else {
 			connected = true
+			wsClient.IsReady = true
 			break
 		}
 

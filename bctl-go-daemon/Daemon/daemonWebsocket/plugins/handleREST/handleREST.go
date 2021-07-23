@@ -1,15 +1,16 @@
-package HandleREST
+package handleREST
 
 import (
 	"io/ioutil"
 	"log"
 	"net/http"
 
-	"bastionzero.com/bctl/v1/Daemon/src/DaemonWebsocket"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket/daemonWebsocketTypes"
 )
 
 // Handler for Regular Rest calls that can be proxied
-func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *DaemonWebsocket.DaemonWebsocket) {
+func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *daemonWebsocket.DaemonWebsocket) {
 	// First extract all the info out of the request
 	// gzipRequest := false
 	headers := make(map[string]string)
@@ -40,7 +41,7 @@ func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	requestIdentifier := wsClient.GenerateUniqueIdentifier()
 
 	// Now put our request together and make the request
-	dataFromClientMessage := DaemonWebsocket.RequestToBastionFromDaemonMessage{}
+	dataFromClientMessage := daemonWebsocketTypes.RequestToBastionFromDaemonMessage{}
 	dataFromClientMessage.LogId = logId
 	dataFromClientMessage.KubeCommand = commandBeingRun
 	dataFromClientMessage.Endpoint = endpointWithQuery
@@ -53,7 +54,7 @@ func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	// Wait for the response
 	receivedRequestIdentifier := -1
 	for receivedRequestIdentifier != requestIdentifier {
-		responseToDaemonFromBastionMessageResponse := DaemonWebsocket.ResponseToDaemonFromBastionMessage{}
+		responseToDaemonFromBastionMessageResponse := daemonWebsocketTypes.ResponseToDaemonFromBastionMessage{}
 		responseToDaemonFromBastionMessageResponse = <-wsClient.ResponseToDaemonChan
 
 		receivedRequestIdentifier = responseToDaemonFromBastionMessageResponse.RequestIdentifier

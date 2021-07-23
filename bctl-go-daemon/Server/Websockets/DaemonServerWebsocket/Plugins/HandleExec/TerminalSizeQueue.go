@@ -1,14 +1,14 @@
-package HandleExec
+package handleExec
 
 import (
-	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket/DaemonServerWebsocketTypes"
+	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 // Our customer TerminalSizeQueue for resize messages
 type TerminalSizeQueue struct {
-	wsClient          *DaemonServerWebsocketTypes.DaemonServerWebsocket
+	wsClient          *daemonServerWebsocketTypes.DaemonServerWebsocket
 	requestIdentifier int
 
 	// Next returns the new terminal size after the terminal has been resized. It returns nil when
@@ -22,7 +22,7 @@ type TerminalSize struct {
 	Height uint16
 }
 
-func NewTerminalSizeQueue(wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *TerminalSizeQueue {
+func NewTerminalSizeQueue(wsClient *daemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *TerminalSizeQueue {
 	return &TerminalSizeQueue{
 		wsClient:          wsClient,
 		requestIdentifier: requestIdentifier,
@@ -31,9 +31,9 @@ func NewTerminalSizeQueue(wsClient *DaemonServerWebsocketTypes.DaemonServerWebso
 
 func (t *TerminalSizeQueue) Next() *remotecommand.TerminalSize {
 	// Wait for a terminal resize event to come through Bastion
-	resizeTerminalToClusterFromBastionSignalRMessage := DaemonServerWebsocketTypes.ResizeTerminalToClusterFromBastionSignalRMessage{}
+	resizeTerminalToClusterFromBastionSignalRMessage := daemonServerWebsocketTypes.ResizeTerminalToClusterFromBastionSignalRMessage{}
 	resizeTerminalToClusterFromBastionSignalRMessage = <-t.wsClient.ExecResizeChannel
-	resizeTerminalToClusterFromBastionMessage := DaemonServerWebsocketTypes.ResizeTerminalToClusterFromBastionMessage{}
+	resizeTerminalToClusterFromBastionMessage := daemonServerWebsocketTypes.ResizeTerminalToClusterFromBastionMessage{}
 	resizeTerminalToClusterFromBastionMessage = resizeTerminalToClusterFromBastionSignalRMessage.Arguments[0]
 
 	// Verify that the request identifier matches, else re-emit

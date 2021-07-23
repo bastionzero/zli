@@ -1,4 +1,4 @@
-package exec
+package handleExec
 
 import (
 	"context"
@@ -9,6 +9,9 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket/daemonWebsocketTypes"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
@@ -52,7 +55,32 @@ const (
 	PortForwardRequestIDHeader = "requestID"
 )
 
-type SPDYService struct {
+type streamAndReply struct {
+	httpstream.Stream
+	replySent <-chan struct{}
+}
+
+type StatusError struct {
+	ErrStatus metav1.Status
+}
+
+// Types for exec ->
+// TerminalSize represents the width and height of a terminal.
+type TerminalSize struct {
+	Width  uint16
+	Height uint16
+}
+
+type resizeCallback func(TerminalSize)
+
+// TerminalSizeQueue is capable of returning terminal resize events as they occur.
+type TerminalSizeQueue interface {
+	// Next returns the new terminal size after the terminal has been resized. It returns nil when
+	// monitoring has been stopped.
+	Next() *TerminalSize
+}
+
+type remoteCommandProxy struct {
 	conn         io.Closer
 	stdinStream  io.ReadCloser
 	stdoutStream io.WriteCloser
@@ -71,16 +99,8 @@ type Options struct {
 	Command         []string
 }
 
-type streamAndReply struct {
-	httpstream.Stream
-	replySent <-chan struct{}
-}
-
-type StatusError struct {
-	ErrStatus metav1.Status
-}
-
-func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYService, error) {
+// Handler for Regular Exec calls that can be proxied
+func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocket.DaemonWebsocket) {
 	// Extract the options of the exec
 	options := extractExecOptions(request)
 
@@ -271,13 +291,14 @@ func extractExecOptions(r *http.Request) Options {
 		expectedStreams++
 	}
 
-	fmt.Printf("Expected streams: %d\n", expectedStreams)
-
-	// Wait for streams to come in and return SPDY service
-	if err := service.waitForStreams(request.Context(), streamCh, options.ExpectedStreams, expired.C); err != nil {
-		return &SPDYService{}, fmt.Errorf("error waiting for streams to come in: %v", err.Error())
-	} else {
-		return service, nil
+	log.Printf("Expected streams: %d\n", expectedStreams)
+	return Options{
+		Stdin:           stdin,
+		Stdout:          stdout,
+		Stderr:          stderr,
+		TTY:             tty,
+		ExpectedStreams: expectedStreams,
+		Command:         r.URL.Query()["command"],
 	}
 }
 

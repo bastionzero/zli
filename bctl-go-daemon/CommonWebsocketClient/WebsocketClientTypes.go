@@ -1,4 +1,4 @@
-package CommonWebsocketClient
+package commonWebsocketClient
 
 // SignalR Protocol
 type SignalrNegotiateResponse struct {
