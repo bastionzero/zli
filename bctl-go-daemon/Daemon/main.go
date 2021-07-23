@@ -1,54 +1,17 @@
 package main
 
 import (
-	"compress/gzip"
-	"context"
 	"flag"
-	"io"
 	"log"
-	"net"
 	"net/http"
 	"strings"
 
-	"bastionzero.com/bctl/v1/Daemon/src/DaemonWebsocket"
-	"bastionzero.com/bctl/v1/Daemon/src/HandleExec"
-	"bastionzero.com/bctl/v1/Daemon/src/HandleREST"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket/plugins/handleExec"
+	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket/plugins/handleREST"
 
 	"github.com/google/uuid"
 )
-
-type contextKey struct {
-	key string
-}
-
-var ConnContextKey = &contextKey{"http-conn"}
-
-func SaveConnInContext(ctx context.Context, c net.Conn) context.Context {
-	return context.WithValue(ctx, ConnContextKey, c)
-}
-
-type gzipResponseWriter struct {
-	io.Writer
-	http.ResponseWriter
-}
-
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
-
-func makeGzipHandler(fn http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			fn(w, r)
-			return
-		}
-		w.Header().Set("Content-Encoding", "gzip")
-		gz := gzip.NewWriter(w)
-		defer gz.Close()
-		gzr := gzipResponseWriter{Writer: gz, ResponseWriter: w}
-		fn(gzr, r)
-	}
-}
 
 func main() {
 	// TODO: Remove this requirement
@@ -67,7 +30,7 @@ func main() {
 
 	// Open a Websocket to Bastion
 	log.Printf("Opening websocket to Bastion: %s", *serviceURLPtr)
-	wsClient := DaemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr)
+	wsClient := daemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr)
 
 	go func() {
 		// Define our http handlers
@@ -90,7 +53,7 @@ func main() {
 	select {}
 }
 
-func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string, wsClient *DaemonWebsocket.DaemonWebsocket) {
+func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string, wsClient *daemonWebsocket.DaemonWebsocket) {
 	log.Printf("Handling %s - %s\n", r.URL.Path, r.Method)
 
 	// Trim off and localhost token
@@ -122,10 +85,16 @@ func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string,
 		logId = uuid.New().String()
 	}
 
+	// If the websocket is closed bubble that up to the user
+	if wsClient.WebsocketClient.IsReady == false {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	// Determin if its an exec or normal rest
 	if strings.Contains(r.URL.Path, "exec") {
-		HandleExec.HandleExec(w, r, wsClient)
+		handleExec.HandleExec(w, r, wsClient)
 	} else {
-		HandleREST.HandleREST(w, r, commandBeingRun, logId, wsClient)
+		handleREST.HandleREST(w, r, commandBeingRun, logId, wsClient)
 	}
 }

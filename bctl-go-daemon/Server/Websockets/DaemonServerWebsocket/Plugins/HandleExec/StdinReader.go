@@ -1,16 +1,16 @@
-package HandleExec
+package handleExec
 
 import (
-	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket/DaemonServerWebsocketTypes"
+	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 )
 
 // Our custom stdin reader so we can pass it into Stream Options
 type StdinReader struct {
-	wsClient          *DaemonServerWebsocketTypes.DaemonServerWebsocket
+	wsClient          *daemonServerWebsocketTypes.DaemonServerWebsocket
 	RequestIdentifier int
 }
 
-func NewStdinReader(wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *StdinReader {
+func NewStdinReader(wsClient *daemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *StdinReader {
 	return &StdinReader{
 		wsClient:          wsClient,
 		RequestIdentifier: requestIdentifier,
@@ -34,9 +34,9 @@ func (r *StdinReader) Read(p []byte) (int, error) {
 	// go func() {
 
 	// TODO: We need a special message to send our EOF
-	stdinToClusterFromBastionSignalRMessage := DaemonServerWebsocketTypes.StdinToClusterFromBastionSignalRMessage{}
+	stdinToClusterFromBastionSignalRMessage := daemonServerWebsocketTypes.StdinToClusterFromBastionSignalRMessage{}
 	stdinToClusterFromBastionSignalRMessage = <-r.wsClient.ExecStdinChannel
-	stdinToClusterFromBastionMessage := DaemonServerWebsocketTypes.StdinToClusterFromBastionMessage{}
+	stdinToClusterFromBastionMessage := daemonServerWebsocketTypes.StdinToClusterFromBastionMessage{}
 	stdinToClusterFromBastionMessage = stdinToClusterFromBastionSignalRMessage.Arguments[0]
 	if stdinToClusterFromBastionMessage.RequestIdentifier == r.RequestIdentifier {
 		n := copy(p, stdinToClusterFromBastionMessage.Stdin)

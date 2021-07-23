@@ -14,7 +14,8 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { cleanExit } from './handlers/clean-exit.handler';
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, mixpanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, mixedPanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
+import { getKubeTokenHandler } from './handlers/get-kube-token.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handler';
 import { loginHandler } from './handlers/login.handler';
@@ -486,7 +487,9 @@ export class CliDriver
                                 alias: 'c',
                                 default: null
                             }
-                        );
+                        )
+                        .example('generate kubeYaml testcluster', '')
+                        .example('generate kubeConfig', '');
                 },
                 async (argv) => {
                     if (argv.typeOfConfig == 'kubeConfig') {
@@ -502,6 +505,14 @@ export class CliDriver
                 () => {},
                 async () => {
                     await logoutHandler(this.configService, this.logger);
+                }
+            )
+            .command(
+                'get-kube-token',
+                'Get the Kube Token',
+                (_) => {},
+                async (_) => {
+                    await getKubeTokenHandler(this.configService);
                 }
             )
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})

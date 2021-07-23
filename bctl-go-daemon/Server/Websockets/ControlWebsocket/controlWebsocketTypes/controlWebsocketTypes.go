@@ -1,4 +1,4 @@
-package ControlWebsocket
+package controlWebsocketTypes
 
 type ProvisionNewWebsocketSignalRMessage struct {
 	Target    string                         `json:"target"`

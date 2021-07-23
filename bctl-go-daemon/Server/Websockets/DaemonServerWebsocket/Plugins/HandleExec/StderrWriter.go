@@ -1,17 +1,17 @@
-package HandleExec
+package handleExec
 
 import (
-	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket/DaemonServerWebsocketTypes"
+	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 )
 
 // Our customer stderr writer so we can pass it into StreamOptions
 type StderrWriter struct {
-	wsClient          *DaemonServerWebsocketTypes.DaemonServerWebsocket
+	wsClient          *daemonServerWebsocketTypes.DaemonServerWebsocket
 	RequestIdentifier int
 }
 
 // Constructor
-func NewStderrWriter(wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *StderrWriter {
+func NewStderrWriter(wsClient *daemonServerWebsocketTypes.DaemonServerWebsocket, requestIdentifier int) *StderrWriter {
 	return &StderrWriter{
 		wsClient:          wsClient,
 		RequestIdentifier: requestIdentifier,
@@ -21,7 +21,7 @@ func NewStderrWriter(wsClient *DaemonServerWebsocketTypes.DaemonServerWebsocket,
 // Our custom write function, this will send the data over the websocket
 func (w *StderrWriter) Write(p []byte) (int, error) {
 	// Send this data over our websocket
-	stderrToBastionFromClusterMessage := &DaemonServerWebsocketTypes.StderrToBastionFromClusterMessage{}
+	stderrToBastionFromClusterMessage := &daemonServerWebsocketTypes.StderrToBastionFromClusterMessage{}
 	stderrToBastionFromClusterMessage.RequestIdentifier = w.RequestIdentifier
 	stderrToBastionFromClusterMessage.Stderr = p
 	w.wsClient.SendStderrToBastionFromClusterMessage(*stderrToBastionFromClusterMessage)

@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"bastionzero.com/bctl/v1/Server/src/ControlWebsocket"
-	"bastionzero.com/bctl/v1/Server/src/DaemonServerWebsocket"
+	"bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket"
+	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket"
 )
 
 func check(e error) {
@@ -35,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	wsClient := ControlWebsocket.NewControlWebsocketClient(*serviceURLPtr, *activationTokenPtr)
+	wsClient := controlWebsocket.NewControlWebsocketClient(*serviceURLPtr, *activationTokenPtr)
 
 	// Subscribe to our handlers
 	go func() {
@@ -44,7 +44,7 @@ func main() {
 
 			// We have an incoming websocket request, attempt to make a new Daemon Websocket Client for the request
 			token := "1234" // TODO figure this out
-			DaemonServerWebsocket.NewDaemonServerWebsocketClient(*serviceURLPtr, message.ConnectionId, token)
+			daemonServerWebsocket.NewDaemonServerWebsocketClient(*serviceURLPtr, message.ConnectionId, token)
 		}
 	}()
 
