@@ -23,15 +23,18 @@ type ControlWebsocket struct {
 }
 
 // Constructor to create a new Control Websocket Client
-func NewControlWebsocketClient(serviceURL string, activationToken string) *ControlWebsocket {
+func NewControlWebsocketClient(serviceURL string, activationToken string, orgId string, clusterName string, environmentId string) *ControlWebsocket {
 	ret := ControlWebsocket{}
 
 	// Create our headers and params, headers are empty
 	headers := make(map[string]string)
 
-	// Add our token to our params
+	// Make and add our params
 	params := make(map[string]string)
 	params["activation_token"] = activationToken
+	params["org_id"] = orgId
+	params["cluster_name"] = clusterName
+	params["environment_id"] = environmentId
 
 	hubEndpoint := "/api/v1/hub/kube-control"
 

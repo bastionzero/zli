@@ -155,8 +155,6 @@ func (wsClient *WebsocketClient) ConnectToWebsocket(serviceUrl string, hubEndpoi
 
 			wsClient.Client, _, err = websocket.DefaultDialer.Dial(websocketUrl.String(), http.Header{"Authorization": []string{headers["Authorization"]}})
 
-			log.Printf("%s", wsClient.Client)
-
 			// Define our protocol and version
 			// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
 			if err := wsClient.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), 0x1E)); err != nil {

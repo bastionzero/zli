@@ -20,6 +20,9 @@ func check(e error) {
 func main() {
 	// Our expected flags we need to start
 	serviceURLPtr := flag.String("serviceURL", "", "Service URL to use")
+	orgIdPtr := flag.String("OrgId", "", "OrgId to use")
+	clusterNamePtr := flag.String("clusterName", "", "Cluster name to use")
+	environmentIdPtr := flag.String("environmentId", "", "Optional environmentId to specify")
 	activationTokenPtr := flag.String("activationToken", "", "Activation Token to use to register the cluster")
 
 	// Parse any flag
@@ -28,14 +31,17 @@ func main() {
 	// The environment will overwrite any flags passed
 	*serviceURLPtr = os.Getenv("SERVICE_URL")
 	*activationTokenPtr = os.Getenv("ACTIVATION_TOKEN")
+	*orgIdPtr = os.Getenv("ORG_ID")
+	*clusterNamePtr = os.Getenv("CLUSTER_NAME")
+	*environmentIdPtr = os.Getenv("ENVIRONMENT")
 
 	// Ensure we have all needed vars
-	if *serviceURLPtr == "" || *activationTokenPtr == "" {
+	if *serviceURLPtr == "" || *activationTokenPtr == "" || *orgIdPtr == "" || *clusterNamePtr == "" {
 		log.Printf("Missing flags!")
 		os.Exit(1)
 	}
 
-	wsClient := controlWebsocket.NewControlWebsocketClient(*serviceURLPtr, *activationTokenPtr)
+	wsClient := controlWebsocket.NewControlWebsocketClient(*serviceURLPtr, *activationTokenPtr, *orgIdPtr, *clusterNamePtr, *environmentIdPtr)
 
 	// Subscribe to our handlers
 	go func() {
