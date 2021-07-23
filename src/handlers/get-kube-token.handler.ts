@@ -1,9 +1,6 @@
 
-import { config } from 'yargs';
 import { ConfigService } from '../config.service/config.service';
 
-
-const ONE_HOUR = 60 * 60 * 1000; /* ms */
 
 export async function getKubeTokenHandler(
     configService: ConfigService

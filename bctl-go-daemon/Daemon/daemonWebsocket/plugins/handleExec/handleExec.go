@@ -159,8 +159,8 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 
 	// Set up a go function for stdout
 	go func() {
+		stdoutToDaemonFromBastionSignalRMessage := daemonWebsocketTypes.StdoutToDaemonFromBastionSignalRMessage{}
 		for {
-			stdoutToDaemonFromBastionSignalRMessage := daemonWebsocketTypes.StdoutToDaemonFromBastionSignalRMessage{}
 			select {
 			case <-ctx.Done():
 				return
@@ -189,8 +189,8 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 
 	// Set up a go function for stderr
 	go func() {
+		stderrToDaemonFromBastionSignalRMessage := daemonWebsocketTypes.StderrToDaemonFromBastionSignalRMessage{}
 		for {
-			stderrToDaemonFromBastionSignalRMessage := daemonWebsocketTypes.StderrToDaemonFromBastionSignalRMessage{}
 			select {
 			case <-ctx.Done():
 				return
@@ -209,8 +209,8 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 
 	// Set up a go function for stdin
 	go func() {
+		buf := make([]byte, 16)
 		for {
-			buf := make([]byte, 16)
 			select {
 			case <-ctx.Done():
 				return
@@ -234,7 +234,6 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 
 	// Set up a go function for resize
 	go func() {
-		// buf := make([]byte, 16)
 		for {
 			select {
 			case <-ctx.Done():
