@@ -49,6 +49,7 @@ export interface ClusterSummary
     id: string;
     name: string;
     status: KubeClusterStatus;
+    environmentId: string;
 }
 
 export interface ConnectionDetails

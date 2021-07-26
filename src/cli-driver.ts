@@ -154,17 +154,28 @@ export class CliDriver
                         .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example, unique id of ssh target');
                 },
                 async (argv) => {
-                    if (argv.targetType == 'cluster') {
-                        // TODO make an opa policy check here
-                        // TODO make this smart parsing
-                        const connectUser = argv.targetString.split('@')[0];
-                        const connectCluster = argv.targetString.split('@')[1];
-                        await startKubeDaemonHandler(connectUser, connectCluster, this.configService, this.logger);
-                    } else {
-                        const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
 
-                        await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
-                    }
+                    await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
+                }
+            )
+            .command(
+                'proxy <proxyString>',
+                'Proxy to a cluster',
+                (yargs) => {
+                    return yargs
+                        .positional('proxyString', {
+                            type: 'string',
+                        })
+                        .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role')
+                },
+                async (argv) => {
+                    // TODO make this smart parsing
+                    const connectUser = argv.proxyString.split('@')[0];
+                    const connectCluster = argv.proxyString.split('@')[1];
+
+
+                    await startKubeDaemonHandler(connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(

@@ -48,8 +48,8 @@ export async function generateKubeconfigHandler(
                 });
 
                 // Generate a token that can be used for auth
-                // TODO: generate random one, with ++++
-                var token = 'q1bKLFOyUiosTfawzA93TzZIDzH2TNa2SMm0zEiPKTUwME6BkEo6Sql5yUWVBSWpKUGphaWpxSVAfekBOZbBhaEW+VlFUeVRGcluyVF5JT4+haZmPsluFoFu5XkpXk5BXq++++'
+                var randtoken = require('rand-token');
+                var token = randtoken.generate(128) + '++++';
 
                 // Now save the path in the configService
                 kubeConfig = {

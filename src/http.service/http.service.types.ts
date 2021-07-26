@@ -109,6 +109,7 @@ export interface ClusterSummary {
     id: string;
     clusterName: string;
     status: KubeClusterStatus;
+    environmentId?: string;
 }
 
 export interface EnvironmentDetails {
@@ -270,4 +271,13 @@ export interface GetKubeUnregisteredAgentYamlRequest {
 }
 export interface GetKubeUnregisteredAgentYamlResponse {
     yaml: string;
+}
+
+export interface KubeProxyRequest {
+    clusterName: string;
+    clusterRole: string;
+    environmentId: string;
+}
+export interface KubeProxyResponse {
+    allowed: boolean;
 }

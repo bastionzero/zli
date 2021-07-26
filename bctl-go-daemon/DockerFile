@@ -10,7 +10,8 @@ RUN cd Server && \
     go get k8s.io/client-go/tools/remotecommand && \
     go get k8s.io/client-go/rest && \
     go get k8s.io/client-go/kubernetes/scheme && \
-    go get k8s.io/api/core/v1 && \
+    go get k8s.io/api/core/v1 && \ 
+    go get github.com/gorilla/websocket && \
     go get github.com/NYTimes/gziphandler && \
     go install bastionzero.com/bctl/v1/Server 
 
