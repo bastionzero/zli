@@ -40,7 +40,7 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 
 	// Create our response channels
 	ret.ProvisionWebsocketChan = make(chan controlWebsocketTypes.ProvisionNewWebsocketMessage)
-
+	log.Printf("serviceURL: %v, \nhubEndpoint: %V, \nparams: %V, \nheaders: %v", serviceURL, hubEndpoint, params, headers)
 	ret.WebsocketClient = commonWebsocketClient.NewCommonWebsocketClient(serviceURL, hubEndpoint, params, headers)
 
 	// Make our cancel context, unused for now
