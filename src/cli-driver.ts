@@ -31,6 +31,10 @@ import { listConnectionsHandler } from './handlers/list-connections.handler';
 import { attachHandler } from './handlers/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kubeconfig.handler';
+import { addRoleHandler } from './handlers/add-role.handler';
+import { removeRoleHandler } from './handlers/remove-role.handler';
+import { addUserHandler } from './handlers/add-user.handler';
+import { removeUserHandler } from './handlers/remove-user.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
 
 // 3rd Party Modules
@@ -73,8 +77,9 @@ export class CliDriver
     {
         // ref: https://nodejs.org/api/process.html#process_process_argv0
         this.processName = process.argv0;
-
-        yargs(process.argv.slice(2))
+        
+        // @ts-ignore TS2589
+        yargs(process.argv.slice(2)) 
             .scriptName('zli')
             .usage('$0 <cmd> [args]')
             .wrap(null)
@@ -176,6 +181,74 @@ export class CliDriver
 
 
                     await startKubeDaemonHandler(connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'addrole <clusterRoleName> <clusterName>',
+                'Add a ClusterRole to a Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('clusterRoleName', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
+                },
+                async (argv) => {
+                    await addRoleHandler(argv.clusterRoleName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'removerole <clusterRoleName> <clusterName>',
+                'Remove a ClusterRole from Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('clusterRoleName', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
+                },
+                async (argv) => {
+                    await removeRoleHandler(argv.clusterRoleName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'adduser <idpEmail> <clusterName>',
+                'Add a IDP User to a Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('idpEmail', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('adduser test@test.com test-cluster', 'Adds the test@test.com IDP user test-cluster policy')
+                },
+                async (argv) => {
+                    await addUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'removeuser <idpEmail> <clusterName>',
+                'Remove a IDP User to a Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('idpEmail', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('removeuser test@test.com test-cluster', 'Removes the test@test.com IDP user test-cluster policy')
+                },
+                async (argv) => {
+                    await removeUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
@@ -587,6 +660,6 @@ Command arguments key:
  - [arg] is optional or sometimes required
 
 Need help? https://cloud.bastionzero.com/support`)
-            .argv; // returns argv of yargs
+            .argv; // returns argv of yargs 
     }
 }

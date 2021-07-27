@@ -281,3 +281,70 @@ export interface KubeProxyRequest {
 export interface KubeProxyResponse {
     allowed: boolean;
 }
+
+export interface KubernetesPolicySummary {
+    id: string;
+    name: string;
+    metadata: PolicyMetadata
+    type: PolicyType
+    subjects: Subject[]
+    groups: Group[]
+    context: KubernetesPolicyContext
+}
+
+interface Group {
+    id: string;
+}
+
+interface KubernetesPolicyContext {
+    clusterRoles: { [key: string]: KubernetesPolicyClusterRoles }
+    environments: { [key: string]: PolicyEnvironment }
+}
+
+export interface KubernetesPolicyClusterRoles {
+    name: string;
+}
+
+interface PolicyEnvironment {
+    id: string;
+}
+
+export interface Subject {
+    id: string;
+    subjectType: SubjectType;
+}
+
+interface PolicyMetadata {
+    description: string;
+}
+
+export enum SubjectType {
+    User = 'User',
+    ApiKey = 'ApiKey'
+}
+
+enum PolicyType {
+    TargetConnect = 'TargetConnect',
+    OrganizationControls = 'OrganizationControls',
+    SessionRecording = 'SessionRecording',
+    KubernetesProxy = 'KubernetesProxy'
+}
+
+export interface UpdateKubePolicyRequest {
+    id: string;
+    name: string;
+    type: string;
+    subjects: Subject[];
+    groups: Group[];
+    context: string;
+    policyMetadata: PolicyMetadata
+}
+
+export interface GetUserInfoResponse {
+    email: string;
+    id: string;
+}
+
+export interface GetUserInfoRequest{
+    email: string;
+}
