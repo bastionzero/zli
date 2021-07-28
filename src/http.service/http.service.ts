@@ -490,13 +490,16 @@ export class KubeService extends HttpService
     }
 
     public getKubeUnregisteredAgentYaml(
-        clusterName: string
+        clusterName: string,
+        labels: string,
+        namespace: string
     ): Promise<GetKubeUnregisteredAgentYamlResponse>
     {
         const request: GetKubeUnregisteredAgentYamlRequest = {
             clusterName: clusterName,
+            labels: labels,
+            namespace: namespace,
         };
-
         return this.FormPost('get-agent-yaml', request);
     }
 

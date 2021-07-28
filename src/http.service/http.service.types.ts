@@ -110,6 +110,7 @@ export interface ClusterSummary {
     clusterName: string;
     status: KubeClusterStatus;
     environmentId?: string;
+    validRoles: string[];
 }
 
 export interface EnvironmentDetails {
@@ -268,6 +269,8 @@ export interface GetAutodiscoveryScriptResponse {
 
 export interface GetKubeUnregisteredAgentYamlRequest {
     clusterName: string;
+    labels: string;
+    namespace: string;
 }
 export interface GetKubeUnregisteredAgentYamlResponse {
     yaml: string;

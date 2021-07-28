@@ -1,3 +1,5 @@
+import util from 'util';
+
 import { Logger } from '../logger.service/logger';
 import { ConfigService, KubeConfig } from '../config.service/config.service';
 
@@ -7,6 +9,7 @@ const fs = require('fs');
 
 
 export async function generateKubeconfigHandler(
+    argv: any,
     configService: ConfigService,
     logger: Logger
 ) {
@@ -91,6 +94,10 @@ users:
       token: "${kubeConfig['token']}"
     `
 
-    // Show it to the user
-    logger.info(clientKubeConfig)
+  // Show it to the user or write to file 
+  if (argv.outputFile) {
+    await util.promisify(fs.writeFile)(argv.outputFile,clientKubeConfig);
+  } else {
+    logger.info(clientKubeConfig);
+  }
 }

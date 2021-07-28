@@ -597,7 +597,7 @@ export class CliDriver
                 }
             )
             .command(
-                'generate <typeOfConfig> <clusterName>',
+                'generate <typeOfConfig> [clusterName]',
                 'Generate a different types of configuration files',
                 (yargs) => {
                     return yargs
@@ -605,21 +605,29 @@ export class CliDriver
                             type: 'string',
                             choices: ['kubeConfig', 'kubeYaml']
                         
-                        }).option(
-                            'clusterName',
-                            {
+                        }).positional('clusterName', {
                                 type: 'string',
-                                demandOption: false,
-                                alias: 'c',
                                 default: null
-                            }
-                        )
+                        }).option('namespace', {
+                            type: 'string',
+                            default: ''
+                        }).option('labels', {
+                                type: 'array',
+                                default: []
+                        })
+                        .option('outputFile', {
+                            type: 'string',
+                            demandOption: false,
+                            alias: 'o',
+                            default: null
+                        })
                         .example('generate kubeYaml testcluster', '')
-                        .example('generate kubeConfig', '');
+                        .example('generate kubeConfig', '')
+                        .example('generate kubeYaml --labels testkey:testvalue', '');
                 },
                 async (argv) => {
                     if (argv.typeOfConfig == 'kubeConfig') {
-                        await generateKubeconfigHandler(this.configService, this.logger);
+                        await generateKubeconfigHandler(argv, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.configService, this.logger);
                     }

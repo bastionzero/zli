@@ -51,7 +51,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
             result.map<ClusterSummary>((cluster, _index, _array) => {
-                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId};
+                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, validRoles: cluster.validRoles};
                 }))
 
     const envs = envService.ListEnvironments();

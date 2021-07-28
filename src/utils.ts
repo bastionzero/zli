@@ -159,6 +159,8 @@ export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boole
     if(showGuid || showDetail)
     {
         // For now showGuid and showDetail do the same thing
+        header.push('Valid Roles')
+        columnWidths.push(38);
         header.push('Id');
         columnWidths.push(38);
     }
@@ -168,7 +170,8 @@ export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boole
 
     clusters.forEach(cluster => {
         const row = [cluster.name, cluster.status];
-        if(showGuid || showDetail) {
+        if (showGuid || showDetail) {
+            row.push(cluster.validRoles.toString());
             row.push(cluster.id);
         }
         table.push(row);
