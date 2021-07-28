@@ -285,6 +285,16 @@ export interface KubeProxyResponse {
     allowed: boolean;
 }
 
+export interface KubeProxyDescribeRequest {
+    clusterName: string;
+}
+export interface KubeProxyDescribeResponse {
+    clusterRoles: ClusterRole[]
+}
+
+interface ClusterRole {
+    name: string;
+}
 export interface KubernetesPolicySummary {
     id: string;
     name: string;

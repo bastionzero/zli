@@ -38,6 +38,7 @@ import { removeUserHandler } from './handlers/remove-user.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect.handler';
 import { statusHandler } from './handlers/status.handler';
+import { describeHandler } from './handlers/describe.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -256,6 +257,17 @@ export class CliDriver
                 },
                 async (argv) => {
                     await removeUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'describe <clusterName>',
+                'Get detailed information about a certain cluster',
+                (yargs) => {
+                    return yargs
+                        .example('status test-cluster', '')
+                },
+                async (argv) => {
+                    await describeHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs)
                 }
             )
             .command(

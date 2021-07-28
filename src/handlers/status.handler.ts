@@ -1,9 +1,6 @@
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { cleanExit } from './clean-exit.handler';
-const { spawn } = require('child_process');
-
-
 
 export async function statusHandler(
     configService: ConfigService,

@@ -43,8 +43,9 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
 
     // Copy over our executable to a temp file 
     var finalDaemonPath = '';
-    if (process.env.ZLI_CUSTOM_CTL_PATH) {
-        cwd = process.env.ZLI_CUSTOM_CTL_PATH
+    if (process.env.ZLI_CUSTOM_BCTL_PATH) {
+        // If we set a custom path, we will try to start the daemon from the source code
+        cwd = process.env.ZLI_CUSTOM_BCTL_PATH
         finalDaemonPath = 'go'
         args = ['run', 'main.go'].concat(args)
     } else {
