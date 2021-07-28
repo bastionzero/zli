@@ -36,6 +36,8 @@ import { removeRoleHandler } from './handlers/remove-role.handler';
 import { addUserHandler } from './handlers/add-user.handler';
 import { removeUserHandler } from './handlers/remove-user.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
+import { disconnectHandler } from './handlers/disconnect.handler';
+import { statusHandler } from './handlers/status.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -165,22 +167,27 @@ export class CliDriver
                 }
             )
             .command(
-                'proxy <proxyString>',
+                'proxy [proxyString]',
                 'Proxy to a cluster',
                 (yargs) => {
                     return yargs
                         .positional('proxyString', {
                             type: 'string',
+                            default: null,
+                            demandOption: false,
                         })
                         .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role')
                 },
                 async (argv) => {
-                    // TODO make this smart parsing
-                    const connectUser = argv.proxyString.split('@')[0];
-                    const connectCluster = argv.proxyString.split('@')[1];
+                    if (argv.proxyString) {
+                        // TODO make this smart parsing
+                        const connectUser = argv.proxyString.split('@')[0];
+                        const connectCluster = argv.proxyString.split('@')[1];
 
-
-                    await startKubeDaemonHandler(connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
+                        await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
+                    } else {
+                        await statusHandler(this.configService, this.logger)
+                    }
                 }
             )
             .command(
@@ -252,21 +259,14 @@ export class CliDriver
                 }
             )
             .command(
-                'disconnect <targetType>',
-                'Disconnect from a target',
+                'disconnect',
+                'Disconnect a Zli Daemon',
                 (yargs) => {
                     return yargs
-                        .positional('targetType', {
-                            type: 'string',
-                        })
-                        .example('disconnect cluster', 'Disconnect a local kube cluster daemon')
+                        .example('disconnect', 'Disconnect a local Zli Daemon')
                 },
                 async (argv) => {
-                    if (argv.targetType == 'cluster') {
-                        this.logger.info("disconnect from cluster?")
-                    } else {
-                        this.logger.info(`Unhandled target type passed ${argv.targetType}`)
-                    }
+                    await disconnectHandler(this.configService, this.logger)
                 }
             )
             .command(

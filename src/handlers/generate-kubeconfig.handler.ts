@@ -56,12 +56,14 @@ export async function generateKubeconfigHandler(
 
                 // Now save the path in the configService
                 kubeConfig = {
-                    keyPath: pathToKey,
-                    certPath: pathToCert,
-                    token: token,
-                    localHost: 'localhost',
-                    localPort: 1234,
-                    localPid: null
+                  keyPath: pathToKey,
+                  certPath: pathToCert,
+                  token: token,
+                  localHost: 'localhost',
+                  localPort: 1234,
+                  localPid: null,
+                  assumeRole: null,
+                  assumeCluster: null
                 }
                 configService.setKubeConfig(kubeConfig)
                 resolve()

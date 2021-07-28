@@ -1,22 +1,18 @@
-import {
-    HubConnection,
-    HubConnectionBuilder,
-    HubConnectionState,
-    LogLevel,
-} from "@microsoft/signalr";
+import path from 'path';
+import { of } from 'rxjs';
 import { ConfigService } from '../config.service/config.service';
-import { SignalRLogger } from "../../webshell-common-ts/logging/signalr-logger";
 import { PolicyQueryService } from '../http.service/http.service';
 import { Logger } from "../logger.service/logger";
-import { v4 as uuidv4 } from 'uuid';
 import { ClusterSummary, KubeClusterStatus } from "../types";
 import { cleanExit } from './clean-exit.handler';
 const { spawn } = require('child_process');
+const fs = require('fs');
+const utils = require('util');
+const tmp = require('tmp');
 
-
-export async function startKubeDaemonHandler(connectUser: string, connectCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First check that the cluster is online 
-    var clusterTarget = await getClusterInfoFromName(await clusterTargets, connectCluster, logger);
+    var clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
     if (clusterTarget.status != KubeClusterStatus.Online) {
         logger.error('Target cluster is offline!');
         await cleanExit(1, logger);
@@ -26,9 +22,9 @@ export async function startKubeDaemonHandler(connectUser: string, connectCluster
     const policyService = new PolicyQueryService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    var response = await policyService.CheckKubeProxy(connectCluster, connectUser, clusterTarget.environmentId);
+    var response = await policyService.CheckKubeProxy(assumeCluster, assumeUser, clusterTarget.environmentId);
     if (response.allowed != true) {
-        logger.error(`You do not have the correct policy setup to access ${connectCluster} as ${connectUser}`);
+        logger.error(`You do not have the correct policy setup to access ${assumeCluster} as ${assumeUser}`);
         await cleanExit(1, logger);
     }
 
@@ -39,28 +35,72 @@ export async function startKubeDaemonHandler(connectUser: string, connectCluster
         // First try to kill the process
         spawn('pkill', ['-P', kubeConfig['localPid'].toString()])
     }
+    
+    // Build our args and cwd
+    var args = [`-sessionId=${configService.sessionId()}`, `-assumeRole=${assumeUser}`, `-assumeCluster=${assumeCluster}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace("https://", "")}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`, `-environmentId="${clusterTarget.environmentId}"`]
+    var cwd = process.cwd()
 
-    // Start the go subprocess
-    // TODO: This will chance when we compile it inside zli
-    const options = {
-        cwd: "/Users/sidpremkumar/Documents/CommonwealthCrypto/zli/bctl-go-daemon/Daemon",
-        detached: true,
-        shell: true,
-        stdio: ['ignore', 'ignore', 'ignore']
-    };
 
-    // Build our args 
-    let args = ['run', 'main.go', `-sessionId=${configService.sessionId()}`, `-assumeRole=${connectUser}`, `-assumeCluster=${connectCluster}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace("https://", "")}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`, `-environmentId="${clusterTarget.environmentId}"`]
+    // Copy over our executable to a temp file 
+    var finalDaemonPath = '';
+    if (process.env.ZLI_CUSTOM_CTL_PATH) {
+        cwd = process.env.ZLI_CUSTOM_CTL_PATH
+        finalDaemonPath = 'go'
+        args = ['run', 'main.go'].concat(args)
+    } else {
+        var finalDaemonPath = await copyExecutableToTempDir();
+    }
 
-    console.log(`go ${args.join(' ')}`)
-    // const daemonProcess = await spawn('go', args, options);
-
-    // // Now save the Pid so we can kill the process next time we start it
-    // kubeConfig["localPid"] = daemonProcess.pid;
-    // configService.setKubeConfig(kubeConfig);
-
-    // logger.info(`Started kube daemon at ${kubeConfig["localHost"]}:${kubeConfig['localPort']} for ${connectUser}@${connectCluster}`);
-    // process.exit(0)
+    try {
+        if (!argv.debug) {
+            // If we are not debugging, start the go subprocess in the background
+            const options = {
+                cwd: cwd,
+                detached: true,
+                shell: true,
+                stdio: ['ignore', 'ignore', 'ignore']
+            };
+    
+            const daemonProcess = await spawn(finalDaemonPath, args, options);
+    
+            // Now save the Pid so we can kill the process next time we start it
+            kubeConfig["localPid"] = daemonProcess.pid;
+    
+            // Save the info about assume cluster and role
+            kubeConfig['assumeRole'] = assumeUser;
+            kubeConfig['assumeCluster'] = assumeCluster;
+            configService.setKubeConfig(kubeConfig);
+    
+            logger.info(`Started kube daemon at ${kubeConfig["localHost"]}:${kubeConfig['localPort']} for ${assumeUser}@${assumeCluster}`);
+            process.exit(0)
+        } else {
+            const daemonProcess = await spawn(finalDaemonPath, args,
+                {
+                    cwd: cwd,
+                    shell: true,
+                    detached: true,
+                    stdio: 'inherit'
+                }
+            );
+    
+            process.on('SIGINT', () => {
+                console.log("here???")
+                spawn('kill', ['-9', daemonProcess.pid], {
+                    cwd: process.cwd(),
+                    shell: true,
+                    detached: true,
+                    stdio: 'inherit'
+                })
+            })
+    
+            daemonProcess.on('exit', function() {
+                process.exit()
+            })
+        }
+    } catch (error) {
+        logger.error(`Something went wrong starting the Kube Daemon: ${error}`);
+        await cleanExit(1, logger);
+    }
 }
 
 async function getClusterInfoFromName(clusterTargets: ClusterSummary[], clusterName: string, logger: Logger): Promise<ClusterSummary> {
@@ -73,26 +113,38 @@ async function getClusterInfoFromName(clusterTargets: ClusterSummary[], clusterN
     await cleanExit(1, logger);
 }
 
-async function generateUUID(): Promise<string> {
-    return uuidv4();
-}
-
-async function generateUniqueId(): Promise<number> {
-    // Helper function to generate a uniqueId
-    // ret number: unique number
-    return Math.round(Math.random() * 1000);
-}
-
-async function buildWebsocket(configService: ConfigService, connectUser: string, logger: Logger): Promise<HubConnection> {
-    const connectionBuilder = new HubConnectionBuilder();
-    connectionBuilder.withUrl(
-    `${configService.serviceUrl()}api/v1/hub/kube?session_id=${configService.sessionId()}&assume_role=${connectUser}`,
-    {
-        accessTokenFactory: () => configService.getAuth(),
+async function copyExecutableToTempDir(): Promise<string> {
+    // Helper function to copy the Daemon executable to a temp dir on the file system
+    // Ref: https://github.com/vercel/pkg/issues/342
+    const chmod = utils.promisify(fs.chmod);
+    
+    // Our copy function as we cannot use fs.copyFileSync
+    async function copy(source: string, target: string) {
+        return new Promise<void>(async function (resolve, reject) {
+            var ret = await fs.createReadStream(source).pipe(fs.createWriteStream(target), { end: true });
+            ret.on('close', () => {
+                resolve()
+            })
+            ret.on('error', () => {
+                reject()
+            })
+        })
+        
     }
-    )
-    .configureLogging(new SignalRLogger(logger))
-    .withAutomaticReconnect()
-    .configureLogging(LogLevel.None);
-    return connectionBuilder.build();
+
+    // We have to go up 1 more directory bc when we compile we are inside /dist
+    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/Daemon/Daemon');
+
+    // Create our temp file
+    const tmpobj = tmp.fileSync();
+    const finalDaemonPath = `${tmpobj.name}`
+    
+    // Copy the file to the computers file system
+    await copy(daemonExecPath, finalDaemonPath); // this should work
+
+    // Grant execute permission
+    await chmod(finalDaemonPath, 0o765);
+
+    // Return the path
+    return finalDaemonPath;
 }
