@@ -39,8 +39,6 @@ func main() {
 		}
 	}
 
-	}
-
 	// Open a Websocket to Bastion
 	log.Printf("Opening websocket to Bastion: %s", *serviceURLPtr)
 	wsClient := daemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *environmentIdPtr)
