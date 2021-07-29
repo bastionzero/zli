@@ -152,7 +152,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 	startExecToClusterFromBastionMessage.Endpoint = r.URL.String()
 	startExecToClusterFromBastionMessage.RequestIdentifier = requestIdentifier
 	log.Println("Starting connection to cluster for exec")
-	wsClient.SendStartExecToBastionFromDaemonMessage(*startExecToClusterFromBastionMessage)
+	wsClient.SendStartExecDaemonToBastion(*startExecToClusterFromBastionMessage)
 
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -225,7 +225,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 				stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
 				stdinToBastionFromDaemonMessage.Stdin = buf[:n]
 				stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
-				wsClient.SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage)
+				wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
 				break
 			}
 		}
@@ -259,7 +259,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 					resizeTerminalToBastionFromDaemonMessage.Height = size.Height
 					resizeTerminalToBastionFromDaemonMessage.Width = size.Width
 					resizeTerminalToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
-					wsClient.SendResizeTerminalToBastionFromDaemonMessage(resizeTerminalToBastionFromDaemonMessage)
+					wsClient.SendResizeDaemonToBastion(resizeTerminalToBastionFromDaemonMessage)
 				}
 				break
 			}

@@ -1,6 +1,8 @@
-package handleREST
+package handleLogs
 
 import (
+	"bytes"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,17 +11,13 @@ import (
 	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket/daemonWebsocketTypes"
 )
 
-// Handler for Regular Rest calls that can be proxied
-func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *daemonWebsocket.DaemonWebsocket) {
+// Handler for kubectl logs calls that can be proxied
+func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *daemonWebsocket.DaemonWebsocket) {
 	// First extract all the info out of the request
-	// gzipRequest := false
 	headers := make(map[string]string)
 	for name, values := range r.Header {
 		// Loop over all values for the name.
 		for _, value := range values {
-			// if name == "Accept-Encoding" && strings.Contains(value, "gzip") {
-			// 	gzipRequest = true
-			// }
 			headers[name] = value
 		}
 	}
@@ -49,31 +47,45 @@ func HandleREST(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	dataFromClientMessage.Method = method
 	dataFromClientMessage.Body = bodyInBytes
 	dataFromClientMessage.RequestIdentifier = requestIdentifier
-	wsClient.SendRequestDaemonToBastion(dataFromClientMessage)
+	wsClient.SendRequestLogDaemonToBastion(dataFromClientMessage)
 
-	// Wait for the response
+	// Wait for the responses
 	receivedRequestIdentifier := -1
-	for receivedRequestIdentifier != requestIdentifier {
-		responseToDaemonFromBastionMessageResponse := daemonWebsocketTypes.ResponseBastionToDaemon{}
-		responseToDaemonFromBastionMessageResponse = <-wsClient.ResponseToDaemonChan
+	for {
+		responseLogBastionToDaemon := daemonWebsocketTypes.ResponseBastionToDaemon{}
+		// TODO : There is a race condition here on this chan between this kubectl logs and other invocations of the same command
+		// Possible solution; have a dict of identifiers -> channels to direct every msg to the right chan
+		responseLogBastionToDaemon = <-wsClient.ResponseLogToDaemonChan
 
-		receivedRequestIdentifier = responseToDaemonFromBastionMessageResponse.RequestIdentifier
+		receivedRequestIdentifier = responseLogBastionToDaemon.RequestIdentifier
 		// Ensure that the identifer is correct
 		if receivedRequestIdentifier != requestIdentifier {
 			// Rebroadbast the message
-			wsClient.AlertOnResponseToDaemonChan(responseToDaemonFromBastionMessageResponse)
+			wsClient.AlertOnResponseLogToDaemonChan(responseLogBastionToDaemon)
 		} else {
 			// Now let the kubectl client know the response
 			// First do headers
-			for name, value := range responseToDaemonFromBastionMessageResponse.Headers {
+			for name, value := range responseLogBastionToDaemon.Headers {
 				if name != "Content-Length" {
 					w.Header().Set(name, value)
 				}
 			}
-
-			w.Write(responseToDaemonFromBastionMessageResponse.Content)
-			if responseToDaemonFromBastionMessageResponse.StatusCode != 200 {
-				log.Println("ERROR HANDLING REST SENDNIG 500")
+			
+			// Then stream the response to kubectl
+			src := bytes.NewReader(responseLogBastionToDaemon.Content)
+			_, err = io.Copy(w, src)
+			if err != nil {
+				log.Printf("Error streaming the log to kubectl: %v", err)
+				return
+			}
+			// This is required, don't touch - not sure why
+			flush, ok := w.(http.Flusher)
+			if ok {
+				flush.Flush()
+			}
+			// TODO : This needs to be tested
+			if responseLogBastionToDaemon.StatusCode != 200 {
+				log.Println("ERROR HANDLING LOG SENDNIG 500")
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}

@@ -10,7 +10,7 @@ import (
 	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 )
 
-func HandleREST(requestForServer daemonServerWebsocketTypes.RequestToClusterFromBastionMessage, serviceAccountToken string, kubeHost string, wsClient *daemonServerWebsocketTypes.DaemonServerWebsocket) {
+func HandleREST(requestForServer daemonServerWebsocketTypes.RequestBastionToCluster, serviceAccountToken string, kubeHost string, wsClient *daemonServerWebsocketTypes.DaemonServerWebsocket) {
 	log.Printf("Handling incoming RequestForServerFromBastion. For endpoint %s", requestForServer.Endpoint)
 
 	// Perform the api request
@@ -46,7 +46,7 @@ func HandleREST(requestForServer daemonServerWebsocketTypes.RequestToClusterFrom
 	defer res.Body.Close()
 
 	// Now we need to send that data back to the client
-	responseToBastionFromCluster := daemonServerWebsocketTypes.ResponseToBastionFromClusterMessage{}
+	responseToBastionFromCluster := daemonServerWebsocketTypes.ResponseClusterToBastion{}
 	responseToBastionFromCluster.StatusCode = res.StatusCode
 	responseToBastionFromCluster.RequestIdentifier = requestForServer.RequestIdentifier
 
@@ -63,7 +63,7 @@ func HandleREST(requestForServer daemonServerWebsocketTypes.RequestToClusterFrom
 	responseToBastionFromCluster.Content = bodyBytes
 
 	// Finally send our response
-	wsClient.SendResponseToBastionFromClusterMessage(responseToBastionFromCluster) // TODO: This returns err
+	wsClient.SendResponseClusterToBastion(responseToBastionFromCluster) // TODO: This returns err
 	// check(err)
 
 	log.Println("Responded to message")

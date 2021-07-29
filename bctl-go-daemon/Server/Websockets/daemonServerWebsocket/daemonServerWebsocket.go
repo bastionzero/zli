@@ -11,6 +11,7 @@ import (
 	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/plugins/handleExec"
 	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/plugins/handleREST"
+	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/plugins/handleLogs"
 	"bastionzero.com/bctl/v1/commonWebsocketClient"
 )
 
@@ -39,7 +40,8 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 	hubEndpoint := "/api/v1/hub/kube-server"
 
 	// Add our response channels
-	ret.RequestForServerChan = make(chan daemonServerWebsocketTypes.RequestToClusterFromBastionMessage)
+	ret.RequestForServerChan = make(chan daemonServerWebsocketTypes.RequestBastionToCluster)
+	ret.RequestLogForServerChan = make(chan daemonServerWebsocketTypes.RequestBastionToCluster)
 	ret.RequestForStartExecChan = make(chan daemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage)
 	ret.ExecStdoutChan = make(chan daemonServerWebsocketTypes.SendStdoutToDaemonSignalRMessage)
 	ret.ExecStdinChannel = make(chan daemonServerWebsocketTypes.StdinToClusterFromBastionSignalRMessage)
@@ -61,7 +63,7 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 			case message := <-ret.WebsocketClient.WebsocketMessageChan:
 				if bytes.Contains(message, []byte("\"target\":\"RequestToClusterFromBastion\"")) {
 					log.Printf("Handling incoming RequestToClusterFromBastion message")
-					requestToClusterFromBastionSignalRMessage := new(daemonServerWebsocketTypes.RequestToClusterFromBastionSignalRMessage)
+					requestToClusterFromBastionSignalRMessage := new(daemonServerWebsocketTypes.RequestBastionToClusterSignalRMessage)
 
 					err := json.Unmarshal(message, requestToClusterFromBastionSignalRMessage)
 					if err != nil {
@@ -70,6 +72,17 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 					}
 					// Broadcase this response to our DataToClientChan
 					ret.AlertOnRequestForServerChan(requestToClusterFromBastionSignalRMessage.Arguments[0])
+				} else if bytes.Contains(message, []byte("\"target\":\"RequestLogToClusterFromBastion\"")) {
+					log.Printf("Handling incoming RequestLogToClusterFromBastion message")
+					requestLogBastionToClusterSignalRMessage := new(daemonServerWebsocketTypes.RequestBastionToClusterSignalRMessage)
+
+					err := json.Unmarshal(message, requestLogBastionToClusterSignalRMessage)
+					if err != nil {
+						log.Printf("Error un-marshalling RequestLogBastionToCluster: %s", err)
+						return
+					}
+
+					ret.AlertOnRequestLogForServerChan(requestLogBastionToClusterSignalRMessage.Arguments[0])
 				} else if bytes.Contains(message, []byte("\"target\":\"StartExecToClusterFromBastion\"")) {
 					log.Printf("Handling incoming StartExecToClusterFromBastion message")
 					startExecToClusterFromBastionSignalRMessage := new(daemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage)
@@ -140,12 +153,26 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 	// Handle incoming REST request messages
 	go func() {
 		for {
-			requestForServer := daemonServerWebsocketTypes.RequestToClusterFromBastionMessage{}
+			requestForServer := daemonServerWebsocketTypes.RequestBastionToCluster{}
 			select {
 			case <-ctx.Done():
 				return
 			case requestForServer = <-ret.RequestForServerChan:
 				go handleREST.HandleREST(requestForServer, serviceAccountToken, kubeHost, &ret)
+			}
+
+		}
+	}()
+
+	// Handle incoming Logs request messages
+	go func() {
+		for {
+			requestLogForServer := daemonServerWebsocketTypes.RequestBastionToCluster{}
+			select {
+			case <-ctx.Done():
+				return
+			case requestLogForServer = <-ret.RequestLogForServerChan:
+				go handleLogs.HandleLogs(requestLogForServer, serviceAccountToken, kubeHost, &ret)
 			}
 
 		}
