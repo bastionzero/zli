@@ -46,7 +46,6 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 	responseLogClusterToBastion.StatusCode = 200
 	responseLogClusterToBastion.RequestIdentifier = requestLogForServer.RequestIdentifier
 
-	// TODO : Should we be using the InsecureSkipTLSVerifyBackend flag here?
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
     podLogOptions := v1.PodLogOptions{
@@ -61,7 +60,6 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 		panic(err.Error())
 	}
 	// Add our impersonation information
-	// TODO: Make this not hardcoded, bastion should send info here
 	config.Impersonate = rest.ImpersonationConfig{
 		UserName: requestLogForServer.Role,
 		Groups:   []string{"system:authenticated"},
@@ -77,7 +75,6 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
         Pods(namespace).
         GetLogs(podName, &podLogOptions)
     
-	// TODO : go routine and cancel
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 

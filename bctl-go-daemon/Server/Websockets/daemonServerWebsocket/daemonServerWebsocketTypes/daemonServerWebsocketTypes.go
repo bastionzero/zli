@@ -24,20 +24,6 @@ type RequestBastionToCluster struct {
 	Role              string            `json"role"`
 }
 
-// type RequestLogBastionToClusterSignalRMessage struct {
-// 	Target    string                    	`json:"target"`
-// 	Arguments []RequestLogBastionToCluster 	`json:"arguments"`
-// 	Type      int                       	`json:"type"`
-// }
-// type RequestLogBastionToCluster struct {
-// 	Endpoint          string            `json:"endpoint"`
-// 	Headers           map[string]string `json:"headers"`
-// 	Method            string            `json:"method"`
-// 	Body              []byte            `json:"body"`
-// 	RequestIdentifier int               `json:"requestIdentifier"`
-// 	Role              string            `json"role"`
-// }
-
 type ResponseClusterToBastionSignalRMessage struct {
 	Target    string                     `json:"target"`
 	Arguments []ResponseClusterToBastion `json:"arguments"`
@@ -49,18 +35,6 @@ type ResponseClusterToBastion struct {
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Headers           map[string]string `json:"headers"`
 }
-
-// type ResponseLogClusterToBastionSignalRMessage struct {
-// 	Target    string                     `json:"target"`
-// 	Arguments []ResponseLogClusterToBastion `json:"arguments"`
-// 	Type      int                        `json:"type"`
-// }
-// type ResponseLogClusterToBastion struct {
-// 	StatusCode        int               `json:"statusCode"`
-// 	Content           []byte		    `json:"content"`
-// 	RequestIdentifier int               `json:"requestIdentifier"`
-// 	Headers           map[string]string `json:"headers"`
-// }
 
 type StartExecToClusterFromBastionSignalRMessage struct {
 	Target    string                                 `json:"target"`
