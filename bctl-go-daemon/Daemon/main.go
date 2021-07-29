@@ -31,7 +31,7 @@ func main() {
 	// Parse and TODO: ensure they all exist
 	flag.Parse()
 
-	possibleArgs := [*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr ]
+	possibleArgs := []string{*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr}
 	for _, flag := range possibleArgs {
 		if flag == "" {
 			log.Printf("Missing flags!")
