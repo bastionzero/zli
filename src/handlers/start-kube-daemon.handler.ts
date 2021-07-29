@@ -43,7 +43,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
     }
     
     // Build our args and cwd
-    var args = [`-sessionId=${configService.sessionId()}`, `-assumeRole=${assumeUser}`, `-assumeCluster=${assumeCluster}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace("https://", "")}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`, `-environmentId="${clusterTarget.environmentId}"`]
+    var args = [`-sessionId=${configService.sessionId()}`, `-assumeRole=${assumeUser}`, `-assumeCluster=${assumeCluster}`, `-daemonPort=${kubeConfig['localPort']}`, `-serviceURL=${configService.serviceUrl().slice(0, -1).replace("https://", "")}`, `-authHeader="${configService.getAuthHeader()}"`, `-localhostToken="${kubeConfig['token']}"`, `-environmentId="${clusterTarget.environmentId}"`, `-certPath="${kubeConfig['certPath']}"`, `-keyPath="${kubeConfig['keyPath']}"`]
     var cwd = process.cwd()
 
 

@@ -27,11 +27,13 @@ func main() {
 	daemonPortPtr := flag.String("daemonPort", "", "Daemon Port To Use")
 	localhostTokenPtr := flag.String("localhostToken", "", "Localhost Token to Validate Kubectl commands")
 	environmentIdPtr := flag.String("environmentId", "", "Environment Id of cluster we are connecting too")
+	certPath := flag.String("certPath", "", "Path to cert to use for our localhost server")
+	keyPath := flag.String("keyPath", "", "Path to key to use for our localhost server")
 
 	// Parse and TODO: ensure they all exist
 	flag.Parse()
 
-	possibleArgs := []string{*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr}
+	possibleArgs := []string{*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr, *certPath, *keyPath}
 	for _, flag := range possibleArgs {
 		if flag == "" {
 			log.Printf("Missing flags!")
@@ -55,11 +57,7 @@ func main() {
 		// 	ConnContext: SaveConnInContext,
 		// }
 
-		// Open our key/cert
-		// keyFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem")
-		// certFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem")
-
-		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, "/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem", "/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem", nil))
+		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, *certPath, *keyPath, nil))
 	}()
 	select {}
 }

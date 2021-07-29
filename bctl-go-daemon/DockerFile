@@ -30,9 +30,8 @@ RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
     else echo "Not Adding dev tools"; fi
 
 # Make start an executable
-RUN chmod +x /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
-RUN chmod +x /bctl-server/Server/start-dev.sh && chmod 777 /bctl-server/Server/start-dev.sh
-
+RUN chmod +X /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
+RUN chmod +X /bctl-server/Server/start-dev.sh && chmod 777 /bctl-server/Server/start-dev.sh
 
 WORKDIR /bctl-server/Server
 ENTRYPOINT [ "./start.sh" ]
