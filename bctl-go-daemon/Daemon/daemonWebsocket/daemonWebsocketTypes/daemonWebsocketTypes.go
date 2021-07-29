@@ -23,20 +23,6 @@ type ResponseBastionToDaemon struct {
 	Headers           map[string]string `json:"headers"`
 }
 
-
-// type ResponseLogBastionToDaemonSignalRMessage struct {
-// 	Type      int                          `json:"type"`
-// 	Target    string                       `json:"target"`
-// 	Arguments []ResponseLogBastionToDaemon `json:"arguments"`
-// }
-
-// type ResponseLogBastionToDaemon struct {
-// 	StatusCode        int               `json:"statusCode"`
-// 	Content           []byte            `json:"content"`
-// 	RequestIdentifier int               `json:"requestIdentifier"`
-// 	Headers           map[string]string `json:"headers"`
-// }
-
 type RequestDaemonToBastionSignalRMessage struct {
 	Target    string                   `json:"target"`
 	Arguments []RequestDaemonToBastion `json:"arguments"`
@@ -51,22 +37,6 @@ type RequestDaemonToBastion struct {
 	Body              []byte            `json:"Body"`
 	RequestIdentifier int               `json:"RequestIdentifier"`
 }
-
-// type RequestLogDaemonToBastionSignalRMessage struct {
-// 	Target    string                      `json:"target"`
-// 	Arguments []RequestLogDaemonToBastion `json:"arguments"`
-// 	Type      int                         `json:"type"`
-// }
-
-// type RequestLogDaemonToBastion struct {
-// 	LogId             string            `json:"logId"`
-// 	KubeCommand       string            `json:"kubeCommand"`
-// 	Endpoint          string            `json:"endpoint"`
-// 	Headers           map[string]string `json:"Headers"`
-// 	Method            string            `json:"Method"`
-// 	Body              []byte            `json:"Body"`
-// 	RequestIdentifier int               `json:"RequestIdentifier"`
-// }
 
 type StartExecToBastionFromDaemonSignalRMessage struct {
 	Target    string                                `json:"target"`
