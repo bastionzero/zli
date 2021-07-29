@@ -202,10 +202,14 @@ export class CliDriver
                         .positional('clusterName', {
                             type: 'string',
                         })
+                        .option('force', {
+                            type: 'boolean',
+                            alias: 'f'
+                        })
                         .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
                 },
                 async (argv) => {
-                    await addRoleHandler(argv.clusterRoleName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                    await addRoleHandler(argv.clusterRoleName, argv.clusterName, argv.force, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
@@ -392,7 +396,7 @@ export class CliDriver
                 }
             )
             .command(
-                ['list-kube-clusters', 'lk'],
+                ['list-clusters', 'lk'],
                 'List all clusters (filters available)',
                 (yargs) => {
                     return yargs

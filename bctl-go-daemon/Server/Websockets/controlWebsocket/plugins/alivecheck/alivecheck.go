@@ -2,6 +2,7 @@ package alivecheck
 
 import (
 	"context"
+	"regexp"
 
 	"bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
 
@@ -31,9 +32,14 @@ func AliveCheck(message controlWebsocketTypes.AliveCheckToClusterFromBastionSign
 	if err != nil {
 		panic(err.Error())
 	}
+
 	aliveCheckToBastionFromClusterMessage.ClusterRoles = []string{}
 	for _, clusterRole := range clusterRoles.Items {
-		aliveCheckToBastionFromClusterMessage.ClusterRoles = append(aliveCheckToBastionFromClusterMessage.ClusterRoles, clusterRole.Name)
+		// We do not consider any system:...  or eks:..., basically any system: looking roles as valid. This can be overridden from Bastion
+		var systemRegexPatten = regexp.MustCompile(`[a-zA-Z0-9]*:[a-za-zA-Z0-9-]*`)
+		if !systemRegexPatten.MatchString(clusterRole.Name) {
+			aliveCheckToBastionFromClusterMessage.ClusterRoles = append(aliveCheckToBastionFromClusterMessage.ClusterRoles, clusterRole.Name)
+		}
 	}
 
 	// Let Bastion know everything

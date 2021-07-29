@@ -75,6 +75,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
             logger.info(`Started kube daemon at ${kubeConfig["localHost"]}:${kubeConfig['localPort']} for ${assumeUser}@${assumeCluster}`);
             process.exit(0)
         } else {
+            // Start our daemon process, but stream our stdio to the user (pipe)
             const daemonProcess = await spawn(finalDaemonPath, args,
                 {
                     cwd: cwd,
@@ -85,7 +86,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
             );
     
             process.on('SIGINT', () => {
-                console.log("here???")
+                // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
                 spawn('kill', ['-9', daemonProcess.pid], {
                     cwd: process.cwd(),
                     shell: true,
@@ -94,7 +95,8 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
                 })
             })
     
-            daemonProcess.on('exit', function() {
+            daemonProcess.on('exit', function () {
+                // Whenever the daemon exits, exit
                 process.exit()
             })
         }

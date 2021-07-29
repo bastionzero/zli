@@ -5,13 +5,33 @@ import { KubernetesPolicyClusterRoles } from '../http.service/http.service.types
 import { v4 as uuidv4 } from 'uuid';
 import { ClusterSummary, KubeClusterStatus } from "../types";
 import { cleanExit } from './clean-exit.handler';
+import { argv } from 'yargs';
+import { valid } from 'semver';
 const { spawn } = require('child_process');
 
 
-export async function addRoleHandler(clusterRoleName: string, clusterName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function addRoleHandler(clusterRoleName: string, clusterName: string, force: boolean, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyService = new PolicyService(configService, logger);
     var policies = await policyService.ListAllPolicies();
+
+    // Check if this is a valid cluster name
+    var validRole = false;
+    for (var clusterInfo of await clusterTargets) {
+        if (clusterInfo.name == clusterName) {
+            for (var possibleRole of clusterInfo.validRoles) {
+                if (possibleRole == clusterRoleName) {
+                    validRole = true;
+                }
+            }
+        }
+    }
+
+    // If this is not a valid role, and they have not passed the force flag, exit
+    if (validRole == false || force != true) {
+        logger.error(`The role chosen: ${clusterRoleName} is not a valid role on the cluster ${clusterName}. If this is a mistake, please use the -f flag. Run zli describe <custerName> to see all valid cluster roles.`)
+        await cleanExit(1, logger);
+    }
     
     // Loop till we find the one we are looking for
     for (var policy of policies) {
@@ -21,6 +41,8 @@ export async function addRoleHandler(clusterRoleName: string, clusterName: strin
                 name: clusterRoleName
             }
             policy.context.clusterRoles[clusterRoleName] = clusterRoleToAdd
+
+            
 
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy)

@@ -1,6 +1,8 @@
 package handleExec
 
 import (
+	"io"
+
 	"bastionzero.com/bctl/v1/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes"
 )
 
@@ -38,7 +40,10 @@ func (r *StdinReader) Read(p []byte) (int, error) {
 	stdinToClusterFromBastionSignalRMessage = <-r.wsClient.ExecStdinChannel
 	stdinToClusterFromBastionMessage := daemonServerWebsocketTypes.StdinToClusterFromBastionMessage{}
 	stdinToClusterFromBastionMessage = stdinToClusterFromBastionSignalRMessage.Arguments[0]
-	if stdinToClusterFromBastionMessage.RequestIdentifier == r.RequestIdentifier {
+
+	if stdinToClusterFromBastionMessage.End {
+		return 1, io.EOF
+	} else if stdinToClusterFromBastionMessage.RequestIdentifier == r.RequestIdentifier {
 		n := copy(p, stdinToClusterFromBastionMessage.Stdin)
 		return n, nil
 	} else {
