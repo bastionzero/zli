@@ -26,6 +26,7 @@ const kill = require('tree-kill');
 export async function startKubeDaemonHandler(connectUser: string, connectCluster: string, configService: ConfigService, logger: Logger) {
     // First check if we've already started a process
     var kubeConfig = configService.getKubeConfig();
+    // TODO : Make sure the user has created a kubeConfig before
     if (kubeConfig['localPid'] != null) {
         // TODO: Add check here to ensure the process exists
         // First try to kill the process

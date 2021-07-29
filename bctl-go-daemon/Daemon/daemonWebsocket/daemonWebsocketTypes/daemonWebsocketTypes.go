@@ -10,25 +10,25 @@ type ReadyToClientFromBastionMessage struct {
 	Ready bool `json:"ready"`
 }
 
-type ResponseToDaemonFromBastionSignalRMessage struct {
+type ResponseBastionToDaemonSignalRMessage struct {
 	Type      int                                  `json:"type"`
 	Target    string                               `json:"target"`
-	Arguments []ResponseToDaemonFromBastionMessage `json:"arguments"`
+	Arguments []ResponseBastionToDaemon `json:"arguments"`
 }
 
-type ResponseToDaemonFromBastionMessage struct {
+type ResponseBastionToDaemon struct {
 	StatusCode        int               `json:"statusCode"`
 	Content           []byte            `json:"content"`
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Headers           map[string]string `json:"headers"`
 }
 
-type RequestToBastionFromDaemonSignalRMessage struct {
-	Target    string                              `json:"target"`
-	Arguments []RequestToBastionFromDaemonMessage `json:"arguments"`
-	Type      int                                 `json:"type"`
+type RequestDaemonToBastionSignalRMessage struct {
+	Target    string                   `json:"target"`
+	Arguments []RequestDaemonToBastion `json:"arguments"`
+	Type      int                      `json:"type"`
 }
-type RequestToBastionFromDaemonMessage struct {
+type RequestDaemonToBastion struct {
 	LogId             string            `json:"logId"`
 	KubeCommand       string            `json:"kubeCommand"`
 	Endpoint          string            `json:"endpoint"`

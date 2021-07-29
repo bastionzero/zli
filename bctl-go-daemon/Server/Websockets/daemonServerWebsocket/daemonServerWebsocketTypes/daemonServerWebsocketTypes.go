@@ -10,12 +10,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type RequestToClusterFromBastionSignalRMessage struct {
-	Target    string                               `json:"target"`
-	Arguments []RequestToClusterFromBastionMessage `json:"arguments"`
-	Type      int                                  `json:"type"`
+type RequestBastionToClusterSignalRMessage struct {
+	Target    string                    `json:"target"`
+	Arguments []RequestBastionToCluster `json:"arguments"`
+	Type      int                       `json:"type"`
 }
-type RequestToClusterFromBastionMessage struct {
+type RequestBastionToCluster struct {
 	Endpoint          string            `json:"endpoint"`
 	Headers           map[string]string `json:"headers"`
 	Method            string            `json:"method"`
@@ -24,12 +24,12 @@ type RequestToClusterFromBastionMessage struct {
 	Role              string            `json"role"`
 }
 
-type ResponseToBastionFromClusterSignalRMessage struct {
-	Target    string                                `json:"target"`
-	Arguments []ResponseToBastionFromClusterMessage `json:"arguments"`
-	Type      int                                   `json:"type"`
+type ResponseClusterToBastionSignalRMessage struct {
+	Target    string                     `json:"target"`
+	Arguments []ResponseClusterToBastion `json:"arguments"`
+	Type      int                        `json:"type"`
 }
-type ResponseToBastionFromClusterMessage struct {
+type ResponseClusterToBastion struct {
 	StatusCode        int               `json:"statusCode"`
 	Content           []byte            `json:"content"`
 	RequestIdentifier int               `json:"requestIdentifier"`
@@ -113,8 +113,12 @@ type DaemonServerWebsocket struct {
 
 	// These are all the    types of channels we have available
 	// Basic REST Call related
-	RequestForServerChan     chan RequestToClusterFromBastionMessage
+	RequestForServerChan     chan RequestBastionToCluster
 	RequestForServerChanLock sync.Mutex
+
+	// Logs Related
+	RequestLogForServerChan     chan RequestBastionToCluster
+	RequestLogForServerChanLock sync.Mutex
 
 	// Exec Related
 	RequestForStartExecChan     chan StartExecToClusterFromBastionSignalRMessage
@@ -129,11 +133,18 @@ type DaemonServerWebsocket struct {
 	SocketLock sync.Mutex // Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
 }
 
-func (client *DaemonServerWebsocket) AlertOnRequestForServerChan(requestToClusterFromBastionMessage RequestToClusterFromBastionMessage) {
+func (client *DaemonServerWebsocket) AlertOnRequestForServerChan(requestToClusterFromBastionMessage RequestBastionToCluster) {
 	// Lock our mutex and setup the unlock
 	client.RequestForServerChanLock.Lock()
 	defer client.RequestForServerChanLock.Unlock()
 	client.RequestForServerChan <- requestToClusterFromBastionMessage
+}
+
+func (client *DaemonServerWebsocket) AlertOnRequestLogForServerChan(requestLogBastionToCluster RequestBastionToCluster) {
+	// Lock our mutex and setup the unlock
+	client.RequestLogForServerChanLock.Lock()
+	defer client.RequestLogForServerChanLock.Unlock()
+	client.RequestLogForServerChan <- requestLogBastionToCluster
 }
 
 func (client *DaemonServerWebsocket) AlertOnRequestForStartExecChan(startExecToClusterFromBastionSignalRMessage StartExecToClusterFromBastionSignalRMessage) {
@@ -164,16 +175,16 @@ func (client *DaemonServerWebsocket) AlertOnExecResizeChan(resizeTerminalToClust
 	client.ExecResizeChannel <- resizeTerminalToClusterFromBastionSingalRMessage
 }
 
-func (client *DaemonServerWebsocket) SendResponseToBastionFromClusterMessage(responseToBastionFromClusterMessage ResponseToBastionFromClusterMessage) error {
+func (client *DaemonServerWebsocket) SendResponseClusterToBastion(responseToBastionFromClusterMessage ResponseClusterToBastion) error {
 	// Lock our mutex and setup the unlock
 	client.SocketLock.Lock()
 	defer client.SocketLock.Unlock()
 
 	log.Printf("Sending Response to To Bastion")
 	// Create the object, add relevent information
-	toSend := new(ResponseToBastionFromClusterSignalRMessage)
+	toSend := new(ResponseClusterToBastionSignalRMessage)
 	toSend.Target = "ResponseToBastionFromCluster"
-	toSend.Arguments = []ResponseToBastionFromClusterMessage{responseToBastionFromClusterMessage}
+	toSend.Arguments = []ResponseClusterToBastion{responseToBastionFromClusterMessage}
 
 	// Add the type number from the class
 	toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
@@ -189,6 +200,34 @@ func (client *DaemonServerWebsocket) SendResponseToBastionFromClusterMessage(res
 		return err
 	}
 	// client.SignalRTypeNumber++
+	return nil
+}
+
+func (client *DaemonServerWebsocket) SendResponseLogClusterToBastion(responseLogClusterToBastion ResponseClusterToBastion) error {
+	// Lock our mutex and setup the unlock
+	client.SocketLock.Lock()
+	defer client.SocketLock.Unlock()
+
+	log.Printf("Sending Log Response to Bastion")
+	// Create the object, add relevent information
+	toSend := new(ResponseClusterToBastionSignalRMessage)
+	toSend.Target = "ResponseLogToBastionFromCluster"
+	toSend.Arguments = []ResponseClusterToBastion{responseLogClusterToBastion}
+
+	// Add the type number from the class
+	toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
+
+	// Marshal our message
+	toSendMarshalled, err := json.Marshal(toSend)
+	if err != nil {
+		return err
+	}
+
+	// Write our message
+	if err = client.WebsocketClient.Client.WriteMessage(websocket.TextMessage, append(toSendMarshalled, 0x1E)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
