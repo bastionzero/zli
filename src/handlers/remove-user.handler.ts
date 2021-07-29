@@ -21,11 +21,12 @@ export async function removeUserHandler(userEmail: string, clusterName: string, 
 
     // Get the existing policy
     const policyService = new PolicyService(configService, logger);
-    var policies = await policyService.ListAllPolicies();
+    const policies = await policyService.ListAllPolicies();
     
     // Loop till we find the one we are looking for
     for (var policy of policies) {
         if (policy.name == clusterName) {
+            // TODO: This can be done better then looping
             // Then remove the user from the policy
             var newSubjects = []
             for (var subject of policy.subjects) {

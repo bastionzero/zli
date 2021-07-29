@@ -10,7 +10,7 @@ import { cleanExit } from './clean-exit.handler';
 export async function removeRoleHandler(clusterRoleName: string, clusterName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyService = new PolicyService(configService, logger);
-    var policies = await policyService.ListAllPolicies();
+    const policies = await policyService.ListAllPolicies();
     
     // Loop till we find the one we are looking for
     for (var policy of policies) {
@@ -20,7 +20,7 @@ export async function removeRoleHandler(clusterRoleName: string, clusterName: st
                 logger.error(`No role ${clusterRoleName} exist for policy for cluster: ${clusterName}`);
                 await cleanExit(1, logger);
             }
-            // Then remove the role from the policy if it e
+            // Then remove the role from the policy if it exists
             delete policy.context.clusterRoles[clusterRoleName]
 
             // And finally update the policy

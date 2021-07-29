@@ -37,7 +37,7 @@ import { addUserHandler } from './handlers/add-user.handler';
 import { removeUserHandler } from './handlers/remove-user.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect.handler';
-import { statusHandler } from './handlers/status.handler';
+import { kubeStatusHandler } from './handlers/status.handler';
 import { describeHandler } from './handlers/describe.handler';
 
 // 3rd Party Modules
@@ -187,7 +187,7 @@ export class CliDriver
 
                         await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
                     } else {
-                        await statusHandler(this.configService, this.logger)
+                        await kubeStatusHandler(this.configService, this.logger)
                     }
                 }
             )

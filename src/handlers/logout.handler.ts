@@ -1,3 +1,4 @@
+import { killDaemon } from '../../src/kube.service/kube.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
@@ -13,12 +14,7 @@ export async function logoutHandler(configService: ConfigService, logger: Logger
     logger.info('Closing any existing Kube Proxy Connections');
     var kubeConfig = configService.getKubeConfig();
     if (kubeConfig['localPid'] != null) {
-        // First try to kill the process
-        spawn('pkill', ['-P', kubeConfig['localPid'].toString()])
-
-        // Update the config
-        kubeConfig['localPid'] = null
-        configService.setKubeConfig(kubeConfig);
+        killDaemon(configService);
     }
 
     logger.info('Logout successful');

@@ -2,14 +2,13 @@ import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { cleanExit } from './clean-exit.handler';
 
-export async function statusHandler(
+export async function kubeStatusHandler(
     configService: ConfigService,
     logger: Logger
 ) {
     // First get the status from the config service
     var kubeConfig = configService.getKubeConfig();
 
-    // then kill the daemon
     if (kubeConfig['localPid'] == null) {
         logger.warn('No Kube daemon running')
     } else {

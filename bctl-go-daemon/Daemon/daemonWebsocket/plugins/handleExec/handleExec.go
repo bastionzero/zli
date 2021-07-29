@@ -178,7 +178,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 						stdinToBastionFromDaemonMessage.Stdin = nil
 						stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
 						stdinToBastionFromDaemonMessage.End = true
-						wsClient.SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage)
+						wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
 
 						// Close the connection and the context
 						conn.Close()

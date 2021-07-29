@@ -1,5 +1,6 @@
 import path from 'path';
 import { of } from 'rxjs';
+import { killDaemon } from '../../src/kube.service/kube.service';
 import { ConfigService } from '../config.service/config.service';
 import { PolicyQueryService } from '../http.service/http.service';
 import { Logger } from "../logger.service/logger";
@@ -12,7 +13,7 @@ const tmp = require('tmp');
 
 export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First check that the cluster is online 
-    var clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
+    const clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
     if (clusterTarget.status != KubeClusterStatus.Online) {
         logger.error('Target cluster is offline!');
         await cleanExit(1, logger);
@@ -22,7 +23,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
     const policyService = new PolicyQueryService(configService, logger);
 
     // Now check that the user has the correct OPA permissions (we will do this again when the daemon starts)
-    var response = await policyService.CheckKubeProxy(assumeCluster, assumeUser, clusterTarget.environmentId);
+    const response = await policyService.CheckKubeProxy(assumeCluster, assumeUser, clusterTarget.environmentId);
     if (response.allowed != true) {
         logger.error(`You do not have the correct policy setup to access ${assumeCluster} as ${assumeUser}`);
         await cleanExit(1, logger);
@@ -31,9 +32,14 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
     // Check if we've already started a process
     var kubeConfig = configService.getKubeConfig();
     // TODO : Make sure the user has created a kubeConfig before
+    if (kubeConfig == undefined) {
+        logger.error('Please make sure you have created your kubeconfig before running proxy. You can do this via "zli generate kubeConfig"')
+        await cleanExit(1, logger);
+    }
+
+
     if (kubeConfig['localPid'] != null) {
-        // First try to kill the process
-        spawn('pkill', ['-P', kubeConfig['localPid'].toString()])
+        killDaemon(configService);
     }
     
     // Build our args and cwd
@@ -146,6 +152,7 @@ async function copyExecutableToTempDir(): Promise<string> {
     await copy(daemonExecPath, finalDaemonPath); // this should work
 
     // Grant execute permission
+    // TODO: See if this is the right level of permission
     await chmod(finalDaemonPath, 0o765);
 
     // Return the path

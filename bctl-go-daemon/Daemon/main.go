@@ -31,9 +31,14 @@ func main() {
 	// Parse and TODO: ensure they all exist
 	flag.Parse()
 
-	if *environmentIdPtr == "" || *sessionIdPtr == "" || *authHeaderPtr == "" || *serviceURLPtr == "" || *assumeRolePtr == "" || *assumeClusterPtr == "" || *daemonPortPtr == "" || *localhostTokenPtr == "" {
-		log.Printf("Missing flags!")
-		os.Exit(1)
+	possibleArgs := [*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr ]
+	for _, flag := range possibleArgs {
+		if flag == "" {
+			log.Printf("Missing flags!")
+			os.Exit(1)
+		}
+	}
+
 	}
 
 	// Open a Websocket to Bastion
@@ -56,7 +61,7 @@ func main() {
 		// keyFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem")
 		// certFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem")
 
-		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, "/Users/thanasis/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem", "/Users/thanasis/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem", nil))
+		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, "/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem", "/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem", nil))
 	}()
 	select {}
 }
@@ -102,7 +107,7 @@ func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string,
 	// Determin if its an exec or normal rest
 	if strings.Contains(r.URL.Path, "exec") {
 		handleExec.HandleExec(w, r, wsClient)
-	} else if strings.Contains(r.URL.Path, "log"){
+	} else if strings.Contains(r.URL.Path, "log") {
 		handleLogs.HandleLogs(w, r, commandBeingRun, logId, wsClient)
 	} else {
 		handleREST.HandleREST(w, r, commandBeingRun, logId, wsClient)

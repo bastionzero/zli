@@ -1,5 +1,7 @@
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
+import { cleanExit } from './clean-exit.handler';
+import { killDaemon } from '../../src/kube.service/kube.service';
 const { spawn } = require('child_process');
 
 
@@ -13,15 +15,12 @@ export async function disconnectHandler(
 
     // then kill the daemon
     if (kubeConfig['localPid'] != null) {
-        // First try to kill the process
-        spawn('pkill', ['-P', kubeConfig['localPid'].toString()])
-
-        // Update the config
-        kubeConfig['localPid'] = null
-        configService.setKubeConfig(kubeConfig);
+        killDaemon(configService);
         
         logger.info('Killed local Kube daemon')
     } else {
         logger.warn('No Kube daemon running')
     }
+
+    await cleanExit(0, logger);
 }

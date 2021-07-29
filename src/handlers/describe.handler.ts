@@ -6,7 +6,6 @@ import { EnvironmentDetails } from '../../src/http.service/http.service.types';
 import { PolicyQueryService } from '../../src/http.service/http.service';
 
 
-
 export async function describeHandler(
     clusterName: string,
     configService: ConfigService,
@@ -38,14 +37,16 @@ export async function describeHandler(
     }
     // Now make a query to see all the policy information
     const policyService = new PolicyQueryService(configService, logger);
-    var clusterPolicyInfo = await policyService.DescribeKubeProxy(clusterName);
+    const clusterPolicyInfo = await policyService.DescribeKubeProxy(clusterName);
 
     // Build our clusterrole string 
     var clusterRoleString = '';
     for (var clusterRole of clusterPolicyInfo.clusterRoles) {
         clusterRoleString += clusterRole.name + ',';
     }
-    clusterRoleString = clusterRoleString.substring(0, clusterRoleString.length - 1); // remove trailing ,
+    if (clusterPolicyInfo.clusterRoles.length != 0) {
+        clusterRoleString = clusterRoleString.substring(0, clusterRoleString.length - 1); // remove trailing ,
+    }
 
     // Build our validroles string
     var validRoleString = '';

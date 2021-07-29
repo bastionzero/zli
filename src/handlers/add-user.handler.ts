@@ -11,7 +11,7 @@ const { spawn } = require('child_process');
 export async function addUserHandler(userEmail: string, clusterName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
-    var userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
+    const userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
 
     if (userInfo.email == 'unknown') {
         // Log an error
@@ -21,7 +21,7 @@ export async function addUserHandler(userEmail: string, clusterName: string, clu
 
     // Get the existing policy
     const policyService = new PolicyService(configService, logger);
-    var policies = await policyService.ListAllPolicies();
+    const policies = await policyService.ListAllPolicies();
     
     // Loop till we find the one we are looking for
     for (var policy of policies) {
