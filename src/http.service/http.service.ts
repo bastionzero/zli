@@ -122,6 +122,20 @@ export class HttpService
         }
     }
 
+    protected async FormPostWithException<TReq, TResp>(route: string, body: TReq): Promise<TResp> {
+        this.setHeaders();
+
+        const formBody = this.getFormDataFromRequest(body);
+
+        const resp : TResp = await this.httpClient.post(
+            route,
+            {
+                body: formBody
+            }
+        ).json();
+        return resp;
+    }
+
     protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
     {
         this.setHeaders();
@@ -522,7 +536,7 @@ export class KubeService extends HttpService
             email: email,
         };
 
-        return this.FormPost('get-user', request);
+        return this.FormPostWithException('get-user', request);
     }
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {

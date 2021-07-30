@@ -11,12 +11,14 @@ const { spawn } = require('child_process');
 export async function addUserHandler(userEmail: string, clusterName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
-    const userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
 
-    if (userInfo.email == 'unknown') {
-        // Log an error
+    var userInfo = null;
+    try {
+        userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
+    } catch (error) {
         logger.error(`Unable to find user with email: ${userEmail}`);
         await cleanExit(1, logger);
+
     }
 
     // Get the existing policy
