@@ -102,8 +102,12 @@ type Options struct {
 // Handler for Regular Exec calls that can be proxied
 func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocket.DaemonWebsocket) {
 	// Extract the options of the exec
+<<<<<<< HEAD
 	options := extractExecOptions(request)
 
+=======
+	options := extractExecOptions(r)
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
 	log.Printf("Starting Exec for command: %s\n", options.Command)
 
 	// Initiate a handshake and upgrade the request
@@ -175,6 +179,13 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 					// TODO: Check if this is EOF, so we can end the stream
 					// Im not sure if this is the best way to close the
 					if strings.Contains(string(stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout), "exit") {
+						// First let stdin know to close the stream for the server
+						stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
+						stdinToBastionFromDaemonMessage.Stdin = nil
+						stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+						stdinToBastionFromDaemonMessage.End = true
+						wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
+
 						// Close the connection and the context
 						conn.Close()
 						cancel()
@@ -227,7 +238,12 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 				stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
 				stdinToBastionFromDaemonMessage.Stdin = buf[:n]
 				stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+<<<<<<< HEAD
 				wsClient.SendStdinToBastionFromDaemonMessage(stdinToBastionFromDaemonMessage)
+=======
+				stdinToBastionFromDaemonMessage.End = false
+				wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
 				break
 			}
 		}

@@ -93,7 +93,11 @@
     "scripts": [],
     "assets": [
       "node_modules/figlet/fonts/Standard.flf",
+<<<<<<< HEAD
       "bctl-go-daemon/bctl/daemon/daemon"
+=======
+      "bctl-go-daemon/Daemon/Daemon"
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
     ],
     "outputPath": "bin",
     "targets": [

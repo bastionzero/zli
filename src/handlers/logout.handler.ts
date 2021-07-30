@@ -2,6 +2,7 @@ import { killDaemon } from '../../src/kube.service/kube.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
+const { spawn } = require('child_process');
 
 
 export async function logoutHandler(configService: ConfigService, logger: Logger) {

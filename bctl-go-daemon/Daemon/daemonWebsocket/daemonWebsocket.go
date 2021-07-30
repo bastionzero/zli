@@ -32,7 +32,7 @@ type DaemonWebsocket struct {
 }
 
 // Constructor to create a new Control Websocket Client
-func NewDaemonWebsocketClient(sessionId string, authHeader string, serviceURL string, assumeRole string, assumeCluster string) *DaemonWebsocket {
+func NewDaemonWebsocketClient(sessionId string, authHeader string, serviceURL string, assumeRole string, assumeCluster string, environmentId string) *DaemonWebsocket {
 	ret := DaemonWebsocket{}
 
 	// Set us to not ready
@@ -46,7 +46,8 @@ func NewDaemonWebsocketClient(sessionId string, authHeader string, serviceURL st
 	params := make(map[string]string)
 	params["session_id"] = sessionId
 	params["assume_role"] = assumeRole
-	params["assume_cluster"] = assumeCluster // TODO: This doesnt do anything right now
+	params["assume_cluster"] = assumeCluster
+	params["environment_id"] = environmentId
 
 	hubEndpoint := "/api/v1/hub/kube"
 

@@ -176,4 +176,8 @@ async function copyExecutableToTempDir(): Promise<string> {
 
     // Return the path
     return finalDaemonPath;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))

@@ -1,7 +1,11 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
+<<<<<<< HEAD
 import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SsmTargetSummary, TargetUser, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, GetAllPoliciesForClusterIdRequest, GetAllPoliciesForClusterIdResponse, ShellConnectionAuthDetails} from './http.service.types';
+=======
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, KubeProxyDescribeRequest, KubeProxyDescribeResponse} from './http.service.types';
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
@@ -413,19 +417,28 @@ export class PolicyQueryService extends HttpService
 
     public CheckKubeProxy(
         clusterName: string,
+<<<<<<< HEAD
         clusterUser: string,
+=======
+        clusterRole: string,
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
         environmentId: string,
     ): Promise<KubeProxyResponse>
     {
         const request: KubeProxyRequest = {
             clusterName: clusterName,
+<<<<<<< HEAD
             clusterUser: clusterUser,
+=======
+            clusterRole: clusterRole,
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
             environmentId: environmentId,
         };
 
         return this.FormPost('kube-proxy', request);
     }
 
+<<<<<<< HEAD
     public GetAllPoliciesForClusterId(
         clusterId: string,
     ): Promise<GetAllPoliciesForClusterIdResponse>
@@ -435,6 +448,17 @@ export class PolicyQueryService extends HttpService
         };
 
         return this.FormPost('get-kube-policies', request);
+=======
+    public DescribeKubeProxy(
+        clusterName: string,
+    ): Promise<KubeProxyDescribeResponse>
+    {
+        const request: KubeProxyDescribeRequest = {
+            clusterName: clusterName,
+        };
+
+        return this.FormPost('describe-kube-proxy', request);
+>>>>>>> 5db1c6b (Add opa to kube poc (#127))
     }
 }
 

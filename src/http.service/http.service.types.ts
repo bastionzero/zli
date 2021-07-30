@@ -108,6 +108,8 @@ export interface ClusterSummary {
     id: string;
     clusterName: string;
     status: KubeClusterStatus;
+    environmentId?: string;
+    validRoles: string[];
 }
 
 export interface EnvironmentDetails {

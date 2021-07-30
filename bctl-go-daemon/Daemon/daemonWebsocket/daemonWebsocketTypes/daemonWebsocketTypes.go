@@ -57,6 +57,7 @@ type StdinToBastionFromDaemonSignalRMessage struct {
 type StdinToBastionFromDaemonMessage struct {
 	Stdin             []byte `json:"stdin"`
 	RequestIdentifier int    `json:"requestIdentifier"`
+	End               bool   `json:"end"`
 }
 
 type StdoutToDaemonFromBastionSignalRMessage struct {

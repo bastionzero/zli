@@ -161,7 +161,6 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 			case startExecToClusterSingalRMessage = <-ret.RequestForStartExecChan:
 				go handleExec.HandleExec(startExecToClusterSingalRMessage, serviceAccountToken, kubeHost, &ret)
 			}
-
 		}
 	}()
 
