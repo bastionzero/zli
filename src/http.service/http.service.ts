@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary} from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, KubeProxyDescribeRequest, KubeProxyDescribeResponse} from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
@@ -123,6 +123,74 @@ export class HttpService
         } catch(error) {
             this.handleHttpException(route, error);
         }
+    }
+
+    protected async FormPostWithException<TReq, TResp>(route: string, body: TReq): Promise<TResp> {
+        this.setHeaders();
+
+        const formBody = this.getFormDataFromRequest(body);
+
+        const resp : TResp = await this.httpClient.post(
+            route,
+            {
+                body: formBody
+            }
+        ).json();
+        return resp;
+    }
+
+    protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
+    {
+        this.setHeaders();
+
+        const formBody = this.getFormDataFromRequest(body);
+
+        try {
+            const resp : TResp = await this.httpClient.post(
+                route,
+                {
+                    body: formBody
+                }
+            ).json();
+            return resp;
+        } catch (error) {
+            this.handleHttpException(route, error);
+        }
+    }
+
+    // Returns a request object that you can add response handlers to at a higher layer
+    protected FormStream<TReq>(route: string, body: TReq, localPath: string) : Promise<void>
+    {
+        this.setHeaders();
+
+        const formBody = this.getFormDataFromRequest(body);
+        const whereToSave = localPath.endsWith('/') ? localPath + `bzero-download-${Math.floor(Date.now() / 1000)}` : localPath;
+
+        return new Promise((resolve, reject) => {
+            try {
+                const requestStream = this.httpClient.stream.post(
+                    route,
+                    {
+                        isStream: true,
+                        body: formBody
+                    }
+                );
+
+                // Buffer is returned by 'data' event
+                requestStream.on('data', (response: Buffer) => {
+                    fs.writeFileSync(whereToSave, response);
+                });
+
+                requestStream.on('end', () => {
+                    this.logger.info('File download complete');
+                    this.logger.info(whereToSave);
+                    resolve();
+                });
+            } catch (error) {
+                this.handleHttpException(route, error);
+                reject(error);
+            }
+        });
     }
 }
 
@@ -340,6 +408,32 @@ export class PolicyQueryService extends HttpService
 
         return this.Post('target-connect', request);
     }
+
+    public CheckKubeProxy(
+        clusterName: string,
+        clusterRole: string,
+        environmentId: string,
+    ): Promise<KubeProxyResponse>
+    {
+        const request: KubeProxyRequest = {
+            clusterName: clusterName,
+            clusterRole: clusterRole,
+            environmentId: environmentId,
+        };
+
+        return this.FormPost('kube-proxy', request);
+    }
+
+    public DescribeKubeProxy(
+        clusterName: string,
+    ): Promise<KubeProxyDescribeResponse>
+    {
+        const request: KubeProxyDescribeRequest = {
+            clusterName: clusterName,
+        };
+
+        return this.FormPost('describe-kube-proxy', request);
+    }
 }
 
 export class AutoDiscoveryScriptService extends HttpService
@@ -375,17 +469,60 @@ export class KubeService extends HttpService
     }
 
     public getKubeUnregisteredAgentYaml(
-        clusterName: string
+        clusterName: string,
+        labels: string,
+        namespace: string
     ): Promise<GetKubeUnregisteredAgentYamlResponse>
     {
         const request: GetKubeUnregisteredAgentYamlRequest = {
             clusterName: clusterName,
+            labels: labels,
+            namespace: namespace,
+        };
+        return this.FormPost('get-agent-yaml', request);
+    }
+
+    public GetUserInfoFromEmail(
+        email: string
+    ): Promise<GetUserInfoResponse>
+    {
+        const request: GetUserInfoRequest = {
+            email: email,
         };
 
-        return this.FormPost('get-agent-yaml', request);
+        return this.FormPostWithException('get-user', request);
     }
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {
         return this.Post('list', {});
+    }
+}
+
+export class PolicyService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/Policy', logger);
+    }
+
+    public ListAllPolicies(
+    ): Promise<KubernetesPolicySummary[]>
+    {
+        return this.Post('list', {});
+    }
+
+    public UpdateKubePolicy(
+        policy: KubernetesPolicySummary
+    ): Promise<void> {
+        const request: UpdateKubePolicyRequest = {
+            id: policy.id,
+            name: policy.name,
+            type: policy.type,
+            subjects: policy.subjects,
+            groups: policy.groups,
+            context: JSON.stringify(policy.context),
+            policyMetadata: policy.metadata
+        }
+        return this.Post('edit', request)
     }
 }

@@ -1,3 +1,5 @@
+import util from 'util';
+
 import { Logger } from '../logger.service/logger';
 import { ConfigService, KubeConfig } from '../config.service/config.service';
 
@@ -7,6 +9,7 @@ const fs = require('fs');
 
 
 export async function generateKubeconfigHandler(
+    argv: any,
     configService: ConfigService,
     logger: Logger
 ) {
@@ -48,17 +51,19 @@ export async function generateKubeconfigHandler(
                 });
 
                 // Generate a token that can be used for auth
-                // TODO: generate random one, with ++++
-                var token = 'q1bKLFOyUiosTfawzA93TzZIDzH2TNa2SMm0zEiPKTUwME6BkEo6Sql5yUWVBSWpKUGphaWpxSVAfekBOZbBhaEW+VlFUeVRGcluyVF5JT4+haZmPsluFoFu5XkpXk5BXq++++'
+                var randtoken = require('rand-token');
+                var token = randtoken.generate(128) + '++++';
 
                 // Now save the path in the configService
                 kubeConfig = {
-                    keyPath: pathToKey,
-                    certPath: pathToCert,
-                    token: token,
-                    localHost: 'localhost',
-                    localPort: 1234,
-                    localPid: null
+                  keyPath: pathToKey,
+                  certPath: pathToCert,
+                  token: token,
+                  localHost: 'localhost',
+                  localPort: 1234,
+                  localPid: null,
+                  assumeRole: null,
+                  assumeCluster: null
                 }
                 configService.setKubeConfig(kubeConfig)
                 resolve()
@@ -91,6 +96,10 @@ users:
       token: "${kubeConfig['token']}"
     `
 
-    // Show it to the user
-    logger.info(clientKubeConfig)
+  // Show it to the user or write to file 
+  if (argv.outputFile) {
+    await util.promisify(fs.writeFile)(argv.outputFile,clientKubeConfig);
+  } else {
+    logger.info(clientKubeConfig);
+  }
 }

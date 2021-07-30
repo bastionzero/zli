@@ -85,6 +85,7 @@ type StdinToClusterFromBastionSignalRMessage struct {
 }
 type StdinToClusterFromBastionMessage struct {
 	Stdin             []byte `json:"stdin"`
+	End               bool   `json:"end"`
 	RequestIdentifier int    `json:"requestIdentifier"`
 }
 

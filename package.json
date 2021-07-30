@@ -15,10 +15,10 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc",
-    "package": "npm run copy-files && pkg . --out-path bin",
+    "build": "tsc && cd bctl-go-daemon/Daemon && go build",
+    "package": "npm run copy-files && pkg .",
     "release": "npm run build && npm run package",
-    "copy-files": "copyfiles src/**/*.html src/**/*.css dist/",
+    "copy-files": "copyfiles src/**/*.html src/**/*.css bctl-go-daemon/Daemon/* dist/",
     "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest",
     "lint": "eslint 'src/**/*.ts' 'webshell-common-ts/**/*.ts' -c webshell-common-ts/.eslintrc.json"
@@ -37,7 +37,7 @@
     "eslint-plugin-promise": "^4.3.1",
     "eslint-plugin-unused-imports": "^1.1.0",
     "jest": "^26.6.3",
-    "pkg": "^4.4.9",
+    "pkg": "^5.3.1",
     "rimraf": "^3.0.2",
     "ts-jest": "^26.4.4",
     "typescript": "^4.0.5"
@@ -63,6 +63,7 @@
     "figlet": "^1.5.0",
     "form-data": "^3.0.0",
     "got": "^11.8.0",
+    "is-running": "^2.1.0",
     "libp2p-spdy": "^0.13.3",
     "lodash": "^4.17.20",
     "mixpanel": "^0.13.0",
@@ -77,6 +78,7 @@
     "sha3": "^2.1.4",
     "sshpk": "^1.16.1",
     "term-size": "^2.2.1",
+    "tmp": "^0.2.1",
     "tree-kill": "^1.2.2",
     "ts-node": "^9.0.0",
     "uuid": "^8.3.2",
@@ -87,7 +89,14 @@
   "pkg": {
     "scripts": [],
     "assets": [
-      "node_modules/figlet/fonts/Standard.flf"
+      "node_modules/figlet/fonts/Standard.flf",
+      "bctl-go-daemon/Daemon/Daemon"
+    ],
+    "outputPath": "bin",
+    "targets": [
+      "node12-linux-x64",
+      "node12-macos-x64",
+      "node12-win-x64"
     ]
   }
 }

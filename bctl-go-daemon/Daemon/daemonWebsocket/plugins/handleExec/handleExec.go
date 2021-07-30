@@ -105,7 +105,7 @@ type Options struct {
 func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocket.DaemonWebsocket) {
 	// Extract the options of the exec
 	options := extractExecOptions(r)
-	fmt.Printf("Starting Exec for command: %s\n", options.Command)
+	log.Printf("Starting Exec for command: %s\n", options.Command)
 
 	// Initiate a handshake and upgrade the request
 	supportedProtocols := []string{"v4.channel.k8s.io", "v3.channel.k8s.io", "v2.channel.k8s.io", "channel.k8s.io"}
@@ -114,7 +114,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 		fmt.Println("FATAL ERROR!")
 		return
 	}
-	fmt.Printf("Using protocol: %s\n", protocol)
+	log.Printf("Using protocol: %s\n", protocol)
 
 	// Now make our stream channel
 	streamCh := make(chan streamAndReply)
@@ -173,6 +173,13 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 					// TODO: Check if this is EOF, so we can end the stream
 					// Im not sure if this is the best way to close the
 					if strings.Contains(string(stdoutToDaemonFromBastionSignalRMessage.Arguments[0].Stdout), "exit") {
+						// First let stdin know to close the stream for the server
+						stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
+						stdinToBastionFromDaemonMessage.Stdin = nil
+						stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+						stdinToBastionFromDaemonMessage.End = true
+						wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
+
 						// Close the connection and the context
 						conn.Close()
 						cancel()
@@ -225,6 +232,7 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 				stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
 				stdinToBastionFromDaemonMessage.Stdin = buf[:n]
 				stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
+				stdinToBastionFromDaemonMessage.End = false
 				wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
 				break
 			}

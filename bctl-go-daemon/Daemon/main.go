@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"bastionzero.com/bctl/v1/Daemon/daemonWebsocket"
@@ -25,13 +26,24 @@ func main() {
 	assumeClusterPtr := flag.String("assumeCluster", "", "Kube Cluster to Connect to")
 	daemonPortPtr := flag.String("daemonPort", "", "Daemon Port To Use")
 	localhostTokenPtr := flag.String("localhostToken", "", "Localhost Token to Validate Kubectl commands")
+	environmentIdPtr := flag.String("environmentId", "", "Environment Id of cluster we are connecting too")
+	certPath := flag.String("certPath", "", "Path to cert to use for our localhost server")
+	keyPath := flag.String("keyPath", "", "Path to key to use for our localhost server")
 
 	// Parse and TODO: ensure they all exist
 	flag.Parse()
 
+	possibleArgs := []string{*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr, *certPath, *keyPath}
+	for _, flag := range possibleArgs {
+		if flag == "" {
+			log.Printf("Missing flags!")
+			os.Exit(1)
+		}
+	}
+
 	// Open a Websocket to Bastion
 	log.Printf("Opening websocket to Bastion: %s", *serviceURLPtr)
-	wsClient := daemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr)
+	wsClient := daemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *environmentIdPtr)
 
 	go func() {
 		// Define our http handlers
@@ -45,11 +57,7 @@ func main() {
 		// 	ConnContext: SaveConnInContext,
 		// }
 
-		// Open our key/cert
-		// keyFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem")
-		// certFile, _ := ioutil.ReadFile("/Users/sidpremkumar/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem")
-
-		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, "/Users/thanasis/Library/Preferences/bastionzero-zli-nodejs/kubeCert.pem", "/Users/thanasis/Library/Preferences/bastionzero-zli-nodejs/kubeKey.pem", nil))
+		log.Fatal(http.ListenAndServeTLS(":"+*daemonPortPtr, *certPath, *keyPath, nil))
 	}()
 	select {}
 }
@@ -95,7 +103,7 @@ func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string,
 	// Determin if its an exec or normal rest
 	if strings.Contains(r.URL.Path, "exec") {
 		handleExec.HandleExec(w, r, wsClient)
-	} else if strings.Contains(r.URL.Path, "log"){
+	} else if strings.Contains(r.URL.Path, "log") {
 		handleLogs.HandleLogs(w, r, commandBeingRun, logId, wsClient)
 	} else {
 		handleREST.HandleREST(w, r, commandBeingRun, logId, wsClient)

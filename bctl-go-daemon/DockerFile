@@ -3,6 +3,8 @@ FROM golang:1.16-alpine
 RUN mkdir -p /bctl-server/Server
 WORKDIR /bctl-server
 
+# This flag defines if we are building a prod image or not
+ARG PROD_TRUE="false"
 
 COPY . .
 RUN cd Server && \
@@ -10,30 +12,26 @@ RUN cd Server && \
     go get k8s.io/client-go/tools/remotecommand && \
     go get k8s.io/client-go/rest && \
     go get k8s.io/client-go/kubernetes/scheme && \
-    go get k8s.io/api/core/v1 && \
+    go get k8s.io/api/core/v1 && \ 
+    go get github.com/gorilla/websocket && \
     go get github.com/NYTimes/gziphandler && \
+    go get k8s.io/apimachinery/pkg/apis/meta/v1@v0.21.3 && \
     go install bastionzero.com/bctl/v1/Server 
 
 # Install rsync for devs, and python3 for our systemd alt
-RUN apk add rsync python3
-
-# Make our log dir
-RUN mkdir /var/log/cwc/
-
-# Install our systemd alt
-RUN wget https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -O /usr/local/bin/systemctl && \
+RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
+    apk add rsync python3 && \
+    mkdir /var/log/cwc/ && \
+    wget https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -O /usr/local/bin/systemctl && \
     chmod +x /usr/local/bin/systemctl && \
-    echo 'alias sd=/usr/local/bin/systemctl' >> ~/.bashrc;
-
-# Copy our service file
-RUN mkdir -p /etc/systemd/system/ && \
-    touch /etc/systemd/system/bctl-server.service && \
-    mv /bctl-server/bctl-server.service /etc/systemd/system/bctl-server.service
+    mkdir -p /etc/systemd/system/ && \
+    touch /etc/systemd/system/bctl-server.service && \ 
+    mv /bctl-server/bctl-server.service /etc/systemd/system/bctl-server.service; \
+    else echo "Not Adding dev tools"; fi
 
 # Make start an executable
-RUN chmod +x /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
-
+RUN chmod +X /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
+RUN chmod +X /bctl-server/Server/start-dev.sh && chmod 777 /bctl-server/Server/start-dev.sh
 
 WORKDIR /bctl-server/Server
-# ENTRYPOINT [ "go",  "run", "/bctl-server/Server/main.go", "-serviceURL=sid.bastionzero.com"]
-ENTRYPOINT [ "sleep", "infinity" ]
+ENTRYPOINT [ "./start.sh" ]

@@ -13,8 +13,10 @@ export interface KubeConfig {
     certPath: string,
     token: string,
     localHost: string,
-    localPort: number
-    localPid: number
+    localPort: number,
+    localPid: number,
+    assumeRole: string,
+    assumeCluster: string,
 }
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14

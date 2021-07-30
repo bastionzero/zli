@@ -5,26 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"sync"
 
 	"bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
+	"bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/plugins/alivecheck"
 	"bastionzero.com/bctl/v1/commonWebsocketClient"
-
-	"github.com/gorilla/websocket"
 )
 
-type ControlWebsocket struct {
-	WebsocketClient *commonWebsocketClient.WebsocketClient
-
-	// These are all the    types of channels we have available
-	ProvisionWebsocketChan chan controlWebsocketTypes.ProvisionNewWebsocketMessage
-
-	SocketLock sync.Mutex // Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
-}
-
 // Constructor to create a new Control Websocket Client
-func NewControlWebsocketClient(serviceURL string, activationToken string, orgId string, clusterName string, environmentId string) *ControlWebsocket {
-	ret := ControlWebsocket{}
+func NewControlWebsocketClient(serviceURL string, activationToken string, orgId string, clusterName string, environmentId string) *controlWebsocketTypes.ControlWebsocket {
+	ret := controlWebsocketTypes.ControlWebsocket{}
 
 	// Create our headers and params, headers are empty
 	headers := make(map[string]string)
@@ -38,9 +27,12 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 
 	hubEndpoint := "/api/v1/hub/kube-control"
 
+	log.Printf("serviceURL: %v, \nhubEndpoint: %V, \nparams: %V, \nheaders: %v", serviceURL, hubEndpoint, params, headers)
+
 	// Create our response channels
 	ret.ProvisionWebsocketChan = make(chan controlWebsocketTypes.ProvisionNewWebsocketMessage)
-	log.Printf("serviceURL: %v, \nhubEndpoint: %V, \nparams: %V, \nheaders: %v", serviceURL, hubEndpoint, params, headers)
+	ret.AliveCheckChan = make(chan controlWebsocketTypes.AliveCheckToClusterFromBastionSignalRMessage)
+
 	ret.WebsocketClient = commonWebsocketClient.NewCommonWebsocketClient(serviceURL, hubEndpoint, params, headers)
 
 	// Make our cancel context, unused for now
@@ -75,10 +67,7 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 						log.Printf("Error un-marshalling AliveCheckToClusterFromBastion: %s", err)
 						break
 					}
-					// Let the Bastion know we are alive!
-					aliveCheckToBastionFromClusterMessage := new(controlWebsocketTypes.AliveCheckToBastionFromClusterMessage)
-					aliveCheckToBastionFromClusterMessage.Alive = true
-					ret.SendAliveCheckToBastionFromClusterMessage(*aliveCheckToBastionFromClusterMessage)
+					ret.AliveCheckChan <- *aliveCheckToClusterFromBastionSignalRMessage
 				} else {
 					log.Printf("Unhandled incoming message: %s", string(message))
 				}
@@ -87,33 +76,19 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 		}
 	}()
 
+	// Set up our plugins
+	go func() {
+		for {
+			message := controlWebsocketTypes.AliveCheckToClusterFromBastionSignalRMessage{}
+			select {
+			case <-ctx.Done():
+				return
+			case message = <-ret.AliveCheckChan:
+				go alivecheck.AliveCheck(message, &ret)
+				break
+			}
+		}
+	}()
+
 	return &ret
-}
-
-func (client *ControlWebsocket) SendAliveCheckToBastionFromClusterMessage(aliveCheckToBastionFromClusterMessage controlWebsocketTypes.AliveCheckToBastionFromClusterMessage) error {
-	// Lock our mutex and setup the unlock
-	client.SocketLock.Lock()
-	defer client.SocketLock.Unlock()
-
-	log.Printf("Sending data to Daemon")
-	// Create the object, add relevent information
-	toSend := new(controlWebsocketTypes.AliveCheckToBastionFromClusterSignalRMessage)
-	toSend.Target = "AliveCheckToBastionFromCluster"
-	toSend.Arguments = []controlWebsocketTypes.AliveCheckToBastionFromClusterMessage{aliveCheckToBastionFromClusterMessage}
-
-	// Add the type number from the class
-	toSend.Type = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
-
-	// Marshal our message
-	toSendMarshalled, err := json.Marshal(toSend)
-	if err != nil {
-		return err
-	}
-
-	// Write our message
-	if err = client.WebsocketClient.Client.WriteMessage(websocket.TextMessage, append(toSendMarshalled, 0x1E)); err != nil {
-		return err
-	}
-	// client.SignalRTypeNumber++
-	return nil
 }

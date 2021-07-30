@@ -29,7 +29,14 @@ import { listConnectionsHandler } from './handlers/list-connections.handler';
 import { attachHandler } from './handlers/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kubeconfig.handler';
+import { addRoleHandler } from './handlers/add-role.handler';
+import { removeRoleHandler } from './handlers/remove-role.handler';
+import { addUserHandler } from './handlers/add-user.handler';
+import { removeUserHandler } from './handlers/remove-user.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
+import { disconnectHandler } from './handlers/disconnect.handler';
+import { kubeStatusHandler } from './handlers/status.handler';
+import { describeHandler } from './handlers/describe.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -66,7 +73,11 @@ export class CliDriver
 
     public start()
     {
-        yargs(process.argv.slice(2))
+        // ref: https://nodejs.org/api/process.html#process_process_argv0
+        this.processName = process.argv0;
+        
+        // @ts-ignore TS2589
+        yargs(process.argv.slice(2)) 
             .scriptName('zli')
             .usage('$0 <cmd> [args]')
             .wrap(null)
@@ -151,21 +162,121 @@ export class CliDriver
                 }
             )
             .command(
-                'disconnect <targetType>',
-                'Disconnect from a target',
+                'proxy [proxyString]',
+                'Proxy to a cluster',
                 (yargs) => {
                     return yargs
-                        .positional('targetType', {
+                        .positional('proxyString', {
                             type: 'string',
+                            default: null,
+                            demandOption: false,
                         })
-                        .example('disconnect cluster', 'Disconnect a local kube cluster daemon')
+                        .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role')
                 },
                 async (argv) => {
-                    if (argv.targetType == 'cluster') {
-                        this.logger.info("disconnect from cluster?")
+                    if (argv.proxyString) {
+                        // TODO make this smart parsing
+                        const connectUser = argv.proxyString.split('@')[0];
+                        const connectCluster = argv.proxyString.split('@')[1];
+
+                        await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
                     } else {
-                        this.logger.info(`Unhandled target type passed ${argv.targetType}`)
+                        await kubeStatusHandler(this.configService, this.logger)
                     }
+                }
+            )
+            .command(
+                'addrole <clusterRoleName> <clusterName>',
+                'Add a ClusterRole to a Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('clusterRoleName', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .option('force', {
+                            type: 'boolean',
+                            alias: 'f'
+                        })
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
+                },
+                async (argv) => {
+                    await addRoleHandler(argv.clusterRoleName, argv.clusterName, argv.force, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'removerole <clusterRoleName> <clusterName>',
+                'Remove a ClusterRole from Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('clusterRoleName', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
+                },
+                async (argv) => {
+                    await removeRoleHandler(argv.clusterRoleName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'adduser <idpEmail> <clusterName>',
+                'Add a IDP User to a Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('idpEmail', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('adduser test@test.com test-cluster', 'Adds the test@test.com IDP user test-cluster policy')
+                },
+                async (argv) => {
+                    await addUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'removeuser <idpEmail> <clusterName>',
+                'Remove a IDP User to a Cluster Policy',
+                (yargs) => {
+                    return yargs
+                        .positional('idpEmail', {
+                            type: 'string',
+                        })
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
+                        .example('removeuser test@test.com test-cluster', 'Removes the test@test.com IDP user test-cluster policy')
+                },
+                async (argv) => {
+                    await removeUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                }
+            )
+            .command(
+                'describe <clusterName>',
+                'Get detailed information about a certain cluster',
+                (yargs) => {
+                    return yargs
+                        .example('status test-cluster', '')
+                },
+                async (argv) => {
+                    await describeHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs)
+                }
+            )
+            .command(
+                'disconnect',
+                'Disconnect a Zli Daemon',
+                (yargs) => {
+                    return yargs
+                        .example('disconnect', 'Disconnect a local Zli Daemon')
+                },
+                async (argv) => {
+                    await disconnectHandler(this.configService, this.logger)
                 }
             )
             .command(
@@ -289,7 +400,7 @@ export class CliDriver
                 }
             )
             .command(
-                ['list-kube-clusters', 'lk'],
+                ['list-clusters', 'lk'],
                 'List all clusters (filters available)',
                 (yargs) => {
                     return yargs
@@ -471,7 +582,7 @@ export class CliDriver
                 }
             )
             .command(
-                'generate <typeOfConfig> <clusterName>',
+                'generate <typeOfConfig> [clusterName]',
                 'Generate a different types of configuration files',
                 (yargs) => {
                     return yargs
@@ -479,21 +590,29 @@ export class CliDriver
                             type: 'string',
                             choices: ['kubeConfig', 'kubeYaml']
                         
-                        }).option(
-                            'clusterName',
-                            {
+                        }).positional('clusterName', {
                                 type: 'string',
-                                demandOption: false,
-                                alias: 'c',
                                 default: null
-                            }
-                        )
+                        }).option('namespace', {
+                            type: 'string',
+                            default: ''
+                        }).option('labels', {
+                                type: 'array',
+                                default: []
+                        })
+                        .option('outputFile', {
+                            type: 'string',
+                            demandOption: false,
+                            alias: 'o',
+                            default: null
+                        })
                         .example('generate kubeYaml testcluster', '')
-                        .example('generate kubeConfig', '');
+                        .example('generate kubeConfig', '')
+                        .example('generate kubeYaml --labels testkey:testvalue', '');
                 },
                 async (argv) => {
                     if (argv.typeOfConfig == 'kubeConfig') {
-                        await generateKubeconfigHandler(this.configService, this.logger);
+                        await generateKubeconfigHandler(argv, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'kubeYaml') {
                         await generateKubeYamlHandler(argv, this.configService, this.logger);
                     }
@@ -532,6 +651,6 @@ Command arguments key:
  - [arg] is optional or sometimes required
 
 Need help? https://cloud.bastionzero.com/support`)
-            .argv; // returns argv of yargs
+            .argv; // returns argv of yargs 
     }
 }
