@@ -49,7 +49,6 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	dataFromClientMessage.RequestIdentifier = requestIdentifier
 	wsClient.SendRequestLogDaemonToBastion(dataFromClientMessage)
 
-	
 	receivedRequestIdentifier := -1
 	responseLogBastionToDaemon := daemonWebsocketTypes.ResponseBastionToDaemon{}
 	// Wait for responses until the user SIGINTs
@@ -85,7 +84,7 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 						w.Header().Set(name, value)
 					}
 				}
-				
+
 				// Then stream the response to kubectl
 				src := bytes.NewReader(responseLogBastionToDaemon.Content)
 				_, err = io.Copy(w, src)
@@ -103,6 +102,24 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 					log.Println("ERROR HANDLING LOG SENDNIG 500")
 					w.WriteHeader(http.StatusInternalServerError)
 				}
+			}
+
+			// Then stream the response to kubectl
+			src := bytes.NewReader(responseLogBastionToDaemon.Content)
+			_, err = io.Copy(w, src)
+			if err != nil {
+				log.Printf("Error streaming the log to kubectl: %v", err)
+				return
+			}
+			// This is required, don't touch - not sure why
+			flush, ok := w.(http.Flusher)
+			if ok {
+				flush.Flush()
+			}
+			// TODO : This needs to be tested
+			if responseLogBastionToDaemon.StatusCode != 200 {
+				log.Println("ERROR HANDLING LOG SENDNIG 500")
+				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}
 	}

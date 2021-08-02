@@ -102,7 +102,7 @@ type Options struct {
 }
 
 // Handler for Regular Exec calls that can be proxied
-func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocket.DaemonWebsocket) {
+func HandleExec(w http.ResponseWriter, r *http.Request, commandBeingRun string, logId string, wsClient *daemonWebsocket.DaemonWebsocket) {
 	// Extract the options of the exec
 	options := extractExecOptions(r)
 	log.Printf("Starting Exec for command: %s\n", options.Command)
@@ -150,6 +150,8 @@ func HandleExec(w http.ResponseWriter, r *http.Request, wsClient *daemonWebsocke
 	startExecToClusterFromBastionMessage := &daemonWebsocketTypes.StartExecToBastionFromDaemonMessage{}
 	startExecToClusterFromBastionMessage.Command = options.Command
 	startExecToClusterFromBastionMessage.Endpoint = r.URL.String()
+	startExecToClusterFromBastionMessage.LogId = logId
+	startExecToClusterFromBastionMessage.CommandBeingRun = commandBeingRun
 	startExecToClusterFromBastionMessage.RequestIdentifier = requestIdentifier
 	log.Println("Starting connection to cluster for exec")
 	wsClient.SendStartExecDaemonToBastion(*startExecToClusterFromBastionMessage)

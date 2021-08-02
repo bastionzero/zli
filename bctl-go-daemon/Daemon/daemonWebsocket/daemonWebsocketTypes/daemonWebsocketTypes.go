@@ -11,8 +11,8 @@ type ReadyToClientFromBastionMessage struct {
 }
 
 type ResponseBastionToDaemonSignalRMessage struct {
-	Type      int                                  `json:"type"`
-	Target    string                               `json:"target"`
+	Type      int                       `json:"type"`
+	Target    string                    `json:"target"`
 	Arguments []ResponseBastionToDaemon `json:"arguments"`
 }
 
@@ -48,6 +48,8 @@ type StartExecToBastionFromDaemonMessage struct {
 	Command           []string `json:"command"`
 	Endpoint          string   `json:"endpoint"`
 	RequestIdentifier int      `json:"requestIdentifier"`
+	LogId             string   `json:"logId"`
+	CommandBeingRun   string   `json:"commandBeingRun"`
 }
 
 type StdinToBastionFromDaemonSignalRMessage struct {
