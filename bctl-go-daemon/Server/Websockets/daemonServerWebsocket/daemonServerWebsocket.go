@@ -83,11 +83,8 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 						return
 					}
 
-					log.Printf("%v", requestLogBastionToClusterSignalRMessage.Arguments[0].End)
-
 					// If this is a message to end a log just alert the log end channel
 					if (requestLogBastionToClusterSignalRMessage.Arguments[0].End){
-						log.Printf("WS RECEIVED LOG END")
 						ret.AlertOnRequestLogEndForServerChan(requestLogBastionToClusterSignalRMessage.Arguments[0])
 					} else { // Alert the new log request channel
 						ret.AlertOnRequestLogForServerChan(requestLogBastionToClusterSignalRMessage.Arguments[0])

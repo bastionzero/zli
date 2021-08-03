@@ -90,10 +90,10 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
                     stdio: 'inherit'
                 }
             );
-    
+
             process.on('SIGINT', () => {
                 // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
-                spawn('kill', ['-9', daemonProcess.pid], {
+                spawn('pkill', ['-P', daemonProcess.pid], {
                     cwd: process.cwd(),
                     shell: true,
                     detached: true,

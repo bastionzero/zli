@@ -90,30 +90,20 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
         Pods(namespace).
         GetLogs(podName, &podLogOptions)
 
+	stream, err := podLogRequest.Stream(context.TODO())
+	if err != nil {
+		log.Printf("Error on podLogRequest.Stream: %s", err)
+		return
+	}
+
+	// Subscribe to normal log request
 	go func() {
-		defer log.Printf("Exited successfully log streaming")
-		stream, err := podLogRequest.Stream(context.TODO())
-		if err != nil {
-			log.Printf("Error on podLogRequest.Stream: %s", err)
-			return
-		}
+		defer log.Printf("Exited successfully log streaming for request: %v", requestLogForServer.RequestIdentifier)
 		defer stream.Close()
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			// If we received a message to end logs
-			case newRequestLogEndForServer :=  <- wsClient.RequestLogEndForServerChan:
-				// TODO : Check if this end was going to us, if yes cancel() if not rebroadcast 
-				// And that message was directed to another request
-				if(newRequestLogEndForServer.RequestIdentifier != requestLogForServer.RequestIdentifier){
-					// Rebroadcast the message for the right thread
-					wsClient.AlertOnRequestLogEndForServerChan(newRequestLogEndForServer)
-				} else { // Otherwise, if it was directed to this thread terminate logs
-					log.Printf("User sent SIGINT")
-					cancel()
-					return
-				}
 			default:
 				buf := make([]byte, 2000)
 				numBytes, err := stream.Read(buf)
@@ -134,6 +124,28 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 				// log.Print(message)
 				responseLogClusterToBastion.Content = buf[:numBytes]
 				wsClient.SendResponseLogClusterToBastion(responseLogClusterToBastion) // TODO: This returns err
+			}
+		}
+	}()
+
+	// Subscribe to our cancel event
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			// If we received a message to end logs
+			case newRequestLogEndForServer := <-wsClient.RequestLogEndForServerChan:
+				// And that message was directed to another request
+				if newRequestLogEndForServer.RequestIdentifier != requestLogForServer.RequestIdentifier {
+					// Rebroadcast the message for the right thread
+					wsClient.AlertOnRequestLogEndForServerChan(newRequestLogEndForServer)
+				} else { // Otherwise, if it was directed to this thread terminate logs
+					log.Printf("User sent SIGINT for request: %v", requestLogForServer.RequestIdentifier)
+					cancel()
+					stream.Close()
+					return
+				}
 			}
 		}
 	}()
