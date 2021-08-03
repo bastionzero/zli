@@ -36,6 +36,7 @@ type RequestDaemonToBastion struct {
 	Method            string            `json:"Method"`
 	Body              []byte            `json:"Body"`
 	RequestIdentifier int               `json:"RequestIdentifier"`
+	End               bool   			`json:"end"`
 }
 
 type StartExecToBastionFromDaemonSignalRMessage struct {

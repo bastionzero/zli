@@ -4,7 +4,6 @@ import {
     getTableOfClusters
 } from '../utils';
 import { Logger } from '../logger.service/logger';
-import { EnvironmentDetails } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
 import { ClusterSummary, KubeClusterStatus } from '../types';
 import _ from 'lodash';
@@ -14,8 +13,8 @@ export async function listClustersHandler(
     logger: Logger,
     argv: any,
     clusterTargets: Promise<ClusterSummary[]>) {
-    // await 
-    var clusters = await clusterTargets;
+    // await
+    let clusters = await clusterTargets;
 
     // filter targets by name/alias
     if(!! argv.name) {

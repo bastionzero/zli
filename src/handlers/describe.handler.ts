@@ -13,9 +13,9 @@ export async function describeHandler(
     clusterTargets: Promise<types.ClusterSummary[]>,
     envs: Promise<EnvironmentDetails[]>
 ) {
-   // First determine if the name passed is valid
-    var clusterSummary: types.ClusterSummary = null;
-    for (var cluster of await clusterTargets) {
+    // First determine if the name passed is valid
+    let clusterSummary: types.ClusterSummary = null;
+    for (const cluster of await clusterTargets) {
         if (cluster.name == clusterName) {
             clusterSummary = cluster;
             break;
@@ -28,8 +28,8 @@ export async function describeHandler(
     }
 
     // Now match it up with the environment
-    var environment: EnvironmentDetails = null
-    for (var env of await envs) {
+    let environment: EnvironmentDetails = null;
+    for (const env of await envs) {
         if (env.id == clusterSummary.environmentId) {
             environment = env;
             break;
@@ -39,9 +39,9 @@ export async function describeHandler(
     const policyService = new PolicyQueryService(configService, logger);
     const clusterPolicyInfo = await policyService.DescribeKubeProxy(clusterName);
 
-    // Build our clusterrole string 
-    var clusterRoleString = '';
-    for (var clusterRole of clusterPolicyInfo.clusterRoles) {
+    // Build our clusterrole string
+    let clusterRoleString = '';
+    for (const clusterRole of clusterPolicyInfo.clusterRoles) {
         clusterRoleString += clusterRole.name + ',';
     }
     if (clusterPolicyInfo.clusterRoles.length != 0) {
@@ -49,15 +49,15 @@ export async function describeHandler(
     }
 
     // Build our validroles string
-    var validRoleString = '';
-    for (var validRole of clusterSummary.validRoles) {
+    let validRoleString = '';
+    for (const validRole of clusterSummary.validRoles) {
         validRoleString += validRole + ',';
     }
     validRoleString = validRoleString.substring(0, validRoleString.length - 1); // remove trailing ,
 
     // Now we can print all the information we know
     logger.info(`Cluster information for: ${clusterName}`);
-    logger.info(`    - Environment Name: ${environment.name}`)
-    logger.info(`    - Cluster Roles Attached To Policy: ${clusterRoleString}`)
-    logger.info(`    - Valid Cluster Roles: ${validRoleString}`)
+    logger.info(`    - Environment Name: ${environment.name}`);
+    logger.info(`    - Cluster Roles Attached To Policy: ${clusterRoleString}`);
+    logger.info(`    - Valid Cluster Roles: ${validRoleString}`);
 }

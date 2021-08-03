@@ -42,6 +42,7 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 	// Add our response channels
 	ret.RequestForServerChan = make(chan daemonServerWebsocketTypes.RequestBastionToCluster)
 	ret.RequestLogForServerChan = make(chan daemonServerWebsocketTypes.RequestBastionToCluster)
+	ret.RequestLogEndForServerChan = make(chan daemonServerWebsocketTypes.RequestBastionToCluster)
 	ret.RequestForStartExecChan = make(chan daemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage)
 	ret.ExecStdoutChan = make(chan daemonServerWebsocketTypes.SendStdoutToDaemonSignalRMessage)
 	ret.ExecStdinChannel = make(chan daemonServerWebsocketTypes.StdinToClusterFromBastionSignalRMessage)
@@ -82,7 +83,12 @@ func NewDaemonServerWebsocketClient(serviceURL string, daemonConnectionId string
 						return
 					}
 
-					ret.AlertOnRequestLogForServerChan(requestLogBastionToClusterSignalRMessage.Arguments[0])
+					// If this is a message to end a log just alert the log end channel
+					if (requestLogBastionToClusterSignalRMessage.Arguments[0].End){
+						ret.AlertOnRequestLogEndForServerChan(requestLogBastionToClusterSignalRMessage.Arguments[0])
+					} else { // Alert the new log request channel
+						ret.AlertOnRequestLogForServerChan(requestLogBastionToClusterSignalRMessage.Arguments[0])
+					}
 				} else if bytes.Contains(message, []byte("\"target\":\"StartExecToClusterFromBastion\"")) {
 					log.Printf("Handling incoming StartExecToClusterFromBastion message")
 					startExecToClusterFromBastionSignalRMessage := new(daemonServerWebsocketTypes.StartExecToClusterFromBastionSignalRMessage)

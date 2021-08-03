@@ -22,6 +22,7 @@ type RequestBastionToCluster struct {
 	Body              []byte            `json:"body"`
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Role              string            `json"role"`
+	End               bool   			`json:"end"`
 }
 
 type ResponseClusterToBastionSignalRMessage struct {
@@ -118,8 +119,10 @@ type DaemonServerWebsocket struct {
 	RequestForServerChanLock sync.Mutex
 
 	// Logs Related
-	RequestLogForServerChan     chan RequestBastionToCluster
-	RequestLogForServerChanLock sync.Mutex
+	RequestLogForServerChan     	chan RequestBastionToCluster
+	RequestLogForServerChanLock 	sync.Mutex
+	RequestLogEndForServerChan     	chan RequestBastionToCluster
+	RequestLogEndForServerChanLock 	sync.Mutex
 
 	// Exec Related
 	RequestForStartExecChan     chan StartExecToClusterFromBastionSignalRMessage
@@ -146,6 +149,13 @@ func (client *DaemonServerWebsocket) AlertOnRequestLogForServerChan(requestLogBa
 	client.RequestLogForServerChanLock.Lock()
 	defer client.RequestLogForServerChanLock.Unlock()
 	client.RequestLogForServerChan <- requestLogBastionToCluster
+}
+
+func (client *DaemonServerWebsocket) AlertOnRequestLogEndForServerChan(requestLogEndBastionToCluster RequestBastionToCluster) {
+	// Lock our mutex and setup the unlock
+	client.RequestLogEndForServerChanLock.Lock()
+	defer client.RequestLogEndForServerChanLock.Unlock()
+	client.RequestLogEndForServerChan <- requestLogEndBastionToCluster
 }
 
 func (client *DaemonServerWebsocket) AlertOnRequestForStartExecChan(startExecToClusterFromBastionSignalRMessage StartExecToClusterFromBastionSignalRMessage) {

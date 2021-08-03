@@ -46,6 +46,9 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 	responseLogClusterToBastion.StatusCode = 200
 	responseLogClusterToBastion.RequestIdentifier = requestLogForServer.RequestIdentifier
 
+	// Make our cancel context
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
     podLogOptions := v1.PodLogOptions{
@@ -74,16 +77,16 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
     podLogRequest := clientSet.CoreV1().
         Pods(namespace).
         GetLogs(podName, &podLogOptions)
-    
-	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
 
+	stream, err := podLogRequest.Stream(context.TODO())
+	if err != nil {
+		log.Printf("Error on podLogRequest.Stream: %s", err)
+		return
+	}
+
+	// Subscribe to normal log request
 	go func() {
-		stream, err := podLogRequest.Stream(context.TODO())
-		if err != nil {
-			log.Printf("Error on podLogRequest.Stream: %s", err)
-			return
-		}
+		defer log.Printf("Exited successfully log streaming for request: %v", requestLogForServer.RequestIdentifier)
 		defer stream.Close()
 		for {
 			select {
@@ -109,6 +112,28 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 				// log.Print(message)
 				responseLogClusterToBastion.Content = buf[:numBytes]
 				wsClient.SendResponseLogClusterToBastion(responseLogClusterToBastion) // TODO: This returns err
+			}
+		}
+	}()
+
+	// Subscribe to our cancel event
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			// If we received a message to end logs
+			case newRequestLogEndForServer := <-wsClient.RequestLogEndForServerChan:
+				// And that message was directed to another request
+				if newRequestLogEndForServer.RequestIdentifier != requestLogForServer.RequestIdentifier {
+					// Rebroadcast the message for the right thread
+					wsClient.AlertOnRequestLogEndForServerChan(newRequestLogEndForServer)
+				} else { // Otherwise, if it was directed to this thread terminate logs
+					log.Printf("User sent SIGINT for request: %v", requestLogForServer.RequestIdentifier)
+					cancel()
+					stream.Close()
+					return
+				}
 			}
 		}
 	}()

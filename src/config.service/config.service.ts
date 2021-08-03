@@ -220,7 +220,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     public setKubeConfig(kubeConfig: KubeConfig) {
-        this.config.set('kubeConfig', kubeConfig)
+        this.config.set('kubeConfig', kubeConfig);
     }
 
     private getAppName(configName: string) {

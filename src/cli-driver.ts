@@ -75,9 +75,9 @@ export class CliDriver
     {
         // ref: https://nodejs.org/api/process.html#process_process_argv0
         this.processName = process.argv0;
-        
+
         // @ts-ignore TS2589
-        yargs(process.argv.slice(2)) 
+        yargs(process.argv.slice(2))
             .scriptName('zli')
             .usage('$0 <cmd> [args]')
             .wrap(null)
@@ -171,7 +171,7 @@ export class CliDriver
                             default: null,
                             demandOption: false,
                         })
-                        .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role')
+                        .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
                 },
                 async (argv) => {
                     if (argv.proxyString) {
@@ -181,7 +181,7 @@ export class CliDriver
 
                         await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
                     } else {
-                        await kubeStatusHandler(this.configService, this.logger)
+                        await kubeStatusHandler(this.configService, this.logger);
                     }
                 }
             )
@@ -200,7 +200,7 @@ export class CliDriver
                             type: 'boolean',
                             alias: 'f'
                         })
-                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster');
                 },
                 async (argv) => {
                     await addRoleHandler(argv.clusterRoleName, argv.clusterName, argv.force, this.clusterTargets, this.configService, this.logger);
@@ -217,7 +217,7 @@ export class CliDriver
                         .positional('clusterName', {
                             type: 'string',
                         })
-                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster')
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster');
                 },
                 async (argv) => {
                     await removeRoleHandler(argv.clusterRoleName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
@@ -234,7 +234,7 @@ export class CliDriver
                         .positional('clusterName', {
                             type: 'string',
                         })
-                        .example('adduser test@test.com test-cluster', 'Adds the test@test.com IDP user test-cluster policy')
+                        .example('adduser test@test.com test-cluster', 'Adds the test@test.com IDP user test-cluster policy');
                 },
                 async (argv) => {
                     await addUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
@@ -251,7 +251,7 @@ export class CliDriver
                         .positional('clusterName', {
                             type: 'string',
                         })
-                        .example('removeuser test@test.com test-cluster', 'Removes the test@test.com IDP user test-cluster policy')
+                        .example('removeuser test@test.com test-cluster', 'Removes the test@test.com IDP user test-cluster policy');
                 },
                 async (argv) => {
                     await removeUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
@@ -262,10 +262,10 @@ export class CliDriver
                 'Get detailed information about a certain cluster',
                 (yargs) => {
                     return yargs
-                        .example('status test-cluster', '')
+                        .example('status test-cluster', '');
                 },
                 async (argv) => {
-                    await describeHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs)
+                    await describeHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs);
                 }
             )
             .command(
@@ -273,10 +273,10 @@ export class CliDriver
                 'Disconnect a Zli Daemon',
                 (yargs) => {
                     return yargs
-                        .example('disconnect', 'Disconnect a local Zli Daemon')
+                        .example('disconnect', 'Disconnect a local Zli Daemon');
                 },
-                async (argv) => {
-                    await disconnectHandler(this.configService, this.logger)
+                async (_) => {
+                    await disconnectHandler(this.configService, this.logger);
                 }
             )
             .command(
@@ -448,7 +448,7 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('lc -i', 'List all clusters and show unique ids')
+                        .example('lc -i', 'List all clusters and show unique ids');
                 },
                 async (argv) => {
                     await listClustersHandler(this.logger, argv, this.clusterTargets);
@@ -589,16 +589,16 @@ export class CliDriver
                         .positional('typeOfConfig', {
                             type: 'string',
                             choices: ['kubeConfig', 'kubeYaml']
-                        
+
                         }).positional('clusterName', {
-                                type: 'string',
-                                default: null
+                            type: 'string',
+                            default: null
                         }).option('namespace', {
                             type: 'string',
                             default: ''
                         }).option('labels', {
-                                type: 'array',
-                                default: []
+                            type: 'array',
+                            default: []
                         })
                         .option('outputFile', {
                             type: 'string',
@@ -651,6 +651,6 @@ Command arguments key:
  - [arg] is optional or sometimes required
 
 Need help? https://cloud.bastionzero.com/support`)
-            .argv; // returns argv of yargs 
+            .argv; // returns argv of yargs
     }
 }

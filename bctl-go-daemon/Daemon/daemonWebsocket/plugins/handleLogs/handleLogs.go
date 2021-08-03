@@ -49,46 +49,61 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	dataFromClientMessage.RequestIdentifier = requestIdentifier
 	wsClient.SendRequestLogDaemonToBastion(dataFromClientMessage)
 
-	// Wait for the responses
+	
 	receivedRequestIdentifier := -1
+	responseLogBastionToDaemon := daemonWebsocketTypes.ResponseBastionToDaemon{}
+	// Wait for responses until the user SIGINTs
 	for {
-		responseLogBastionToDaemon := daemonWebsocketTypes.ResponseBastionToDaemon{}
-		// TODO : There is a race condition here on this chan between this kubectl logs and other invocations of the same command
-		// Possible solution; have a dict of identifiers -> channels to direct every msg to the right chan
-		responseLogBastionToDaemon = <-wsClient.ResponseLogToDaemonChan
+		select {
+		case <-r.Context().Done():
+			log.Println("Logs request %v was requested to get cancelled", requestIdentifier)
+			endLogsMessage := daemonWebsocketTypes.RequestDaemonToBastion{}
+			endLogsMessage.LogId = logId
+			endLogsMessage.KubeCommand = commandBeingRun
+			endLogsMessage.Endpoint = endpointWithQuery
+			endLogsMessage.Headers = headers
+			endLogsMessage.Method = method
+			endLogsMessage.Body = bodyInBytes
+			endLogsMessage.RequestIdentifier = requestIdentifier
+			endLogsMessage.End = true
+			wsClient.SendRequestLogDaemonToBastion(endLogsMessage)
+			return
+		case responseLogBastionToDaemon = <-wsClient.ResponseLogToDaemonChan:
+			// TODO : There is a race condition here on this chan between this kubectl logs and other invocations of the same command
+			// Possible solution; have a dict of identifiers -> channels to direct every msg to the right chan
 
-		receivedRequestIdentifier = responseLogBastionToDaemon.RequestIdentifier
-		// Ensure that the identifer is correct
-		if receivedRequestIdentifier != requestIdentifier {
-			// Rebroadbast the message
-			wsClient.AlertOnResponseLogToDaemonChan(responseLogBastionToDaemon)
-		} else {
-			// Now let the kubectl client know the response
-			// First do headers
-			for name, value := range responseLogBastionToDaemon.Headers {
-				if name != "Content-Length" {
-					w.Header().Set(name, value)
+			receivedRequestIdentifier = responseLogBastionToDaemon.RequestIdentifier
+			// Ensure that the identifer is correct
+			if receivedRequestIdentifier != requestIdentifier {
+				// Rebroadbast the message
+				wsClient.AlertOnResponseLogToDaemonChan(responseLogBastionToDaemon)
+			} else {
+				// Now let the kubectl client know the response
+				// First do headers
+				for name, value := range responseLogBastionToDaemon.Headers {
+					if name != "Content-Length" {
+						w.Header().Set(name, value)
+					}
+				}
+				
+				// Then stream the response to kubectl
+				src := bytes.NewReader(responseLogBastionToDaemon.Content)
+				_, err = io.Copy(w, src)
+				if err != nil {
+					log.Printf("Error streaming the log to kubectl: %v", err)
+					return
+				}
+				// This is required, don't touch - not sure why
+				flush, ok := w.(http.Flusher)
+				if ok {
+					flush.Flush()
+				}
+				// TODO : This needs to be tested
+				if responseLogBastionToDaemon.StatusCode != 200 {
+					log.Println("ERROR HANDLING LOG SENDNIG 500")
+					w.WriteHeader(http.StatusInternalServerError)
 				}
 			}
-			
-			// Then stream the response to kubectl
-			src := bytes.NewReader(responseLogBastionToDaemon.Content)
-			_, err = io.Copy(w, src)
-			if err != nil {
-				log.Printf("Error streaming the log to kubectl: %v", err)
-				return
-			}
-			// This is required, don't touch - not sure why
-			flush, ok := w.(http.Flusher)
-			if ok {
-				flush.Flush()
-			}
-			// TODO : This needs to be tested
-			if responseLogBastionToDaemon.StatusCode != 200 {
-				log.Println("ERROR HANDLING LOG SENDNIG 500")
-				w.WriteHeader(http.StatusInternalServerError)
-			}
 		}
-
 	}
 }
