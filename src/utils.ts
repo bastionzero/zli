@@ -159,7 +159,7 @@ export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boole
     if(showGuid || showDetail)
     {
         // For now showGuid and showDetail do the same thing
-        header.push('Valid Roles')
+        header.push('Valid Roles');
         columnWidths.push(38);
         header.push('Id');
         columnWidths.push(38);

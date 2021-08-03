@@ -46,13 +46,13 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             result.map<TargetSummary>((ssh, _index, _array) => {
                 return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId, agentVersion: 'N/A', status: undefined};
             })
-    );
-    
+        );
+
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
             result.map<ClusterSummary>((cluster, _index, _array) => {
                 return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, validRoles: cluster.validRoles};
-                }))
+            }));
 
     const envs = envService.ListEnvironments();
 

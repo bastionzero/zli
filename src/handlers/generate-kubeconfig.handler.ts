@@ -1,9 +1,9 @@
 import util from 'util';
 
 import { Logger } from '../logger.service/logger';
-import { ConfigService, KubeConfig } from '../config.service/config.service';
+import { ConfigService } from '../config.service/config.service';
 
-const pem = require('pem')
+const pem = require('pem');
 const path = require('path');
 const fs = require('fs');
 
@@ -14,22 +14,22 @@ export async function generateKubeconfigHandler(
     logger: Logger
 ) {
     // Check if we already have generated a cert/key
-    var kubeConfig = configService.getKubeConfig();
-    
+    let kubeConfig = configService.getKubeConfig();
+
     if (kubeConfig == undefined) {
-        logger.info('No KubeConfig has been generated before, generating key and cert for local daemon...')
+        logger.info('No KubeConfig has been generated before, generating key and cert for local daemon...');
 
         // Create and save key/cert
         const createCertPromise = new Promise<void>(async (resolve, reject) => {
             pem.createCertificate({ days: 999, selfSigned: true }, async function (err: any, keys: any) {
                 if (err) {
-                    throw err
+                    throw err;
                 }
 
-                // Get the path of where we want to save 
-                var pathToConfig = path.dirname(configService.configPath());
-                var pathToKey = `${pathToConfig}/kubeKey.pem`
-                var pathToCert = `${pathToConfig}/kubeCert.pem`
+                // Get the path of where we want to save
+                const pathToConfig = path.dirname(configService.configPath());
+                const pathToKey = `${pathToConfig}/kubeKey.pem`;
+                const pathToCert = `${pathToConfig}/kubeCert.pem`;
 
                 // Now save the key and cert
                 await fs.writeFile(pathToKey, keys.serviceKey, function (err: any) {
@@ -40,7 +40,7 @@ export async function generateKubeconfigHandler(
                     }
                     logger.info('Generated and saved key file');
                 });
-            
+
                 await fs.writeFile(pathToCert, keys.certificate, function (err: any) {
                     if (err) {
                         logger.error('Error writing cert to file!');
@@ -51,31 +51,31 @@ export async function generateKubeconfigHandler(
                 });
 
                 // Generate a token that can be used for auth
-                var randtoken = require('rand-token');
-                var token = randtoken.generate(128) + '++++';
+                const randtoken = require('rand-token');
+                const token = randtoken.generate(128) + '++++';
 
                 // Now save the path in the configService
                 kubeConfig = {
-                  keyPath: pathToKey,
-                  certPath: pathToCert,
-                  token: token,
-                  localHost: 'localhost',
-                  localPort: 1234,
-                  localPid: null,
-                  assumeRole: null,
-                  assumeCluster: null
-                }
-                configService.setKubeConfig(kubeConfig)
-                resolve()
-            })
+                    keyPath: pathToKey,
+                    certPath: pathToCert,
+                    token: token,
+                    localHost: 'localhost',
+                    localPort: 1234,
+                    localPid: null,
+                    assumeRole: null,
+                    assumeCluster: null
+                };
+                configService.setKubeConfig(kubeConfig);
+                resolve();
+            });
         });
 
-        // TODO: try/catch block 
+        // TODO: try/catch block
         await createCertPromise;
     }
 
     // Now generate a kubeConfig
-    let clientKubeConfig = `
+    const clientKubeConfig = `
 apiVersion: v1
 clusters:
 - cluster:
@@ -94,12 +94,12 @@ users:
   - name: ${configService.me()['email']}
     user:
       token: "${kubeConfig['token']}"
-    `
+    `;
 
-  // Show it to the user or write to file 
-  if (argv.outputFile) {
-    await util.promisify(fs.writeFile)(argv.outputFile,clientKubeConfig);
-  } else {
-    logger.info(clientKubeConfig);
-  }
+    // Show it to the user or write to file
+    if (argv.outputFile) {
+        await util.promisify(fs.writeFile)(argv.outputFile,clientKubeConfig);
+    } else {
+        logger.info(clientKubeConfig);
+    }
 }

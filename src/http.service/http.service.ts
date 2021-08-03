@@ -568,7 +568,7 @@ export class PolicyService extends HttpService
             groups: policy.groups,
             context: JSON.stringify(policy.context),
             policyMetadata: policy.metadata
-        }
-        return this.Post('edit', request)
+        };
+        return this.Post('edit', request);
     }
 }
