@@ -56,7 +56,7 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	for {
 		select {
 		case <-r.Context().Done():
-			log.Println("message", "client connection has gone away, request got cancelled")
+			log.Println("Logs request %v was requested to get cancelled", requestIdentifier)
 			endLogsMessage := daemonWebsocketTypes.RequestDaemonToBastion{}
 			endLogsMessage.LogId = logId
 			endLogsMessage.KubeCommand = commandBeingRun
