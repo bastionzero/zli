@@ -35,7 +35,7 @@ type AliveCheckToBastionFromClusterSignalRMessage struct {
 }
 type AliveCheckToBastionFromClusterMessage struct {
 	Alive        bool     `json:"alive"`
-	ClusterRoles []string `json:"clusterRoles`
+	ClusterUsers []string `json:"clusterUsers`
 }
 
 type ControlWebsocket struct {

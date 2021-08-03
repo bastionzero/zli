@@ -39,25 +39,25 @@ export async function describeHandler(
     const policyService = new PolicyQueryService(configService, logger);
     const clusterPolicyInfo = await policyService.DescribeKubeProxy(clusterName);
 
-    // Build our clusterrole string
-    let clusterRoleString = '';
-    for (const clusterRole of clusterPolicyInfo.clusterRoles) {
-        clusterRoleString += clusterRole.name + ',';
+    // Build our clusteruser string 
+    var clusterUserString = '';
+    for (var clusterUser of clusterPolicyInfo.clusterUsers) {
+        clusterUserString += clusterUser.name + ',';
     }
-    if (clusterPolicyInfo.clusterRoles.length != 0) {
-        clusterRoleString = clusterRoleString.substring(0, clusterRoleString.length - 1); // remove trailing ,
+    if (clusterPolicyInfo.clusterUsers.length != 0) {
+        clusterUserString = clusterUserString.substring(0, clusterUserString.length - 1); // remove trailing ,
     }
 
-    // Build our validroles string
-    let validRoleString = '';
-    for (const validRole of clusterSummary.validRoles) {
-        validRoleString += validRole + ',';
+    // Build our validUsers string
+    var validUserString = '';
+    for (var validUser of clusterSummary.validUsers) {
+        validUserString += validUser + ',';
     }
-    validRoleString = validRoleString.substring(0, validRoleString.length - 1); // remove trailing ,
+    validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,
 
     // Now we can print all the information we know
     logger.info(`Cluster information for: ${clusterName}`);
-    logger.info(`    - Environment Name: ${environment.name}`);
-    logger.info(`    - Cluster Roles Attached To Policy: ${clusterRoleString}`);
-    logger.info(`    - Valid Cluster Roles: ${validRoleString}`);
+    logger.info(`    - Environment Name: ${environment.name}`)
+    logger.info(`    - Cluster Users Attached To Policy: ${clusterUserString}`)
+    logger.info(`    - Valid Cluster Users: ${validUserString}`)
 }

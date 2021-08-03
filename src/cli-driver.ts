@@ -192,11 +192,11 @@ export class CliDriver
                 }
             )
             .command(
-                'addrole <clusterRoleName> <clusterName>',
-                'Add a ClusterRole to a Cluster Policy',
+                'addrole <clusterUserName> <clusterName>',
+                'Add a ClusterUser to a Cluster Policy',
                 (yargs) => {
                     return yargs
-                        .positional('clusterRoleName', {
+                        .positional('clusterUserName', {
                             type: 'string',
                         })
                         .positional('clusterName', {
@@ -209,15 +209,15 @@ export class CliDriver
                         .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster');
                 },
                 async (argv) => {
-                    await addRoleHandler(argv.clusterRoleName, argv.clusterName, argv.force, this.clusterTargets, this.configService, this.logger);
+                    await addRoleHandler(argv.clusterUserName, argv.clusterName, argv.force, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
-                'removerole <clusterRoleName> <clusterName>',
-                'Remove a ClusterRole from Cluster Policy',
+                'removerole <clusterUserName> <clusterName>',
+                'Remove a ClusterUser from Cluster Policy',
                 (yargs) => {
                     return yargs
-                        .positional('clusterRoleName', {
+                        .positional('clusterUserName', {
                             type: 'string',
                         })
                         .positional('clusterName', {
@@ -226,7 +226,7 @@ export class CliDriver
                         .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster');
                 },
                 async (argv) => {
-                    await removeRoleHandler(argv.clusterRoleName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                    await removeRoleHandler(argv.clusterUserName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(

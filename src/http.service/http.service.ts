@@ -457,13 +457,13 @@ export class PolicyQueryService extends HttpService
 
     public CheckKubeProxy(
         clusterName: string,
-        clusterRole: string,
+        clusterUser: string,
         environmentId: string,
     ): Promise<KubeProxyResponse>
     {
         const request: KubeProxyRequest = {
             clusterName: clusterName,
-            clusterRole: clusterRole,
+            clusterUser: clusterUser,
             environmentId: environmentId,
         };
 
