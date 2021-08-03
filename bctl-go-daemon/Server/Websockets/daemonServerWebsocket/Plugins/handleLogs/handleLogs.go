@@ -46,6 +46,21 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 	responseLogClusterToBastion.StatusCode = 200
 	responseLogClusterToBastion.RequestIdentifier = requestLogForServer.RequestIdentifier
 
+	// Make our cancel context
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// if (requestLogForServer.End){
+
+	// }
+	// go func() {
+	// 	// TODO : Delay this a bit so the actual reader gets a priority
+	// 	originalRequestIdentifier := requestLogForServer.RequestIdentifier
+	// 	newRequestLogForServer := da
+	// 	for  {
+
+	// 	}
+	// }()
+
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
     podLogOptions := v1.PodLogOptions{
@@ -74,11 +89,9 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
     podLogRequest := clientSet.CoreV1().
         Pods(namespace).
         GetLogs(podName, &podLogOptions)
-    
-	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
+		defer log.Printf("Exited successfully log streaming")
 		stream, err := podLogRequest.Stream(context.TODO())
 		if err != nil {
 			log.Printf("Error on podLogRequest.Stream: %s", err)
@@ -89,6 +102,18 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 			select {
 			case <-ctx.Done():
 				return
+			// If we received a message to end logs
+			case newRequestLogEndForServer :=  <- wsClient.RequestLogEndForServerChan:
+				// TODO : Check if this end was going to us, if yes cancel() if not rebroadcast 
+				// And that message was directed to another request
+				if(newRequestLogEndForServer.RequestIdentifier != requestLogForServer.RequestIdentifier){
+					// Rebroadcast the message for the right thread
+					wsClient.AlertOnRequestLogEndForServerChan(newRequestLogEndForServer)
+				} else { // Otherwise, if it was directed to this thread terminate logs
+					log.Printf("User sent SIGINT")
+					cancel()
+					return
+				}
 			default:
 				buf := make([]byte, 2000)
 				numBytes, err := stream.Read(buf)
