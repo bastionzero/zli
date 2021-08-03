@@ -459,7 +459,7 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('lc -i', 'List all clusters and show unique ids')
+                        .example('lc -i', 'List all clusters and show unique ids');
                 },
                 async (argv) => {
                     await listClustersHandler(this.logger, argv, this.clusterTargets);
@@ -721,6 +721,6 @@ Command arguments key:
  - [arg] is optional or sometimes required
 
 Need help? https://cloud.bastionzero.com/support`)
-            .argv; // returns argv of yargs 
+            .argv; // returns argv of yargs
     }
 }

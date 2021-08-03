@@ -22,6 +22,7 @@ type RequestToClusterFromBastionMessage struct {
 	Body              []byte            `json:"body"`
 	RequestIdentifier int               `json:"requestIdentifier"`
 	Role              string            `json"role"`
+	End               bool   			`json:"end"`
 }
 
 type ResponseToBastionFromClusterSignalRMessage struct {
@@ -117,6 +118,15 @@ type DaemonServerWebsocket struct {
 	RequestForServerChan     chan RequestToClusterFromBastionMessage
 	RequestForServerChanLock sync.Mutex
 
+<<<<<<< HEAD:bctl-go-daemon/Server/Websockets/DaemonServerWebsocket/DaemonServerWebsocketTypes/DaemonServerWebsocketTypes.go
+=======
+	// Logs Related
+	RequestLogForServerChan     	chan RequestBastionToCluster
+	RequestLogForServerChanLock 	sync.Mutex
+	RequestLogEndForServerChan     	chan RequestBastionToCluster
+	RequestLogEndForServerChanLock 	sync.Mutex
+
+>>>>>>> 9e71d7c (kubectl logs cancel (#130)):bctl-go-daemon/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes/daemonServerWebsocketTypes.go
 	// Exec Related
 	RequestForStartExecChan     chan StartExecToClusterFromBastionSignalRMessage
 	RequestForStartExecChanLock sync.Mutex
@@ -137,6 +147,23 @@ func (client *DaemonServerWebsocket) AlertOnRequestForServerChan(requestToCluste
 	client.RequestForServerChan <- requestToClusterFromBastionMessage
 }
 
+<<<<<<< HEAD:bctl-go-daemon/Server/Websockets/DaemonServerWebsocket/DaemonServerWebsocketTypes/DaemonServerWebsocketTypes.go
+=======
+func (client *DaemonServerWebsocket) AlertOnRequestLogForServerChan(requestLogBastionToCluster RequestBastionToCluster) {
+	// Lock our mutex and setup the unlock
+	client.RequestLogForServerChanLock.Lock()
+	defer client.RequestLogForServerChanLock.Unlock()
+	client.RequestLogForServerChan <- requestLogBastionToCluster
+}
+
+func (client *DaemonServerWebsocket) AlertOnRequestLogEndForServerChan(requestLogEndBastionToCluster RequestBastionToCluster) {
+	// Lock our mutex and setup the unlock
+	client.RequestLogEndForServerChanLock.Lock()
+	defer client.RequestLogEndForServerChanLock.Unlock()
+	client.RequestLogEndForServerChan <- requestLogEndBastionToCluster
+}
+
+>>>>>>> 9e71d7c (kubectl logs cancel (#130)):bctl-go-daemon/Server/Websockets/daemonServerWebsocket/daemonServerWebsocketTypes/daemonServerWebsocketTypes.go
 func (client *DaemonServerWebsocket) AlertOnRequestForStartExecChan(startExecToClusterFromBastionSignalRMessage StartExecToClusterFromBastionSignalRMessage) {
 	// Lock our mutex and setup the unlock
 	client.RequestForStartExecChanLock.Lock()

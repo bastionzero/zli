@@ -1,7 +1,11 @@
 import { ConfigService } from '../config.service/config.service';
 import { PolicyService } from '../http.service/http.service';
 import { Logger } from '../logger.service/logger';
+<<<<<<< HEAD
 import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
+=======
+import { KubernetesPolicyClusterRoles } from '../http.service/http.service.types';
+>>>>>>> 9e71d7c (kubectl logs cancel (#130))
 import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
