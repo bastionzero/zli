@@ -49,6 +49,7 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	dataFromClientMessage.RequestIdentifier = requestIdentifier
 	wsClient.SendRequestLogDaemonToBastion(dataFromClientMessage)
 
+	// Wait for the responses
 	receivedRequestIdentifier := -1
 	responseLogBastionToDaemon := daemonWebsocketTypes.ResponseBastionToDaemon{}
 	// Wait for responses until the user SIGINTs
