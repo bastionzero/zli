@@ -49,18 +49,6 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// if (requestLogForServer.End){
-
-	// }
-	// go func() {
-	// 	// TODO : Delay this a bit so the actual reader gets a priority
-	// 	originalRequestIdentifier := requestLogForServer.RequestIdentifier
-	// 	newRequestLogForServer := da
-	// 	for  {
-
-	// 	}
-	// }()
-
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
     podLogOptions := v1.PodLogOptions{
