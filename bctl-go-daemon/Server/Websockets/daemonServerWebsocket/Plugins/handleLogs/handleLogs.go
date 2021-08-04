@@ -21,24 +21,22 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 	endpointWithQuery, err := url.Parse(requestLogForServer.Endpoint)
 	if err != nil {
 		log.Printf("Error on url.Parse: %s", err)
-        return
-    }
+		return
+	}
 
 	// TODO : Is this too hacky? Is there a better way to grab the namespace and podName?
 	// Extract from the request url the namespace and the pod name
 	paths := strings.Split(endpointWithQuery.Path, "/")
 	namespaceIndex := indexOf("namespaces", paths)
-	namespace := paths[namespaceIndex + 1]
+	namespace := paths[namespaceIndex+1]
 	podIndex := indexOf("pods", paths)
-	podName := paths[podIndex + 1]
-
+	podName := paths[podIndex+1]
 
 	// TODO : Extend this for more query params
 	// Add any kubect flags that were past as query params
 	queryParams := endpointWithQuery.Query()
 	followFlag, _ := strconv.ParseBool(queryParams.Get("follow"))
 	// tailLinesNum := queryParams.Get("tailLines")
-
 
 	// Perform the api request through the kube sdk
 	// Prepare the responses
@@ -51,11 +49,11 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
-    podLogOptions := v1.PodLogOptions{
-        Container: "bastion",
-        Follow:    followFlag,
-        // TailLines: &count,
-    }
+	podLogOptions := v1.PodLogOptions{
+		Container: "bastion",
+		Follow:    followFlag,
+		// TailLines: &count,
+	}
 
 	// Create our api object
 	config, err := rest.InClusterConfig()
@@ -74,9 +72,12 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 		panic(err.Error())
 	}
 
-    podLogRequest := clientSet.CoreV1().
-        Pods(namespace).
-        GetLogs(podName, &podLogOptions)
+	podLogRequest := clientSet.CoreV1().
+		Pods(namespace).
+		GetLogs(podName, &podLogOptions)
+
+	// Make our cancel context
+	ctx, cancel := context.WithCancel(context.Background())
 
 	stream, err := podLogRequest.Stream(context.TODO())
 	if err != nil {
@@ -139,11 +140,11 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 	}()
 }
 
-func indexOf(word string, data []string) (int) {
-    for k, v := range data {
-        if word == v {
-            return k
-        }
-    }
-    return -1
+func indexOf(word string, data []string) int {
+	for k, v := range data {
+		if word == v {
+			return k
+		}
+	}
+	return -1
 }

@@ -99,7 +99,7 @@ export interface ClusterSummary {
     clusterName: string;
     status: KubeClusterStatus;
     environmentId?: string;
-    validRoles: string[];
+    validUsers: string[];
 }
 
 export interface EnvironmentDetails {
@@ -239,7 +239,7 @@ export interface GetKubeUnregisteredAgentYamlResponse {
 
 export interface KubeProxyRequest {
     clusterName: string;
-    clusterRole: string;
+    clusterUser: string;
     environmentId: string;
 }
 export interface KubeProxyResponse {
@@ -250,10 +250,10 @@ export interface KubeProxyDescribeRequest {
     clusterName: string;
 }
 export interface KubeProxyDescribeResponse {
-    clusterRoles: ClusterRole[]
+    clusterUsers: ClusterUser[]
 }
 
-interface ClusterRole {
+interface ClusterUser {
     name: string;
 }
 export interface KubernetesPolicySummary {
@@ -271,11 +271,11 @@ interface Group {
 }
 
 interface KubernetesPolicyContext {
-    clusterRoles: { [key: string]: KubernetesPolicyClusterRoles }
+    clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
     environments: { [key: string]: PolicyEnvironment }
 }
 
-export interface KubernetesPolicyClusterRoles {
+export interface KubernetesPolicyClusterUsers {
     name: string;
 }
 

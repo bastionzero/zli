@@ -169,7 +169,7 @@ export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boole
     clusters.forEach(cluster => {
         const row = [cluster.name, cluster.status];
         if (showGuid || showDetail) {
-            row.push(cluster.validRoles.toString());
+            row.push(cluster.validUsers.toString());
             row.push(cluster.id);
         }
         table.push(row);

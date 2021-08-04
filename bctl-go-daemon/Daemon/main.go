@@ -102,7 +102,7 @@ func rootCallback(w http.ResponseWriter, r *http.Request, localhostToken string,
 
 	// Determin if its an exec or normal rest
 	if strings.Contains(r.URL.Path, "exec") {
-		handleExec.HandleExec(w, r, wsClient)
+		handleExec.HandleExec(w, r, commandBeingRun, logId, wsClient)
 	} else if strings.Contains(r.URL.Path, "log") {
 		handleLogs.HandleLogs(w, r, commandBeingRun, logId, wsClient)
 	} else {

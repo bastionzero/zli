@@ -50,7 +50,7 @@ export interface ClusterSummary
     name: string;
     status: KubeClusterStatus;
     environmentId: string;
-    validRoles: string[];
+    validUsers: string[];
 }
 
 export interface ConnectionDetails

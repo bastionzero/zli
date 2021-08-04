@@ -49,7 +49,7 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 	dataFromClientMessage.RequestIdentifier = requestIdentifier
 	wsClient.SendRequestLogDaemonToBastion(dataFromClientMessage)
 
-	
+	// Wait for the responses
 	receivedRequestIdentifier := -1
 	responseLogBastionToDaemon := daemonWebsocketTypes.ResponseBastionToDaemon{}
 	// Wait for responses until the user SIGINTs
@@ -85,7 +85,7 @@ func HandleLogs(w http.ResponseWriter, r *http.Request, commandBeingRun string, 
 						w.Header().Set(name, value)
 					}
 				}
-				
+
 				// Then stream the response to kubectl
 				src := bytes.NewReader(responseLogBastionToDaemon.Content)
 				_, err = io.Copy(w, src)
