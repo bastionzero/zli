@@ -24,6 +24,7 @@ func main() {
 	clusterNamePtr := flag.String("clusterName", "", "Cluster name to use")
 	environmentIdPtr := flag.String("environmentId", "", "Optional environmentId to specify")
 	activationTokenPtr := flag.String("activationToken", "", "Activation Token to use to register the cluster")
+	agentVersionPtr := flag.String("agentVersion", "", "Agent version we are running")
 
 	// Parse any flag
 	flag.Parse()
@@ -34,6 +35,7 @@ func main() {
 	*orgIdPtr = os.Getenv("ORG_ID")
 	*clusterNamePtr = os.Getenv("CLUSTER_NAME")
 	*environmentIdPtr = os.Getenv("ENVIRONMENT")
+	*agentVersionPtr = os.Getenv("AGENT_VERSION")
 
 	// Ensure we have all needed vars
 	if *serviceURLPtr == "" || *activationTokenPtr == "" || *orgIdPtr == "" || *clusterNamePtr == "" {
@@ -41,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	wsClient := controlWebsocket.NewControlWebsocketClient(*serviceURLPtr, *activationTokenPtr, *orgIdPtr, *clusterNamePtr, *environmentIdPtr)
+	wsClient := controlWebsocket.NewControlWebsocketClient(*serviceURLPtr, *activationTokenPtr, *orgIdPtr, *clusterNamePtr, *environmentIdPtr, *agentVersionPtr)
 
 	// Subscribe to our handlers
 	go func() {

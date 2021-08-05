@@ -12,7 +12,7 @@ import (
 )
 
 // Constructor to create a new Control Websocket Client
-func NewControlWebsocketClient(serviceURL string, activationToken string, orgId string, clusterName string, environmentId string) *controlWebsocketTypes.ControlWebsocket {
+func NewControlWebsocketClient(serviceURL string, activationToken string, orgId string, clusterName string, environmentId string, agentVersion string) *controlWebsocketTypes.ControlWebsocket {
 	ret := controlWebsocketTypes.ControlWebsocket{}
 
 	// Create our headers and params, headers are empty
@@ -24,6 +24,7 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 	params["org_id"] = orgId
 	params["cluster_name"] = clusterName
 	params["environment_id"] = environmentId
+	params["agent_version"] = agentVersion
 
 	hubEndpoint := "/api/v1/hub/kube-control"
 
