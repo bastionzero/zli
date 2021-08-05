@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	controlws "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket"
 	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
+	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 )
 
 var (
@@ -52,8 +55,21 @@ func startDatachannel(channelConnectionId string) {
 	params["token"] = token
 
 	// Create our response channels
-	// WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
-	dc.NewDataChannel(serviceUrl, hubEndpoint, params, headers)
+	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
+	// or pass a context that we can cancel from the control channel??
+	dc.NewDataChannel("kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+}
+
+func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
+	var payload map[string]interface{}
+	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
+		p := payload["payload"].(map[string]interface{})
+		switch p["action"] {
+		case "kube/restapi":
+			return "ResponseClusterToBastion", nil
+		}
+	}
+	return "", fmt.Errorf("")
 }
 
 func parseFlags() {
@@ -79,10 +95,13 @@ func parseFlags() {
 	switch {
 	case serviceUrl == "":
 		missing = append(missing, "serviceUrl")
+		fallthrough
 	case orgId == "":
 		missing = append(missing, "orgId")
+		fallthrough
 	case clusterName == "":
 		missing = append(missing, "clusterName")
+		fallthrough
 	// case environmentId == "":
 	// 	missing = append(missing, "environmentId")
 	case activationToken == "":

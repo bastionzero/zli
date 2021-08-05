@@ -24,15 +24,12 @@ func NewRestApiAction(serviceAccountToken string, kubeHost string, impersonateGr
 	}, nil
 }
 
-func (r *RestApiAction) InputMessageHandler(action string, actionPayload string) (interface{}, error) {
+func (r *RestApiAction) InputMessageHandler(action string, actionPayload string) (string, string, error) {
 	log.Printf("Recieved Rest API action")
-	// apiRequest, ok := actionPayload.(KubeRestApiActionPayload)
-	// if !ok {
-	// 	return KubeRestApiActionResponsePayload{}, fmt.Errorf("Recieved malformed action payload %+v", actionPayload)
-	// }
+
 	var apiRequest KubeRestApiActionPayload
 	if err := json.Unmarshal([]byte(actionPayload), &apiRequest); err != nil {
-		return KubeRestApiActionResponsePayload{}, fmt.Errorf("Malformed Keysplitting Action payload %+v", actionPayload)
+		return action, "", fmt.Errorf("Malformed Keysplitting Action payload %+v", actionPayload)
 	}
 
 	// Perform the api request
@@ -62,7 +59,7 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload string)
 	res, err := httpClient.Do(req)
 	// TODO: Check for error here
 	if err != nil {
-		return KubeRestApiActionResponsePayload{}, fmt.Errorf("Bad Response to Api request")
+		return action, "", fmt.Errorf("Bad Response to Api request")
 	}
 	defer res.Body.Close()
 
@@ -77,10 +74,12 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload string)
 	bodyBytes, _ := ioutil.ReadAll(res.Body)
 
 	// Now we need to send that data back to the client
-	return KubeRestApiActionResponsePayload{
+	responsePayload := KubeRestApiActionResponsePayload{
 		StatusCode: res.StatusCode,
 		RequestId:  apiRequest.RequestId,
 		Headers:    header,
 		Content:    bodyBytes,
-	}, nil
+	}
+	responsePayloadBytes, _ := json.Marshal(responsePayload)
+	return action, string(responsePayloadBytes), nil
 }
