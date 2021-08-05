@@ -7,7 +7,7 @@ const kubeArgs = process.argv.splice(2);
 const kubeArgsString = kubeArgs.join(' ');
 
 // Then get the token 
-const getTokenProcess = spawnSync('/Users/sidpremkumar/Documents/CommonwealthCrypto/zli/bin/zli-macos', ['--configName', 'dev', 'get-kube-token', '-s']);
+const getTokenProcess = spawnSync('zli', ['--configName', 'dev', 'get-kube-token', '-s']);
 const token = getTokenProcess.stdout.toString('utf8');
 
 // Now generate a log id
