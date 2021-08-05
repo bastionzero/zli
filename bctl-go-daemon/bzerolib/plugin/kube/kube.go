@@ -15,6 +15,10 @@ const (
 	impersonateGroup = "system:authenticated"
 )
 
+type IKubeAction interface {
+	InputMessageHandler(action string, actionPayload string) (string, string, error)
+}
+
 type KubeAction string
 
 const (
@@ -27,7 +31,7 @@ type KubePlugin struct {
 	streamOutputChannel chan smsg.StreamMessage
 	serviceAccountToken string
 	kubeHost            string
-	runningActions      []plgn.IAction // need something like this for streams and multiple tabs when running exec & logs
+	runningActions      []IKubeAction // need something like this for streams and multiple tabs when running exec & logs
 }
 
 func NewPlugin(ch chan smsg.StreamMessage) plgn.IPlugin {
@@ -47,14 +51,18 @@ func NewPlugin(ch chan smsg.StreamMessage) plgn.IPlugin {
 	}
 }
 
-func (k KubePlugin) GetName() plgn.PluginName {
+func (k *KubePlugin) GetName() plgn.PluginName {
 	return plgn.Kube
 }
 
-func (k KubePlugin) InputMessageHandler(action string, actionPayload string) (interface{}, error) {
+func (k *KubePlugin) PushStreamInput(smessage smsg.StreamMessage) error {
+	return fmt.Errorf("")
+}
+
+func (k *KubePlugin) InputMessageHandler(action string, actionPayload string) (string, string, error) {
 	x := strings.Split(action, "/")
 	if len(x) < 2 {
-		return "", fmt.Errorf("Malformed action: %s", action)
+		return "", "", fmt.Errorf("Malformed action: %s", action)
 	}
 	kubeAction := x[1]
 
@@ -67,8 +75,8 @@ func (k KubePlugin) InputMessageHandler(action string, actionPayload string) (in
 	case Log:
 		break
 	default:
-		return "", fmt.Errorf("Unhandled action")
+		return "", "", fmt.Errorf("Unhandled action")
 	}
 
-	return "", nil
+	return "", "", nil
 }

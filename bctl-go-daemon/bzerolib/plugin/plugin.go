@@ -1,16 +1,18 @@
 package plugin
 
+import (
+	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+)
+
 type PluginName string
 
 const (
-	Kube PluginName = "kube"
+	Kube       PluginName = "kube"
+	KubeDaemon PluginName = "kubedaemon"
 )
 
 type IPlugin interface {
-	InputMessageHandler(action string, actionPayload string) (interface{}, error)
+	InputMessageHandler(action string, actionPayload string) (string, string, error)
 	GetName() PluginName
-}
-
-type IAction interface {
-	InputMessageHandler(action string, actionPayload string) (interface{}, error)
+	PushStreamInput(smessage smsg.StreamMessage) error
 }

@@ -50,23 +50,21 @@ type Websocket struct {
 	InputChannel  chan wsmsg.AgentMessage
 	OutputChannel chan wsmsg.AgentMessage
 
-	// outputBuffer list.List // doubly linked list
-
 	// Function for figuring out correct Target SignalR Hub
-	// targetSelectHandler func (msg wsmsg.AgentMessage) error
+	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
 }
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
-func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string) (*Websocket, error) {
+func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*Websocket, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := Websocket{
 		Cancel: cancel,
 		Closed: false,
 
-		InputChannel:  make(chan wsmsg.AgentMessage, 200),
-		OutputChannel: make(chan wsmsg.AgentMessage, 200),
-		// outputBuffer:  *list.New(),
+		InputChannel:        make(chan wsmsg.AgentMessage, 200),
+		OutputChannel:       make(chan wsmsg.AgentMessage, 200),
+		targetSelectHandler: targetSelectHandler,
 	}
 
 	// Connect to the websocket, catch any errors
@@ -76,16 +74,21 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 
 	ret.Connect(serviceUrl, hubEndpoint, headers, params)
 
+	go func() {
+		for {
+			select {
+			case msg := <-ret.OutputChannel:
+				ret.Send(msg)
+			}
+		}
+	}()
+
 	// Set up our listener to alert on the channel when we get a message
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case msg := <-ret.OutputChannel: // might want a separate go routine for this
-				// ret.outputBuffer.PushBack(msg)
-				// ret.processOutputBuffer()
-				ret.Send(msg)
 			default:
 				_, rawMessage, err := ret.Client.ReadMessage()
 
@@ -120,20 +123,6 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 							log.Printf("Ignoring SignalR message with type %v", wrappedMessage.Type)
 						} else if len(wrappedMessage.Arguments) != 0 {
 							ret.InputChannel <- wrappedMessage.Arguments[0]
-
-							// var agentMessage wsmsg.AgentMessage
-							// if err := json.Unmarshal([]byte(arg), &agentMessage); err != nil {
-							// 	log.Printf("Error unmarshalling Agent Message: %+v", arg)
-							// 	break
-							// } else {
-							// 	ret.InputChannel <- agentMessage
-							// }
-
-							// if am, ok := wrappedMessage.Arguments[0].(wsmsg.AgentMessage); !ok {
-							// 	log.Printf("bad message: %+v", wrappedMessage.Arguments[0])
-							// } else {
-							// 	ret.InputChannel <- am
-							// }
 						}
 					}
 				}
@@ -143,20 +132,6 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 	}()
 	return &ret, nil
 }
-
-// func (w *Websocket) processOutputBuffer() {
-// 	if w.outputBuffer.Len() == 0 {
-// 		return
-// 	}
-
-// 	agentMessage := w.outputBuffer.Front()
-// 	w.Send(agentMessage.Value.(wsmsg.AgentMessage))
-// 	w.outputBuffer.Remove(agentMessage)
-
-// 	if w.outputBuffer.Len() > 0 {
-// 		w.processOutputBuffer()
-// 	}
-// }
 
 // Function to send data Bastion from a RequestToBastionFromDaemonMessage object
 func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
@@ -170,8 +145,10 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 
 	log.Printf("Sending message to the Bastion")
 
+	target, _ := w.targetSelectHandler(agentMessage)
+	log.Printf("Target: %v", target)
 	signalRMessage := wsmsg.SignalRWrapper{
-		Target:    "placeholder", // Leave up to daemon and agent to write more specific target specification function
+		Target:    target, // Leave up to daemon and agent to write more specific target specification function
 		Type:      signalRTypeNumber,
 		Arguments: []wsmsg.AgentMessage{agentMessage},
 	}
