@@ -161,6 +161,10 @@ export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boole
         columnWidths.push(38);
         header.push('Id');
         columnWidths.push(38);
+        header.push('Agent Version');
+        columnWidths.push(38);
+        header.push('Last Agent Update');
+        columnWidths.push(38);
     }
 
     // ref: https://github.com/cli-table/cli-table3
@@ -171,6 +175,8 @@ export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boole
         if (showGuid || showDetail) {
             row.push(cluster.validUsers.toString());
             row.push(cluster.id);
+            row.push(cluster.agentVersion);
+            row.push(cluster.lastAgentUpdate.toString());
         }
         table.push(row);
     }

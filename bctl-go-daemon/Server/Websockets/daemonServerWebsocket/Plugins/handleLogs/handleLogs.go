@@ -76,9 +76,6 @@ func HandleLogs(requestLogForServer daemonServerWebsocketTypes.RequestBastionToC
 		Pods(namespace).
 		GetLogs(podName, &podLogOptions)
 
-	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
-
 	stream, err := podLogRequest.Stream(context.TODO())
 	if err != nil {
 		log.Printf("Error on podLogRequest.Stream: %s", err)

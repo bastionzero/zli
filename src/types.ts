@@ -51,6 +51,8 @@ export interface ClusterSummary
     status: KubeClusterStatus;
     environmentId: string;
     validUsers: string[];
+    lastAgentUpdate: Date;
+    agentVersion: string;
 }
 
 export interface ConnectionDetails
