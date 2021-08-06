@@ -42,7 +42,6 @@ export class CliDriver
 
     private mixpanelService: MixpanelService;
 
-    private sshTargets: Promise<TargetSummary[]>;
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
     private envs: Promise<EnvironmentDetails[]>;
@@ -95,7 +94,6 @@ export class CliDriver
                 const fetchDataResponse = fetchDataMiddleware(this.configService, this.logger);
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
                 this.ssmTargets = fetchDataResponse.ssmTargets;
-                this.sshTargets = fetchDataResponse.sshTargets;
                 this.envs = fetchDataResponse.envs;
             })
             .command(
@@ -139,11 +137,10 @@ export class CliDriver
                                 alias: 't'
                             },
                         )
-                        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
-                        .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example, unique id of ssh target');
+                        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target');
                 },
                 async (argv) => {
-                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                 }
@@ -265,7 +262,7 @@ export class CliDriver
                         .example('lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.envs);
                 }
             )
             .command(
@@ -285,7 +282,7 @@ export class CliDriver
                         .example('lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets);
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
                 }
             )
             .command(
@@ -316,8 +313,8 @@ export class CliDriver
                         .example('copy /Users/coolUser/secretFile ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example, relative to your machine');
                 },
                 async (argv) => {
-                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
-                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
+                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     if(! sourceParsedTarget && ! destParsedTarget)
                     {
@@ -351,7 +348,7 @@ export class CliDriver
             )
             .command(
                 'ssh-proxy <host> <user> <port> <identityFile>',
-                'SSM targets only, ssh proxy command (run ssh-proxy-config command to generate configuration)',
+                'ssh proxy command (run ssh-proxy-config command to generate configuration)',
                 (yargs) => {
                     return yargs
                         .positional('host', {
@@ -381,7 +378,7 @@ export class CliDriver
 
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
-                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     if(argv.port < 1 || argv.port > 65535)
                     {

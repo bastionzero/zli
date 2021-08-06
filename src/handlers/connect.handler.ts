@@ -2,7 +2,7 @@ import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { ConnectionService, PolicyQueryService, SessionService } from '../http.service/http.service';
 import { VerbType } from '../http.service/http.service.types';
-import { ParsedTargetString, TargetType } from '../types';
+import { ParsedTargetString } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
@@ -51,9 +51,7 @@ export async function connectHandler(
         cliSpaceId = cliSpace.id;
     }
 
-    // We do the following for ssh since we are required to pass
-    // in a user although it does not get read at any point
-    const targetUser = parsedTarget.type === TargetType.SSH ? 'ssh' : parsedTarget.user;
+    const targetUser = parsedTarget.user;
 
     // make a new connection
     const connectionService = new ConnectionService(configService, logger);
@@ -65,13 +63,9 @@ export async function connectHandler(
     if(! connectionId)
     {
         logger.error('Connection creation failed');
-        if(parsedTarget.type !== TargetType.SSH)
-        {
-            logger.error(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${parsedTarget.envName}`);
-            logger.info('You can find SSM user policies in the web app');
-        } else {
-            logger.info('Please check your polices in the web app for this target and/or environment');
-        }
+
+        logger.error(`You may not have a policy for targetUser ${parsedTarget.user} in environment ${parsedTarget.envName}`);
+        logger.info('You can find SSM user policies in the web app');
 
         await cleanExit(1, logger);
     }

@@ -3,7 +3,6 @@ import { ConfigService } from '../config.service/config.service';
 import {
     DynamicAccessConfigService,
     EnvironmentService,
-    SshTargetService,
     SsmTargetService
 } from '../http.service/http.service';
 import { TargetSummary, TargetType } from '../types';
@@ -17,7 +16,6 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
     const ssmTargetService = new SsmTargetService(configService, logger);
-    const sshTargetService = new SshTargetService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
 
@@ -54,27 +52,11 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         }
     });
 
-    const sshTargets = new Promise<TargetSummary[]>( async (res, _) => {
-        try
-        {
-            const response = await sshTargetService.ListSshTargets();
-            const results = response.map<TargetSummary>((ssh, _index, _array) => {
-                return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId, agentVersion: 'N/A', status: undefined};
-            });
-
-            res(results);
-        } catch (e: any) {
-            logger.error(`Failed to fetch ssh targets: ${e}`);
-            return res([]);
-        }
-    });
-
     const envs = envService.ListEnvironments();
 
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
-        sshTargets: sshTargets,
         envs: envs
     };
 }

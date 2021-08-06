@@ -16,7 +16,7 @@ export const targetStringExampleNoPath : string = '[targetUser@]<targetId-or-tar
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const targetTypePattern = /^(ssm|ssh|dynamic)$/i; // case insensitive check for targetType
+    const targetTypePattern = /^(ssm|dynamic)$/i; // case insensitive check for targetType
 
     if(! targetTypePattern.test(targetType))
         return undefined;
@@ -159,7 +159,6 @@ export async function disambiguateTarget(
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    sshTargets: Promise<TargetSummary[]>,
     envs: Promise<EnvironmentDetails[]>): Promise<ParsedTargetString> {
 
     const parsedTarget = parseTargetString(targetString);
@@ -168,7 +167,7 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = concat(await ssmTargets, await sshTargets, await dynamicConfigs);
+    let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
     zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));

@@ -2,11 +2,8 @@ import { parseTargetString, parseTargetType } from '../utils';
 
 test('valid targetType strings', () => {
     const validSSMTargetTypeStrings = [
-        'ssh',
         'ssm',
-        'SSH', // caps don't matter
         'SSM',
-        'SsH',
         'sSM'
     ];
     validSSMTargetTypeStrings.forEach(t => expect(parseTargetType(t)).toBeDefined());

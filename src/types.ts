@@ -2,7 +2,6 @@ import { ConnectionState } from './http.service/http.service.types';
 
 export enum TargetType {
     SSM = 'SSM',
-    SSH = 'SSH',
     DYNAMIC = 'DYNAMIC'
 }
 

@@ -16,10 +16,9 @@ export async function listTargetsHandler(
     argv: any,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    sshTargets: Promise<TargetSummary[]>,
     envsPassed: Promise<EnvironmentDetails[]>) {
     // await and concatenate
-    let allTargets = [...await ssmTargets, ...await sshTargets, ...await dynamicConfigs];
+    let allTargets = [...await ssmTargets, ...await dynamicConfigs];
     const envs = await envsPassed;
 
     // find all envIds with substring search

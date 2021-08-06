@@ -33,9 +33,7 @@ export class ShellTerminal implements IDisposable
         const targetType = this.connectionSummary.serverType;
         const targetId = this.connectionSummary.serverId;
 
-        if(targetType === TargetType.SSH) {
-            return this.createSshShellWebsocketService();
-        } else if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
+        if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
             const ssmTargetInfo = await ssmTargetService.GetSsmTarget(targetId);
             if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
