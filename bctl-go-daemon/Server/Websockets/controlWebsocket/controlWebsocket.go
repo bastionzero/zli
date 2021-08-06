@@ -40,7 +40,7 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 	if (ret.NewAgent() == true){
 		// Update our persistant secret
 		secretInfo := controlWebsocketTypes.SecretConfig{}
-		secretInfo.Test = "testwow"
+		secretInfo.Test = "coolbeans"
 		ret.SaveParsedSecret(secretInfo)
 		log.Println("New Agent detected, initilized secrets...")
 	} else {
