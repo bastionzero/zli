@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SsmTargetSummary, TargetUser, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, ShellConnectionAuthDetails, SsmTargetSummary, TargetUser, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
@@ -195,6 +195,11 @@ export class ConnectionService extends HttpService
         };
 
         return this.Post('close', req);
+    }
+
+    public async GetShellConnectionAuthDetails(connectionId: string) : Promise<ShellConnectionAuthDetails>
+    {
+        return this.Get('auth-details', {id: connectionId});
     }
 }
 

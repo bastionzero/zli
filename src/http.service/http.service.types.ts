@@ -214,3 +214,8 @@ export interface GetAutodiscoveryScriptRequest {
 export interface GetAutodiscoveryScriptResponse {
     autodiscoveryScript: string;
 }
+
+export interface ShellConnectionAuthDetails {
+    connectionNodeId: string;
+    authToken: string;
+}

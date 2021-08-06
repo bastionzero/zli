@@ -1,6 +1,5 @@
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
-import { SshShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssh-shell-websocket.service';
-import { isAgentKeysplittingReady, SsmShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/ssm-shell-websocket.service';
+import { isAgentKeysplittingReady, ShellWebsocketService } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service';
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
@@ -8,9 +7,9 @@ import { ConfigService } from '../config.service/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
 import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
 import { Logger } from '../logger.service/logger';
-import { SsmTargetService } from '../http.service/http.service';
+import { ConnectionService, SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
-import { ConnectionSummary, SsmTargetSummary } from '../http.service/http.service.types';
+import { ConnectionSummary } from '../http.service/http.service.types';
 
 export class ShellTerminal implements IDisposable
 {
@@ -33,40 +32,32 @@ export class ShellTerminal implements IDisposable
         const targetType = this.connectionSummary.serverType;
         const targetId = this.connectionSummary.serverId;
 
-        if(targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
+        if (targetType === TargetType.SSM || targetType === TargetType.DYNAMIC) {
             const ssmTargetService = new SsmTargetService(this.configService, this.logger);
             const ssmTargetInfo = await ssmTargetService.GetSsmTarget(targetId);
-            if( isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
-                return this.createSsmShellWebsocketService(ssmTargetInfo);
-            } else {
-                this.logger.debug(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...falling back to non-keysplitting shell`);
-                return this.createSshShellWebsocketService();
+
+            // Check the agent version is keysplitting compatible
+            if (!isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
+                throw new Error(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...`);
             }
+
+            const connectionService = new ConnectionService(this.configService, this.logger);
+            const shellConnectionAuthDetails = await connectionService.GetShellConnectionAuthDetails(this.connectionSummary.id);
+
+            return new ShellWebsocketService(
+                new KeySplittingService(this.configService, this.logger),
+                ssmTargetInfo,
+                this.logger,
+                new ZliAuthConfigService(this.configService, this.logger),
+                this.connectionSummary.id,
+                shellConnectionAuthDetails.connectionNodeId,
+                shellConnectionAuthDetails.authToken,
+                this.inputSubject,
+                this.resizeSubject
+            );
         } else {
-            throw new Error(`Unhandled target type ${targetType}`);
+            throw new Error(`Unhandled connection type ${targetType}`);
         }
-    }
-
-    private createSshShellWebsocketService(): IShellWebsocketService {
-        return new SshShellWebsocketService(
-            this.logger,
-            new ZliAuthConfigService(this.configService, this.logger),
-            this.connectionSummary.id,
-            this.inputSubject,
-            this.resizeSubject
-        );
-    }
-
-    private createSsmShellWebsocketService(ssmTargetInfo: SsmTargetSummary): IShellWebsocketService {
-        return new SsmShellWebsocketService(
-            new KeySplittingService(this.configService, this.logger),
-            ssmTargetInfo,
-            this.logger,
-            new ZliAuthConfigService(this.configService, this.logger),
-            this.connectionSummary.id,
-            this.inputSubject,
-            this.resizeSubject
-        );
     }
 
     public async start(termSize: TerminalSize): Promise<void>
