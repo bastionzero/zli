@@ -6,7 +6,7 @@ import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
 
-export async function addUserHandler(userEmail: string, clusterName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function addUserHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
 
@@ -25,7 +25,7 @@ export async function addUserHandler(userEmail: string, clusterName: string, clu
 
     // Loop till we find the one we are looking for
     for (const policy of policies) {
-        if (policy.name == clusterName) {
+        if (policy.name == policyName) {
             // Then add the user to the policy
             const subjectToAdd: Subject = {
                 id: userInfo.id,
@@ -36,13 +36,13 @@ export async function addUserHandler(userEmail: string, clusterName: string, clu
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
-            logger.info(`Added ${userEmail} to ${clusterName} policy!`);
+            logger.info(`Added ${userEmail} to ${policyName} policy!`);
             await cleanExit(0, logger);
         }
     }
 
     // Log an error
-    logger.error(`Unable to find the policy for cluster: ${clusterName}`);
+    logger.error(`Unable to find the policy for cluster: ${policyName}`);
     await cleanExit(1, logger);
 }
 

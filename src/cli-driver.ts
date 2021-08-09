@@ -192,75 +192,75 @@ export class CliDriver
                 }
             )
             .command(
-                'addrole <clusterUserName> <clusterName>',
+                'addrole <clusterUserName> <policyName>',
                 'Add a ClusterUser to a Cluster Policy',
                 (yargs) => {
                     return yargs
                         .positional('clusterUserName', {
                             type: 'string',
                         })
-                        .positional('clusterName', {
+                        .positional('policyName', {
                             type: 'string',
                         })
                         .option('force', {
                             type: 'boolean',
                             alias: 'f'
                         })
-                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster');
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster policy');
                 },
                 async (argv) => {
-                    await addRoleHandler(argv.clusterUserName, argv.clusterName, argv.force, this.clusterTargets, this.configService, this.logger);
+                    await addRoleHandler(argv.clusterUserName, argv.policyName, argv.force, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
-                'removerole <clusterUserName> <clusterName>',
+                'removerole <clusterUserName> <policyName>',
                 'Remove a ClusterUser from Cluster Policy',
                 (yargs) => {
                     return yargs
                         .positional('clusterUserName', {
                             type: 'string',
                         })
-                        .positional('clusterName', {
+                        .positional('policyName', {
                             type: 'string',
                         })
-                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster');
+                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster policy');
                 },
                 async (argv) => {
-                    await removeRoleHandler(argv.clusterUserName, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                    await removeRoleHandler(argv.clusterUserName, argv.policyName, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
-                'adduser <idpEmail> <clusterName>',
+                'adduser <idpEmail> <policyName>',
                 'Add a IDP User to a Cluster Policy',
                 (yargs) => {
                     return yargs
                         .positional('idpEmail', {
                             type: 'string',
                         })
-                        .positional('clusterName', {
+                        .positional('policyName', {
                             type: 'string',
                         })
                         .example('adduser test@test.com test-cluster', 'Adds the test@test.com IDP user test-cluster policy');
                 },
                 async (argv) => {
-                    await addUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                    await addUserHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
-                'removeuser <idpEmail> <clusterName>',
+                'removeuser <idpEmail> <policyName>',
                 'Remove a IDP User to a Cluster Policy',
                 (yargs) => {
                     return yargs
                         .positional('idpEmail', {
                             type: 'string',
                         })
-                        .positional('clusterName', {
+                        .positional('policyName', {
                             type: 'string',
                         })
                         .example('removeuser test@test.com test-cluster', 'Removes the test@test.com IDP user test-cluster policy');
                 },
                 async (argv) => {
-                    await removeUserHandler(argv.idpEmail, argv.clusterName, this.clusterTargets, this.configService, this.logger);
+                    await removeUserHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
                 }
             )
             .command(
@@ -268,6 +268,9 @@ export class CliDriver
                 'Get detailed information about a certain cluster',
                 (yargs) => {
                     return yargs
+                        .positional('clusterName', {
+                            type: 'string',
+                        })
                         .example('status test-cluster', '');
                 },
                 async (argv) => {
@@ -637,6 +640,10 @@ export class CliDriver
                             alias: 'o',
                             default: null
                         })
+                        .option('environmentId', {
+                            type: 'string',
+                            default: null
+                        })
                         .example('generate kubeYaml testcluster', '')
                         .example('generate kubeConfig', '')
                         .example('generate kubeYaml --labels testkey:testvalue', '');
@@ -645,7 +652,7 @@ export class CliDriver
                     if (argv.typeOfConfig == 'kubeConfig') {
                         await generateKubeconfigHandler(argv, this.configService, this.logger);
                     } else if (argv.typeOfConfig == 'kubeYaml') {
-                        await generateKubeYamlHandler(argv, this.configService, this.logger);
+                        await generateKubeYamlHandler(argv, this.envs, this.configService, this.logger);
                     }
                 }
             )

@@ -35,17 +35,18 @@ export async function describeHandler(
             break;
         }
     }
-    // Now make a query to see all the policy information
-    const policyService = new PolicyQueryService(configService, logger);
-    const clusterPolicyInfo = await policyService.DescribeKubeProxy(clusterName);
 
-    // Build our clusteruser string 
-    var clusterUserString = '';
-    for (var clusterUser of clusterPolicyInfo.clusterUsers) {
-        clusterUserString += clusterUser.name + ',';
+    // Now make a query to see all policies associated with this cluster
+    const policyService = new PolicyQueryService(configService, logger);
+    const clusterPolicyInfo = await policyService.GetAllPoliciesForClusterId(clusterSummary.id);
+
+    // Build our policies string 
+    var policiesString = '';
+    for (var policy of clusterPolicyInfo.policies) {
+        policiesString += policy.name + ',';
     }
-    if (clusterPolicyInfo.clusterUsers.length != 0) {
-        clusterUserString = clusterUserString.substring(0, clusterUserString.length - 1); // remove trailing ,
+    if (clusterPolicyInfo.policies.length != 0) {
+        policiesString = policiesString.substring(0, policiesString.length - 1); // remove trailing ,
     }
 
     // Build our validUsers string
@@ -58,6 +59,6 @@ export async function describeHandler(
     // Now we can print all the information we know
     logger.info(`Cluster information for: ${clusterName}`);
     logger.info(`    - Environment Name: ${environment.name}`)
-    logger.info(`    - Cluster Users Attached To Policy: ${clusterUserString}`)
+    logger.info(`    - Policies using this cluster: ${policiesString}`)
     logger.info(`    - Valid Cluster Users: ${validUserString}`)
 }
