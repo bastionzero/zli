@@ -12,24 +12,6 @@ export async function addRoleHandler(clusterUserName: string, policyName: string
     const policyService = new PolicyService(configService, logger);
     const policies = await policyService.ListAllPolicies();
 
-    // Check if this is a valid cluster name TODO: Do we still do this?
-    // var validUser = false;
-    // for (var clusterInfo of await clusterTargets) {
-    //     if (clusterInfo.name == clusterName) {
-    //         for (var possibleRole of clusterInfo.validUsers) {
-    //             if (possibleRole == clusterUserName) {
-    //                 validUser = true;
-    //             }
-    //         }
-    //     }
-    // }
-
-    // If this is not a valid role, and they have not passed the force flag, exit
-    // if (validUser == false && force != true) {
-    //     logger.error(`The role chosen: ${clusterUserName} is not a valid role on the cluster ${clusterName}. If this is a mistake, please use the -f flag. Run zli describe <custerName> to see all valid cluster roles.`)
-    //     await cleanExit(1, logger);
-    // }
-
     // Loop till we find the one we are looking for
     for (const policy of policies) {
         if (policy.name == policyName) {
