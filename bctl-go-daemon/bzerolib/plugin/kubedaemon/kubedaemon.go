@@ -26,12 +26,12 @@ const (
 
 type ActionWrapper struct {
 	Action        string
-	ActionPayload string
+	ActionPayload []byte
 }
 
 // Perhaps unnecessary but it is nice to make sure that each action is implementing a common function
 type IKubeDaemonAction interface {
-	InputMessageHandler(writer http.ResponseWriter, request *http.Request) (string, interface{}, error)
+	InputMessageHandler(writer http.ResponseWriter, request *http.Request) (string, []byte, error)
 }
 
 type KubeDaemonPlugin struct {
@@ -89,14 +89,14 @@ func (k *KubeDaemonPlugin) GetName() plgn.PluginName {
 	return plgn.KubeDaemon
 }
 
-func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload string) (string, string, error) {
+func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
 	// TODO: check that plugin name is "kube"
 	log.Printf("Waiting for input...")
 	select {
 	case actionMessage := <-k.ksOutput:
 		log.Printf("Received input from action: %v", actionMessage.Action)
 		actionPayloadBytes, _ := json.Marshal(actionMessage.ActionPayload)
-		return actionMessage.Action, string(actionPayloadBytes), nil
+		return actionMessage.Action, actionPayloadBytes, nil
 		// case <-time.After(time.Second * 10): // a better solution is to have a cancel channel
 		// 	return "", "", fmt.Errorf("TIMEOUT!")
 	}
@@ -146,7 +146,6 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if action, payload, err := restAction.InputMessageHandler(w, r); err != nil {
 			log.Printf("Error handling REST API call: %s", err.Error())
 		} else {
-			// log.Printf("Action: %v, Payload: %v", action, payload)
 			k.ksOutput <- ActionWrapper{
 				Action:        action,
 				ActionPayload: payload,
@@ -154,8 +153,6 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-
-	// actions will push to channel which will get read everytime we need to send a message
 
 	// if strings.Contains(r.URL.Path, "exec") {
 	// 	handleExec.HandleExec(w, r, wsClient)

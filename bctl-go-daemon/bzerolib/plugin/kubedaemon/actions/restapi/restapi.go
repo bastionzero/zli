@@ -1,10 +1,12 @@
 package restapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"bastionzero.com/bctl/v1/bzerolib/keysplitting/hasher"
+	kuberest "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/restapi"
 )
 
 const (
@@ -21,7 +23,7 @@ func NewRestApiAction(id int) (*RestApiAction, error) {
 	}, nil
 }
 
-func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) (string, string, error) {
+func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) (string, []byte, error) {
 	// First extract the headers out of the request
 	headers := make(map[string]string)
 	for name, values := range request.Header {
@@ -33,12 +35,12 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 	// Now extract the body
 	bodyInBytes, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		return action, "", fmt.Errorf("Error building body")
+		return action, []byte{}, fmt.Errorf("Error building body")
 	}
 
 	// Build the action payload
 	// If I'm returning this as an interface will it marshal correctly?
-	payload := KubeRestApiActionPayload{
+	payload := kuberest.KubeRestApiActionPayload{
 		Endpoint:  request.URL.String(),
 		Headers:   headers,
 		Method:    request.Method,
@@ -46,6 +48,7 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 		RequestId: r.requestId,
 	}
 
-	payloadBytes, _ := json.Marshal(payload)
-	return action, string(payloadBytes), nil // TODO: Make this bytes
+	payloadBytes, _ := hasher.SafeMarshal(payload)
+	// payloadBytes, _ := json.Marshal(payload)
+	return action, payloadBytes, nil // TODO: Make this bytes
 }

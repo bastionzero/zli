@@ -26,7 +26,7 @@ func main() {
 	parseFlags()
 
 	// Connect to the control channel
-	control := controlws.NewControlWebsocketClient(serviceUrl, activationToken, orgId, clusterName, environmentId)
+	control := controlws.NewControlWebsocketClient(serviceUrl, activationToken, orgId, clusterName, environmentId, "1.0")
 
 	// Subscribe to control channel
 	go func() {
@@ -57,13 +57,13 @@ func startDatachannel(channelConnectionId string) {
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel("kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dc.NewDataChannel("", "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	var payload map[string]interface{}
 	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
-		p := payload["payload"].(map[string]interface{})
+		p := payload["keysplittingPayload"].(map[string]interface{})
 		switch p["action"] {
 		case "kube/restapi":
 			return "ResponseClusterToBastion", nil

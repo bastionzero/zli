@@ -12,7 +12,7 @@ const (
 )
 
 type IPlugin interface {
-	InputMessageHandler(action string, actionPayload string) (string, string, error)
+	InputMessageHandler(action string, actionPayload []byte) (string, []byte, error)
 	GetName() PluginName
 	PushStreamInput(smessage smsg.StreamMessage) error
 }
