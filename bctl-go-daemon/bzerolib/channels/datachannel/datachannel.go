@@ -162,7 +162,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 				if _, returnPayload, err := d.plugin.InputMessageHandler(dataPayload.Action, dataPayload.ActionPayload); err == nil {
 
 					// Build and send response
-					if respKSMessage, err := keysplittingMessage.BuildResponse(returnPayload, d.publickey, d.privatekey); err != nil {
+					if respKSMessage, err := keysplittingMessage.BuildResponse("", returnPayload, d.publickey, d.privatekey); err != nil {
 						return fmt.Errorf("Could not build response message: %s", err.Error())
 					} else {
 						d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
@@ -181,7 +181,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 					}
 
 					// Build reply message with empty payload
-					if respKSMessage, err := keysplittingMessage.BuildResponse("", d.publickey, d.privatekey); err != nil {
+					if respKSMessage, err := keysplittingMessage.BuildResponse("", []byte{}, d.publickey, d.privatekey); err != nil {
 						return fmt.Errorf("Could not build response message: %s", err.Error())
 					} else {
 						d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
@@ -192,6 +192,18 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			}
 		}
 	case ksmsg.DataAck:
+		dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
+		if action, returnPayload, err := d.plugin.InputMessageHandler(dataAckPayload.Action, []byte{}); err == nil {
+
+			// Build and send response
+			if respKSMessage, err := keysplittingMessage.BuildResponse(action, returnPayload, d.publickey, d.privatekey); err != nil {
+				return fmt.Errorf("Could not build response message: %s", err.Error())
+			} else {
+				d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
+			}
+		} else {
+			return err
+		}
 		break
 	default:
 		return fmt.Errorf("Invalid Keysplitting Payload")

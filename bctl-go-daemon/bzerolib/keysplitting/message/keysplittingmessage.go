@@ -37,7 +37,7 @@ type KeysplittingMessage struct {
 	Signature           string                  `json:"signature"`
 }
 
-func (k *KeysplittingMessage) BuildResponse(actionPayload interface{}, publickey string, privatekey string) (KeysplittingMessage, error) {
+func (k *KeysplittingMessage) BuildResponse(action string, actionPayload []byte, publickey string, privatekey string) (KeysplittingMessage, error) {
 	var ksMessage KeysplittingMessage
 	switch k.Type {
 	case Data:
@@ -48,6 +48,16 @@ func (k *KeysplittingMessage) BuildResponse(actionPayload interface{}, publickey
 			ksMessage = KeysplittingMessage{
 				Type:                DataAck,
 				KeysplittingPayload: dataAckPayload,
+			}
+		}
+	case DataAck:
+		dataAckPayload := k.KeysplittingPayload.(DataAckPayload)
+		if dataPayload, err := dataAckPayload.BuildResponsePayload(action, actionPayload); err != nil {
+			return KeysplittingMessage{}, err
+		} else {
+			ksMessage = KeysplittingMessage{
+				Type:                Data,
+				KeysplittingPayload: dataPayload,
 			}
 		}
 	}
@@ -146,61 +156,4 @@ func (k *KeysplittingMessage) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
-
-	// var v map[string]interface{}
-	// if err := json.Unmarshal(data, &v); err != nil {
-	// 	return err
-	// }
-	// log.Printf("%+v", v)
-
-	// if v["type"] == nil {
-	// 	k.Type = ""
-	// } else {
-	// 	k.Type = KeysplittingPayloadType(v["type"].(string))
-	// }
-	// if v["signature"] == nil {
-	// 	k.Signature = ""
-	// } else {
-	// 	k.Signature = v["signature"].(string)
-	// }
-
-	// kPayload := []byte(v["keysplittingPayload"].(string))
-
-	// switch k.Type {
-	// case Syn:
-	// 	var synPayload SynPayload
-	// 	if err := json.Unmarshal(kPayload, &synPayload); err != nil {
-	// 		return fmt.Errorf("Malformed Syn Payload")
-	// 	} else {
-	// 		k.KeysplittingPayload = synPayload
-	// 	}
-	// case SynAck:
-	// 	var synAckPayload SynAckPayload
-	// 	if err := json.Unmarshal(kPayload, &synAckPayload); err != nil {
-	// 		return fmt.Errorf("Malformed SynAck Payload")
-	// 	} else {
-	// 		k.KeysplittingPayload = synAckPayload
-	// 	}
-	// case Data:
-	// 	var dataPayload DataPayload
-	// 	if err := json.Unmarshal(kPayload, &dataPayload); err != nil {
-	// 		return fmt.Errorf("Malformed Data Payload")
-	// 	} else {
-	// 		k.KeysplittingPayload = dataPayload
-	// 	}
-	// case DataAck:
-	// 	var dataAckPayload DataAckPayload
-	// 	if err := json.Unmarshal(kPayload, &dataAckPayload); err != nil {
-	// 		return fmt.Errorf("Malformed DataAck Payload")
-	// 	} else {
-	// 		k.KeysplittingPayload = dataAckPayload
-	// 	}
-	// default:
-	// 	// TODO: explicitly check type of outer vs. inner payload
-	// 	return fmt.Errorf("Type mismatch in keysplitting message and actual message payload")
-	// }
-
-	// //k.KeysplittingPayload = v["KeysplittingPayload"].([]byte)
-
-	// return nil
 }

@@ -21,11 +21,9 @@ type DataPayload struct {
 	ActionPayload []byte `json:"actionPayload"`
 }
 
-func (d DataPayload) BuildResponsePayload(actionPayload interface{}, pubKey string) (DataAckPayload, error) {
+func (d DataPayload) BuildResponsePayload(actionPayload []byte, pubKey string) (DataAckPayload, error) {
 	hashBytes, _ := hasher.HashPayload((d))
 	hash := base64.StdEncoding.EncodeToString(hashBytes)
-
-	actionPayloadBytes, _ := hasher.SafeMarshal(actionPayload)
 
 	return DataAckPayload{
 		Timestamp:             fmt.Sprint(time.Now().Unix()),
@@ -34,6 +32,6 @@ func (d DataPayload) BuildResponsePayload(actionPayload interface{}, pubKey stri
 		Action:                d.Action,
 		TargetPublicKey:       pubKey,
 		HPointer:              hash,
-		ActionResponsePayload: actionPayloadBytes,
+		ActionResponsePayload: actionPayload,
 	}, nil
 }

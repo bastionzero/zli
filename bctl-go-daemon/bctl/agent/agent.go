@@ -66,7 +66,7 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 		p := payload["keysplittingPayload"].(map[string]interface{})
 		switch p["action"] {
 		case "kube/restapi":
-			return "ResponseClusterToBastion", nil
+			return "ResponseToBastionFromCluster", nil
 		}
 	}
 	return "", fmt.Errorf("")
