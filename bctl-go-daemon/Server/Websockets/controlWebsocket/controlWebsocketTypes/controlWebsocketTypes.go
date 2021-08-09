@@ -27,6 +27,7 @@ type ProvisionNewWebsocketSignalRMessage struct {
 
 type ProvisionNewWebsocketMessage struct {
 	ConnectionId string `json:"connectionId"`
+	Role         string `json:"role"`
 }
 
 type AliveCheckToClusterFromBastionSignalRMessage struct {

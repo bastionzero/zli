@@ -133,7 +133,7 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 	return &ret, nil
 }
 
-// Function to send data Bastion from a RequestToBastionFromDaemonMessage object
+// Function to write signalr message to websocket
 func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	if !w.IsReady {
 		return fmt.Errorf("Websocket not ready to send yet")
@@ -145,8 +145,13 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 
 	log.Printf("Sending message to the Bastion")
 
-	target, _ := w.targetSelectHandler(agentMessage)
+	// Select target
+	target, err := w.targetSelectHandler(agentMessage)
+	if err != nil {
+		return fmt.Errorf("Error in selecting SignalR Endpoint target name: %v", err.Error())
+	}
 	log.Printf("Target: %v", target)
+
 	signalRMessage := wsmsg.SignalRWrapper{
 		Target:    target, // Leave up to daemon and agent to write more specific target specification function
 		Type:      signalRTypeNumber,

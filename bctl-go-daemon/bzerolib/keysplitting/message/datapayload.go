@@ -18,7 +18,7 @@ type DataPayload struct {
 	TargetId      string `json:"targetId"`
 	HPointer      string `json:"hPointer"`
 	BZCertHash    string `json:"bZCertHash"`
-	ActionPayload string `json:"actionPayload"`
+	ActionPayload []byte `json:"actionPayload"`
 }
 
 func (d DataPayload) BuildResponsePayload(actionPayload interface{}, pubKey string) (DataAckPayload, error) {

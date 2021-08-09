@@ -28,6 +28,9 @@ type DataChannel struct {
 	ksHandshake bool
 	plugin      plgn.IPlugin
 
+	// Kube-specific vars
+	role string
+
 	// Keysplitting variables
 	HPointer         string
 	ExpectedHPointer string
@@ -36,7 +39,7 @@ type DataChannel struct {
 	privatekey       string
 }
 
-func NewDataChannel(startPlugin string, serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*DataChannel, error) {
+func NewDataChannel(role string, startPlugin string, serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*DataChannel, error) {
 	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
 	if err != nil {
 		return &DataChannel{}, fmt.Errorf(err.Error())
@@ -47,6 +50,7 @@ func NewDataChannel(startPlugin string, serviceUrl string, hubEndpoint string, p
 		ksHandshake: false,
 		publickey:   "legitkey",
 		privatekey:  "equallylegitkey",
+		role:        role,
 	}
 
 	// Start plugin on startup, if specified
@@ -85,7 +89,7 @@ func (d *DataChannel) SendAgentMessage(messageType wsmsg.MessageType, messagePay
 
 func (d *DataChannel) SendSyn() {
 	// useful for when we implement keysplitting, for now just helps with daemon startup
-	if action, payload, err := d.plugin.InputMessageHandler("", ""); err != nil {
+	if action, payload, err := d.plugin.InputMessageHandler("", []byte{}); err != nil {
 		log.Printf(err.Error())
 	} else {
 		log.Printf("YEAHHHHHH BITCH")
@@ -106,13 +110,14 @@ func (d *DataChannel) SendSyn() {
 		ksMessage := ksmsg.KeysplittingMessage{
 			Type:                "Data",
 			KeysplittingPayload: dataPayload,
+			Signature:           "",
 		}
 		d.SendAgentMessage(wsmsg.Keysplitting, ksMessage)
 	}
 }
 
 func (d *DataChannel) InputMessageHandler(agentMessage wsmsg.AgentMessage) error {
-	log.Printf("Received %v message", wsmsg.MessageType(agentMessage.MessageType))
+	log.Printf("Datachannel received %v message", wsmsg.MessageType(agentMessage.MessageType))
 	switch wsmsg.MessageType(agentMessage.MessageType) {
 	case wsmsg.Keysplitting:
 		var ksMessage ksmsg.KeysplittingMessage
@@ -147,7 +152,6 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		break
 	case ksmsg.Data:
 		dataPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataPayload)
-		log.Printf("Received %v action data message: %+v", dataPayload.Action, dataPayload)
 
 		// Figure out what action we're taking
 		if x := strings.Split(dataPayload.Action, "/"); len(x) <= 1 {
@@ -220,7 +224,7 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 			}
 		}()
 
-		d.plugin = kube.NewPlugin(ch)
+		d.plugin = kube.NewPlugin(ch, d.role)
 		log.Printf("Plugin started!")
 		return nil
 	default:

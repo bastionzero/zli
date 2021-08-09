@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"bastionzero.com/bctl/v1/bzerolib/keysplitting/hasher"
 )
@@ -34,7 +33,7 @@ type IKeysplittingMessage interface {
 
 type KeysplittingMessage struct {
 	Type                KeysplittingPayloadType `json:"type"`
-	KeysplittingPayload interface{}             `json:"payload"`
+	KeysplittingPayload interface{}             `json:"keysplittingPayload"`
 	Signature           string                  `json:"signature"`
 }
 
@@ -91,24 +90,27 @@ func (k *KeysplittingMessage) Sign(privateKey string) error {
 	return nil
 }
 
-// Also verifies user identity
-// func (k *KeysplittingMessage) GetSenderId() (string, time.Time, error) {
-// 	return k.KeysplittingPayload.GetSenderId()
-// }
-
 func (k *KeysplittingMessage) UnmarshalJSON(data []byte) error {
-	var v map[string]interface{}
-	if err := json.Unmarshal(data, &v); err != nil {
+	var objmap map[string]*json.RawMessage
+
+	if err := json.Unmarshal(data, &objmap); err != nil {
 		return err
 	}
-	log.Printf("%+v", v)
 
-	// TODO: check lower case start too
-	k.Type = KeysplittingPayloadType(v["Type"].(string))
-	k.Signature = v["Signature"].(string)
+	var t, s string
+	if err := json.Unmarshal(*objmap["type"], &t); err != nil {
+		return err
+	} else {
+		k.Type = KeysplittingPayloadType(t)
+	}
 
-	kPayload := []byte(v["KeysplittingPayload"].(string))
+	if err := json.Unmarshal(*objmap["signature"], &s); err != nil {
+		return err
+	} else {
+		k.Signature = s
+	}
 
+	kPayload := *objmap["keysplittingPayload"]
 	switch k.Type {
 	case Syn:
 		var synPayload SynPayload
@@ -143,7 +145,62 @@ func (k *KeysplittingMessage) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("Type mismatch in keysplitting message and actual message payload")
 	}
 
-	//k.KeysplittingPayload = v["KeysplittingPayload"].([]byte)
-
 	return nil
+
+	// var v map[string]interface{}
+	// if err := json.Unmarshal(data, &v); err != nil {
+	// 	return err
+	// }
+	// log.Printf("%+v", v)
+
+	// if v["type"] == nil {
+	// 	k.Type = ""
+	// } else {
+	// 	k.Type = KeysplittingPayloadType(v["type"].(string))
+	// }
+	// if v["signature"] == nil {
+	// 	k.Signature = ""
+	// } else {
+	// 	k.Signature = v["signature"].(string)
+	// }
+
+	// kPayload := []byte(v["keysplittingPayload"].(string))
+
+	// switch k.Type {
+	// case Syn:
+	// 	var synPayload SynPayload
+	// 	if err := json.Unmarshal(kPayload, &synPayload); err != nil {
+	// 		return fmt.Errorf("Malformed Syn Payload")
+	// 	} else {
+	// 		k.KeysplittingPayload = synPayload
+	// 	}
+	// case SynAck:
+	// 	var synAckPayload SynAckPayload
+	// 	if err := json.Unmarshal(kPayload, &synAckPayload); err != nil {
+	// 		return fmt.Errorf("Malformed SynAck Payload")
+	// 	} else {
+	// 		k.KeysplittingPayload = synAckPayload
+	// 	}
+	// case Data:
+	// 	var dataPayload DataPayload
+	// 	if err := json.Unmarshal(kPayload, &dataPayload); err != nil {
+	// 		return fmt.Errorf("Malformed Data Payload")
+	// 	} else {
+	// 		k.KeysplittingPayload = dataPayload
+	// 	}
+	// case DataAck:
+	// 	var dataAckPayload DataAckPayload
+	// 	if err := json.Unmarshal(kPayload, &dataAckPayload); err != nil {
+	// 		return fmt.Errorf("Malformed DataAck Payload")
+	// 	} else {
+	// 		k.KeysplittingPayload = dataAckPayload
+	// 	}
+	// default:
+	// 	// TODO: explicitly check type of outer vs. inner payload
+	// 	return fmt.Errorf("Type mismatch in keysplitting message and actual message payload")
+	// }
+
+	// //k.KeysplittingPayload = v["KeysplittingPayload"].([]byte)
+
+	// return nil
 }

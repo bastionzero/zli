@@ -8,7 +8,6 @@ type KubeRestApiActionPayload struct {
 	Method    string            `json:"method"`
 	Body      string            `json:"body"`
 	RequestId int               `json:"requestIdentifier"`
-	Role      string            `json:"role"`
 }
 
 type KubeRestApiActionResponsePayload struct {

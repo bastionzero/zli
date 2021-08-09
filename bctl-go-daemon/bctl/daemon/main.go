@@ -42,7 +42,7 @@ func startDatachannel() {
 	params["assume_cluster"] = assumeCluster
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel("", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dataChannel, _ := dc.NewDataChannel(assumeRole, "", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		log.Printf("Error starting Kube Daemon plugin: %s", err.Error())
 		return
@@ -53,10 +53,13 @@ func startDatachannel() {
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	var payload map[string]interface{}
 	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
-		p := payload["payload"].(map[string]interface{})
-		switch p["action"] {
-		case "kube/restapi":
-			return "RequestToBastionFromDaemon", nil
+		if p, ok := payload["keysplittingPayload"].(map[string]interface{}); ok {
+			switch p["action"] {
+			case "kube/restapi":
+				return "RequestToBastionFromDaemon", nil
+			}
+		} else {
+			return "", fmt.Errorf("Fail on expected payload: %v", payload["keysplittingPayload"])
 		}
 	}
 	return "", fmt.Errorf("")
