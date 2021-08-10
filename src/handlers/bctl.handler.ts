@@ -18,9 +18,6 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     // Print as what user we are running the command as, and to which container
     logger.info(`Connected as ${kubeConfig["assumeRole"]} to cluster ${kubeConfig["assumeCluster"]}`)
 
-    // First extract the args
-    var kubeArgs = process.argv.splice(2);
-
     // Then get the token 
     const token = kubeConfig['token'];
 
@@ -28,12 +25,15 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     const logId = uuidv4();
 
     // Now build our token
-    const kubeArgsString = kubeArgs.join(' ');
+    const kubeArgsRaw = process.argv.splice(2)
+    const kubeArgsString = kubeArgsRaw.join(' ');
     const formattedToken = `${token}bctl ${kubeArgsString}++++${logId}`;
 
     // Add the token to the args
-    kubeArgs.unshift('--token');
-    kubeArgs.unshift(formattedToken);
+    var kubeArgs: string[] = ['--token', formattedToken]
+
+    // Then add the extract the args
+    kubeArgs = kubeArgs.concat(kubeArgsRaw);
 
     spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
 }
