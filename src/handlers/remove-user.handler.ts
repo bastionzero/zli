@@ -23,10 +23,14 @@ export async function removeUserHandler(userEmail: string, policyName: string, c
     // Loop till we find the one we are looking for
     for (const policy of policies) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         if (policy.name == policyName) {
 =======
         if (policy.name == clusterName) {
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+        if (policy.name == policyName) {
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             // TODO: This can be done better then looping
             // Then remove the user from the policy
             const newSubjects = [];
@@ -41,10 +45,14 @@ export async function removeUserHandler(userEmail: string, policyName: string, c
             await policyService.UpdateKubePolicy(policy);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             logger.info(`Removed ${userEmail} from ${policyName} policy!`);
 =======
             logger.info(`Removed ${userEmail} from ${clusterName} policy!`);
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+            logger.info(`Removed ${userEmail} from ${policyName} policy!`);
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             await cleanExit(0, logger);
         }
     }

@@ -13,10 +13,14 @@ export async function removeRoleHandler(clusterUserName: string, policyName: str
     // Loop till we find the one we are looking for
     for (const policy of policies) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         if (policy.name == policyName) {
 =======
         if (policy.name == clusterName) {
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+        if (policy.name == policyName) {
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             // Now check if the role exists
             if (policy.context.clusterUsers[clusterUserName] === undefined) {
                 logger.error(`No role ${clusterUserName} exist for policy: ${policyName}`);
@@ -33,10 +37,14 @@ export async function removeRoleHandler(clusterUserName: string, policyName: str
             await policyService.UpdateKubePolicy(policy);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             logger.info(`Removed ${clusterUserName} from ${policyName} policy!`);
 =======
             logger.info(`Removed ${clusterRoleName} from ${clusterName} policy!`);
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+            logger.info(`Removed ${clusterUserName} from ${policyName} policy!`)
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             await cleanExit(0, logger);
         }
     }

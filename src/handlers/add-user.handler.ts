@@ -26,10 +26,14 @@ export async function addUserHandler(userEmail: string, policyName: string, clus
     // Loop till we find the one we are looking for
     for (const policy of policies) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         if (policy.name == policyName) {
 =======
         if (policy.name == clusterName) {
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+        if (policy.name == policyName) {
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             // Then add the user to the policy
             const subjectToAdd: Subject = {
                 id: userInfo.id,
@@ -41,10 +45,14 @@ export async function addUserHandler(userEmail: string, policyName: string, clus
             await policyService.UpdateKubePolicy(policy);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             logger.info(`Added ${userEmail} to ${policyName} policy!`);
 =======
             logger.info(`Added ${userEmail} to ${clusterName} policy!`);
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+            logger.info(`Added ${userEmail} to ${policyName} policy!`);
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             await cleanExit(0, logger);
         }
     }

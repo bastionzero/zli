@@ -27,7 +27,11 @@ export async function addRoleHandler(clusterUserName: string, policyName: string
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
+<<<<<<< HEAD
             logger.info(`Added ${clusterUserName} to ${policyName} policy!`);
+=======
+            logger.info(`Added ${clusterUserName} to ${policyName} policy!`)
+>>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             await cleanExit(0, logger);
         }
     }
