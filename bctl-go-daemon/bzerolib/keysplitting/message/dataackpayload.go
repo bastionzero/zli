@@ -15,9 +15,9 @@ type DataAckPayload struct {
 	Action        string `json:"action"`
 
 	//Unique to DataAck
-	TargetPublicKey       string      `json:"targetPublicKey"`
-	HPointer              string      `json:"hPointer"`
-	ActionResponsePayload interface{} `json:"actionResponsePayload"`
+	TargetPublicKey       string `json:"targetPublicKey"`
+	HPointer              string `json:"hPointer"`
+	ActionResponsePayload []byte `json:"actionResponsePayload"`
 }
 
 func (d DataAckPayload) BuildResponsePayload(action string, actionPayload []byte) (DataPayload, error) {

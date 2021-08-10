@@ -30,10 +30,11 @@ func NewRestApiAction(serviceAccountToken string, kubeHost string, impersonateGr
 func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
 	log.Printf("Action recieved message")
 
-	// TODO: The below line removes the quotation marks that get added at some point in the marshal/unmarshal
+	// TODO: The below line removes the extra, surrounding quotation marks that get added at some point in the marshal/unmarshal
 	// so it messes up the umarshalling into a valid action payload.  We need to figure out why this is happening
 	// so that we can murder its family
 	actionPayload = actionPayload[1 : len(actionPayload)-1]
+	// Json unmarshalling encodes bytes in base64
 	safety, _ := base64.StdEncoding.DecodeString(string(actionPayload))
 
 	var apiRequest KubeRestApiActionPayload
