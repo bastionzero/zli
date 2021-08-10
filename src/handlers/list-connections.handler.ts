@@ -12,7 +12,6 @@ export async function listConnectionsHandler(
     configService: ConfigService,
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,
-    sshTargets: Promise<TargetSummary[]>
 ){
     const sessionService = new SessionService(configService, logger);
     const cliSessionId = await getCliSpaceId(sessionService, logger);
@@ -21,7 +20,7 @@ export async function listConnectionsHandler(
     const openConnections = sessionDetails.connections.filter(c => c.state === ConnectionState.Open);
 
     // await and concatenate
-    const allTargets = [...await ssmTargets, ...await sshTargets];
+    const allTargets = [...await ssmTargets];
     const formattedConnections = openConnections.map<ConnectionDetails>((conn, _index, _array) => {
         return {
             id: conn.id,

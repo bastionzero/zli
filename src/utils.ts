@@ -214,7 +214,6 @@ export async function disambiguateTarget(
     logger: Logger,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    sshTargets: Promise<TargetSummary[]>,
     envs: Promise<EnvironmentDetails[]>): Promise<ParsedTargetString> {
 
     const parsedTarget = parseTargetString(targetString);
@@ -223,7 +222,7 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = _.concat(await ssmTargets, await sshTargets, await dynamicConfigs);
+    let zippedTargets = _.concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
     zippedTargets = _.filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));

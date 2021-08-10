@@ -3,7 +3,6 @@ import { ConfigService } from '../config.service/config.service';
 import {
     DynamicAccessConfigService,
     EnvironmentService,
-    SshTargetService,
     SsmTargetService,
     KubeService
 } from '../http.service/http.service';
@@ -18,7 +17,6 @@ import { KeySplittingService } from '../../webshell-common-ts/keysplitting.servi
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
     // Greedy fetch of some data that we use frequently
     const ssmTargetService = new SsmTargetService(configService, logger);
-    const sshTargetService = new SshTargetService(configService, logger);
     const kubeService = new KubeService(configService, logger);
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
@@ -40,14 +38,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             })
         );
 
-
-    const sshTargets = sshTargetService.ListSshTargets()
-        .then(result =>
-            result.map<TargetSummary>((ssh, _index, _array) => {
-                return {type: TargetType.SSH, id: ssh.id, name: ssh.alias, environmentId: ssh.environmentId, agentVersion: 'N/A', status: undefined};
-            })
-        );
-
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
             result.map<ClusterSummary>((cluster, _index, _array) => {
@@ -59,7 +49,6 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     return {
         dynamicConfigs: dynamicConfigs,
         ssmTargets: ssmTargets,
-        sshTargets: sshTargets,
         clusterTargets: clusterTargets,
         envs: envs
     };

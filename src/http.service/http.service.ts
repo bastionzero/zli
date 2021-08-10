@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, GetAllPoliciesForClusterIdRequest, GetAllPoliciesForClusterIdResponse} from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, GetAllPoliciesForClusterIdRequest, GetAllPoliciesForClusterIdResponse} from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
@@ -285,24 +285,6 @@ export class SsmTargetService extends HttpService
     }
 }
 
-export class SshTargetService extends HttpService
-{
-    constructor(configService: ConfigService, logger: Logger)
-    {
-        super(configService, 'api/v1/ssh/', logger);
-    }
-
-    public GetSshTarget(targetId: string) : Promise<SshTargetSummary>
-    {
-        return this.Get('', {id: targetId});
-    }
-
-    public ListSshTargets() : Promise<SshTargetSummary[]>
-    {
-        return this.Post('list', {});
-    }
-}
-
 
 export class EnvironmentService extends HttpService
 {
@@ -527,7 +509,7 @@ export class KubeService extends HttpService
             namespace: namespace,
             environmentId: environmentId,
         };
-        return this.FormPost('get-agent-yaml', request);
+        return this.Post('get-agent-yaml', request);
     }
 
     public GetUserInfoFromEmail(

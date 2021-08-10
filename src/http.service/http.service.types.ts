@@ -94,17 +94,6 @@ export enum AuthenticationType {
     UseExisting = 'UseExisting'
 }
 
-export interface SshTargetSummary {
-    id: string;
-    alias: string;
-    host: string;
-    userName: string;
-    port: number;
-    authenticationType: AuthenticationType;
-    color: string;
-    environmentId?: string;
-}
-
 export interface ClusterSummary {
     id: string;
     clusterName: string;

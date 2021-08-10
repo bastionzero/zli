@@ -55,7 +55,6 @@ export class CliDriver
 
     private mixpanelService: MixpanelService;
 
-    private sshTargets: Promise<TargetSummary[]>;
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
     private clusterTargets: Promise<ClusterSummary[]>;
@@ -119,7 +118,6 @@ export class CliDriver
                 this.dynamicConfigs = fetchDataResponse.dynamicConfigs;
                 this.clusterTargets = fetchDataResponse.clusterTargets;
                 this.ssmTargets = fetchDataResponse.ssmTargets;
-                this.sshTargets = fetchDataResponse.sshTargets;
                 this.envs = fetchDataResponse.envs;
             })
             .command(
@@ -167,17 +165,17 @@ export class CliDriver
                         .example('connect dbda775d-e37c-402b-aa76-bbb0799fd775', 'SSH connect example, unique id of ssh target');
                 },
                 async (argv) => {
-                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     await connectHandler(this.configService, this.logger, this.mixpanelService, parsedTarget);
                 }
             )
             .command(
-                'proxy [proxyString]',
-                'Proxy to a cluster',
+                'tunnel [tunnelString]',
+                'Tunnel to a cluster',
                 (yargs) => {
                     return yargs
-                        .positional('proxyString', {
+                        .positional('tunnelString', {
                             type: 'string',
                             default: null,
                             demandOption: false,
@@ -185,10 +183,10 @@ export class CliDriver
                         .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
                 },
                 async (argv) => {
-                    if (argv.proxyString) {
+                    if (argv.tunnelString) {
                         // TODO make this smart parsing
-                        const connectUser = argv.proxyString.split('@')[0];
-                        const connectCluster = argv.proxyString.split('@')[1];
+                        const connectUser = argv.tunnelString.split('@')[0];
+                        const connectCluster = argv.tunnelString.split('@')[1];
 
                         await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
                     } else {
@@ -269,7 +267,7 @@ export class CliDriver
                 }
             )
             .command(
-                'describe <clusterName>',
+                'describe-cluster <clusterName>',
                 'Get detailed information about a certain cluster',
                 (yargs) => {
                     return yargs
@@ -294,7 +292,7 @@ export class CliDriver
                 }
             )
             .command(
-                'attach <connectionId>',
+                'attach-to-connection <connectionId>',
                 'Attach to an open zli connection',
                 (yargs) => {
                     return yargs
@@ -400,7 +398,7 @@ export class CliDriver
                         .example('lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.envs);
                 }
             )
             .command(
@@ -475,7 +473,7 @@ export class CliDriver
                         .example('lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets, this.sshTargets);
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
                 }
             )
             .command(
@@ -506,8 +504,8 @@ export class CliDriver
                         .example('copy /Users/coolUser/secretFile ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example, relative to your machine');
                 },
                 async (argv) => {
-                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
-                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
+                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     if(! sourceParsedTarget && ! destParsedTarget)
                     {
@@ -562,7 +560,7 @@ export class CliDriver
 
                     // modify argv to have the targetString and targetType params
                     const targetString = argv.user + '@' + argv.host.substr(prefix.length);
-                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.sshTargets, this.envs);
+                    const parsedTarget = await disambiguateTarget('ssm', targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
 
                     if(argv.port < 1 || argv.port > 65535)
                     {
@@ -580,7 +578,7 @@ export class CliDriver
                 }
             )
             .command(
-                'config',
+                'configure',
                 'Returns config file path',
                 () => {},
                 async () => {
