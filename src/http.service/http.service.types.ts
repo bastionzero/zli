@@ -234,6 +234,7 @@ export interface GetKubeUnregisteredAgentYamlRequest {
     clusterName: string;
     labels: string;
     namespace: string;
+    environmentId: string;
 }
 export interface GetKubeUnregisteredAgentYamlResponse {
     yaml: string;
@@ -248,16 +249,18 @@ export interface KubeProxyResponse {
     allowed: boolean;
 }
 
-export interface KubeProxyDescribeRequest {
-    clusterName: string;
+export interface GetAllPoliciesForClusterIdRequest {
+    clusterId: string;
 }
-export interface KubeProxyDescribeResponse {
-    clusterUsers: ClusterUser[]
+export interface GetAllPoliciesForClusterIdResponse {
+    policies: PolicySummary[]
 }
 
-interface ClusterUser {
+interface PolicySummary {
     name: string;
+    id: string;
 }
+
 export interface KubernetesPolicySummary {
     id: string;
     name: string;

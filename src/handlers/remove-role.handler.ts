@@ -7,17 +7,17 @@ import { ClusterSummary, KubeClusterStatus } from "../types";
 import { cleanExit } from './clean-exit.handler';
 
 
-export async function removeRoleHandler(clusterUserName: string, clusterName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function removeRoleHandler(clusterUserName: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyService = new PolicyService(configService, logger);
     const policies = await policyService.ListAllPolicies();
 
     // Loop till we find the one we are looking for
     for (const policy of policies) {
-        if (policy.name == clusterName) {
+        if (policy.name == policyName) {
             // Now check if the role exists
             if (policy.context.clusterUsers[clusterUserName] === undefined) {
-                logger.error(`No role ${clusterUserName} exist for policy for cluster: ${clusterName}`);
+                logger.error(`No role ${clusterUserName} exist for policy: ${policyName}`);
                 await cleanExit(1, logger);
             }
             // Then remove the role from the policy if it exists
@@ -26,13 +26,13 @@ export async function removeRoleHandler(clusterUserName: string, clusterName: st
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
-            logger.info(`Removed ${clusterUserName} from ${clusterName} policy!`)
+            logger.info(`Removed ${clusterUserName} from ${policyName} policy!`)
             await cleanExit(0, logger);
         }
     }
 
     // Log an error
-    logger.error(`Unable to find the policy for cluster: ${clusterName}`);
+    logger.error(`Unable to find the policy: ${policyName}`);
     await cleanExit(1, logger);
 }
 

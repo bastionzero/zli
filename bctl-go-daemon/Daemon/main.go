@@ -23,7 +23,7 @@ func main() {
 	// Our expected flags we need to start
 	serviceURLPtr := flag.String("serviceURL", "", "Service URL to use")
 	assumeRolePtr := flag.String("assumeRole", "", "Kube Role to Assume")
-	assumeClusterPtr := flag.String("assumeCluster", "", "Kube Cluster to Connect to")
+	assumeClusterIdPtr := flag.String("assumeClusterId", "", "Kube Cluster Id to Connect to")
 	daemonPortPtr := flag.String("daemonPort", "", "Daemon Port To Use")
 	localhostTokenPtr := flag.String("localhostToken", "", "Localhost Token to Validate Kubectl commands")
 	environmentIdPtr := flag.String("environmentId", "", "Environment Id of cluster we are connecting too")
@@ -33,7 +33,7 @@ func main() {
 	// Parse and TODO: ensure they all exist
 	flag.Parse()
 
-	possibleArgs := []string{*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *daemonPortPtr, *localhostTokenPtr, *certPath, *keyPath}
+	possibleArgs := []string{*environmentIdPtr, *sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterIdPtr, *daemonPortPtr, *localhostTokenPtr, *certPath, *keyPath}
 	for _, flag := range possibleArgs {
 		if flag == "" {
 			log.Printf("Missing flags!")
@@ -43,7 +43,7 @@ func main() {
 
 	// Open a Websocket to Bastion
 	log.Printf("Opening websocket to Bastion: %s", *serviceURLPtr)
-	wsClient := daemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterPtr, *environmentIdPtr)
+	wsClient := daemonWebsocket.NewDaemonWebsocketClient(*sessionIdPtr, *authHeaderPtr, *serviceURLPtr, *assumeRolePtr, *assumeClusterIdPtr, *environmentIdPtr)
 
 	go func() {
 		// Define our http handlers

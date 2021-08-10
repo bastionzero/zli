@@ -3,6 +3,7 @@ import util from 'util';
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { KubeService } from '../http.service/http.service';
+import { EnvironmentDetails } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
 
 const fs = require('fs');
@@ -10,6 +11,7 @@ const fs = require('fs');
 
 export async function generateKubeYamlHandler(
     argv: any,
+    envs: Promise<EnvironmentDetails[]>,
     configService: ConfigService,
     logger: Logger
 ) {
@@ -36,8 +38,22 @@ export async function generateKubeYamlHandler(
         labelsFormatted = JSON.stringify(labels);
     }
 
+    // If environemtn has been passed, ensure its a valid envId
+    if (argv.environmentId != null) {
+        var validEnv = false;
+        (await envs).forEach(env => {
+            if (env.id == argv.environmentId) {
+                validEnv = true;
+            }
+        })
+        if (validEnv == false) {
+            logger.error("The environment Id you passed is invalid.")
+            await cleanExit(1, logger);
+        }
+    }
+
     // Get our kubeYaml
-    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labelsFormatted, argv.namespace);
+    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labelsFormatted, argv.namespace, argv.environmentId);
 
     // Show it to the user or write to file
     if (outputFileArg) {

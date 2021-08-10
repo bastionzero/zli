@@ -1,7 +1,7 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, KubeProxyDescribeRequest, KubeProxyDescribeResponse} from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SshTargetSummary, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, GetAllPoliciesForClusterIdRequest, GetAllPoliciesForClusterIdResponse} from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
@@ -424,15 +424,15 @@ export class PolicyQueryService extends HttpService
         return this.FormPost('kube-proxy', request);
     }
 
-    public DescribeKubeProxy(
-        clusterName: string,
-    ): Promise<KubeProxyDescribeResponse>
+    public GetAllPoliciesForClusterId(
+        clusterId: string,
+    ): Promise<GetAllPoliciesForClusterIdResponse>
     {
-        const request: KubeProxyDescribeRequest = {
-            clusterName: clusterName,
+        const request: GetAllPoliciesForClusterIdRequest = {
+            clusterId: clusterId,
         };
 
-        return this.FormPost('describe-kube-proxy', request);
+        return this.FormPost('get-kube-policies', request);
     }
 }
 
@@ -471,13 +471,15 @@ export class KubeService extends HttpService
     public getKubeUnregisteredAgentYaml(
         clusterName: string,
         labels: string,
-        namespace: string
+        namespace: string,
+        environmentId: string,
     ): Promise<GetKubeUnregisteredAgentYamlResponse>
     {
         const request: GetKubeUnregisteredAgentYamlRequest = {
             clusterName: clusterName,
             labels: labels,
             namespace: namespace,
+            environmentId: environmentId,
         };
         return this.FormPost('get-agent-yaml', request);
     }
