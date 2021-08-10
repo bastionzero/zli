@@ -136,7 +136,8 @@ export class CliDriver
                                 alias: 't'
                             },
                         )
-                        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target');
+                        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
+                        .example('connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config');
                 },
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);

@@ -9,13 +9,15 @@ import { ZliAuthConfigService } from '../config.service/zli-auth-config.service'
 import { Logger } from '../logger.service/logger';
 import { ConnectionService, SsmTargetService } from '../http.service/http.service';
 import { TargetType } from '../types';
-import { ConnectionSummary } from '../http.service/http.service.types';
+import { ConnectionSummary, SsmTargetSummary } from '../http.service/http.service.types';
 
 export class ShellTerminal implements IDisposable
 {
     private shellWebsocketService : IShellWebsocketService;
     private shellEventDataSubscription: Subscription;
     private currentTerminalSize: TerminalSize;
+
+    private refreshTargetInfoOnReady: boolean = false;
 
     // stdin
     private inputSubject: Subject<string> = new Subject<string>();
@@ -37,9 +39,7 @@ export class ShellTerminal implements IDisposable
             const ssmTargetInfo = await ssmTargetService.GetSsmTarget(targetId);
 
             // Check the agent version is keysplitting compatible
-            if (!isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
-                throw new Error(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...`);
-            }
+            this.checkAgentVersion(ssmTargetInfo);
 
             const connectionService = new ConnectionService(this.configService, this.logger);
             const shellConnectionAuthDetails = await connectionService.GetShellConnectionAuthDetails(this.connectionSummary.id);
@@ -57,6 +57,19 @@ export class ShellTerminal implements IDisposable
             );
         } else {
             throw new Error(`Unhandled connection type ${targetType}`);
+        }
+    }
+
+    private checkAgentVersion(ssmTargetInfo: SsmTargetSummary) {
+        // Bastion may not know agent version right away so skip this check if
+        // we havent determined the agent version yet
+        if (ssmTargetInfo.agentVersion === '') {
+            this.refreshTargetInfoOnReady = true;
+            return;
+        }
+
+        if (!isAgentKeysplittingReady(ssmTargetInfo.agentVersion)) {
+            throw new Error(`Agent version ${ssmTargetInfo.agentVersion} not compatible with keysplitting...`);
         }
     }
 
@@ -86,6 +99,11 @@ export class ShellTerminal implements IDisposable
 
                 switch(shellEvent.type) {
                 case ShellEventType.Ready:
+                    if (this.refreshTargetInfoOnReady) {
+                        const ssmTargetService = new SsmTargetService(this.configService, this.logger);
+                        const ssmTargetInfo = await ssmTargetService.GetSsmTarget(this.connectionSummary.serverId);
+                        this.shellWebsocketService.updateTargetInfo(ssmTargetInfo);
+                    }
                     const replayOutput: boolean = true; // Maybe there is a better place for this endpoint versioning?
                     this.shellWebsocketService.sendShellConnect(this.currentTerminalSize.rows, this.currentTerminalSize.columns, replayOutput);
                     break;
