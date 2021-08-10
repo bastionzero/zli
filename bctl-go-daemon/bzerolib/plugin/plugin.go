@@ -16,3 +16,8 @@ type IPlugin interface {
 	GetName() PluginName
 	PushStreamInput(smessage smsg.StreamMessage) error
 }
+
+type ActionWrapper struct {
+	Action        string
+	ActionPayload []byte
+}

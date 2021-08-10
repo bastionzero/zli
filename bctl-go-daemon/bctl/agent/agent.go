@@ -8,6 +8,7 @@ import (
 	"os"
 
 	controlws "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket"
+	controlwsmsg "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
 	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 )
@@ -34,7 +35,7 @@ func main() {
 			select {
 			case message := <-control.ProvisionWebsocketChan:
 				// We have an incoming websocket request, attempt to make a new Daemon Websocket Client for the request
-				startDatachannel(message.ConnectionId)
+				startDatachannel(message)
 			}
 		}
 	}()
@@ -44,20 +45,20 @@ func main() {
 	select {} // I don't think we need this?
 }
 
-func startDatachannel(channelConnectionId string) {
+func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	// Create our headers and params, headers are empty
 	// TODO: We need to drop this session id auth header req and move to a token based system
 	headers := make(map[string]string)
 
 	// Add our token to our params
 	params := make(map[string]string)
-	params["daemon_connection_id"] = channelConnectionId
+	params["daemon_connection_id"] = message.ConnectionId
 	params["token"] = token
 
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel("", "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dc.NewDataChannel(message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {

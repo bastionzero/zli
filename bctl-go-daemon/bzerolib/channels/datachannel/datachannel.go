@@ -193,7 +193,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		}
 	case ksmsg.DataAck:
 		dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
-		if action, returnPayload, err := d.plugin.InputMessageHandler(dataAckPayload.Action, []byte{}); err == nil {
+		if action, returnPayload, err := d.plugin.InputMessageHandler(dataAckPayload.Action, dataAckPayload.ActionResponsePayload); err == nil {
 
 			// Build and send response
 			if respKSMessage, err := keysplittingMessage.BuildResponse(action, returnPayload, d.publickey, d.privatekey); err != nil {
