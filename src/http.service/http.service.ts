@@ -509,7 +509,7 @@ export class KubeService extends HttpService
             namespace: namespace,
             environmentId: environmentId,
         };
-        return this.FormPost('get-agent-yaml', request);
+        return this.Post('get-agent-yaml', request);
     }
 
     public GetUserInfoFromEmail(
