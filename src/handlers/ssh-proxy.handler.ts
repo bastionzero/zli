@@ -7,14 +7,14 @@ import { Dictionary, includes } from 'lodash';
 import { PolicyQueryService } from '../http.service/http.service';
 import { ParsedTargetString } from '../types';
 import { VerbType } from '../http.service/http.service.types';
-import { targetStringExampleNoPath } from '../../src/utils';
+import { targetStringExample } from '../../src/utils';
 
 
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {
 
     if(! sshTunnelParameters.parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
-        logger.error(targetStringExampleNoPath);
+        logger.error(targetStringExample);
         await cleanExit(1, logger);
     }
     const policyQueryService = new PolicyQueryService(configService, logger);

@@ -11,8 +11,7 @@ export function findSubstring(targetString: string, searchString: string) : bool
     return searchString.toLowerCase().indexOf(targetString.toLowerCase()) !== -1;
 }
 
-export const targetStringExample: string = '[targetUser@]<targetId-or-targetName>:<targetPath>';
-export const targetStringExampleNoPath : string = '[targetUser@]<targetId-or-targetName>';
+export const targetStringExample : string = '[targetUser@]<targetId-or-targetName>';
 
 export function parseTargetType(targetType: string) : TargetType
 {

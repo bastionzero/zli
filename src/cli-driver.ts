@@ -408,8 +408,6 @@ export class CliDriver
             .showHelpOnFail(false)
             .epilog(`Note:
  - <targetString> format: ${targetStringExample}
- - TargetStrings only require targetUser for SSM and Dynamic targets
- - TargetPath can be omitted for connect
 
 For command specific help: zli <cmd> help
 

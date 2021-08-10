@@ -6,7 +6,7 @@ import { ParsedTargetString } from '../types';
 import { MixpanelService } from '../mixpanel.service/mixpanel.service';
 import { cleanExit } from './clean-exit.handler';
 
-import { targetStringExampleNoPath } from '../utils';
+import { targetStringExample } from '../utils';
 import { createAndRunShell, getCliSpace } from '../../src/shell-utils';
 import { includes } from 'lodash';
 
@@ -20,7 +20,7 @@ export async function connectHandler(
 
     if(! parsedTarget) {
         logger.error('No targets matched your targetName/targetId or invalid target string, must follow syntax:');
-        logger.error(targetStringExampleNoPath);
+        logger.error(targetStringExample);
         await cleanExit(1, logger);
     }
 
