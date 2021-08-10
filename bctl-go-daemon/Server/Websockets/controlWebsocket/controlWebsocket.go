@@ -36,6 +36,20 @@ func NewControlWebsocketClient(serviceURL string, activationToken string, orgId 
 
 	ret.WebsocketClient = commonWebsocketClient.NewCommonWebsocketClient(serviceURL, hubEndpoint, params, headers)
 
+	// Determin if this is a fresh agent
+	if (ret.NewAgent() == true){
+		// Update our persistant secret
+		secretInfo := controlWebsocketTypes.SecretConfig{}
+		secretInfo.Test = "coolbeans"
+		ret.SaveParsedSecret(secretInfo)
+		log.Println("New Agent detected, initilized secrets...")
+	} else {
+		// Else pull any relevent info out? TODO @lucie
+		log.Println("Previous agent data detected, pulling secret info...")
+		// secretInfo := ret.GetParsedSecret()
+	}
+
+
 	// Make our cancel context, unused for now
 	ctx, _ := context.WithCancel(context.Background())
 
