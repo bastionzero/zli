@@ -220,7 +220,7 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
+    let zippedTargets = _.concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
     zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));
