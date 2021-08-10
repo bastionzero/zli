@@ -19,7 +19,6 @@ import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handl
 import { loginHandler } from './handlers/login.handler';
 import { connectHandler } from './handlers/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets.handler';
-import { copyHandler } from './handlers/copy.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 
@@ -283,50 +282,6 @@ export class CliDriver
                 },
                 async (argv) => {
                     await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
-                }
-            )
-            .command(
-                'copy <source> <destination>',
-                'Upload/download a file to target',
-                (yargs) => {
-                    return yargs
-                        .positional('source',
-                            {
-                                type: 'string'
-                            }
-                        )
-                        .positional('destination',
-                            {
-                                type: 'string'
-                            }
-                        )
-                        .option(
-                            'targetType',
-                            {
-                                type: 'string',
-                                choices: this.targetTypeChoices,
-                                demandOption: false,
-                                alias: 't'
-                            }
-                        )
-                        .example('copy ssm-user@neat-target:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'Download example, relative to your machine')
-                        .example('copy /Users/coolUser/secretFile ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example, relative to your machine');
-                },
-                async (argv) => {
-                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
-                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
-
-                    if(! sourceParsedTarget && ! destParsedTarget)
-                    {
-                        this.logger.error('Either source or destination must be a valid target string');
-                        await cleanExit(1, this.logger);
-                    }
-
-                    const isTargetSource = !! sourceParsedTarget;
-                    const parsedTarget = sourceParsedTarget || destParsedTarget;
-                    const localFilePath = ! isTargetSource ? argv.source : argv.destination;
-
-                    await copyHandler(this.configService, this.logger, parsedTarget, localFilePath, isTargetSource);
                 }
             )
             .command(

@@ -1,9 +1,8 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DownloadFileRequest, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SsmTargetSummary, TargetUser, UploadFileRequest, UploadFileResponse, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
+import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SsmTargetSummary, TargetUser, UserRegisterResponse, UserSummary, Verb } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
-import fs, { ReadStream } from 'fs';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
 import { cleanExit } from '../../src/handlers/clean-exit.handler';
@@ -125,60 +124,6 @@ export class HttpService
             this.handleHttpException(route, error);
         }
     }
-
-    protected async FormPost<TReq, TResp>(route: string, body: TReq) : Promise<TResp>
-    {
-        this.setHeaders();
-
-        const formBody = this.getFormDataFromRequest(body);
-
-        try {
-            const resp : TResp = await this.httpClient.post(
-                route,
-                {
-                    body: formBody
-                }
-            ).json();
-            return resp;
-        } catch (error) {
-            this.handleHttpException(route, error);
-        }
-    }
-
-    // Returns a request object that you can add response handlers to at a higher layer
-    protected FormStream<TReq>(route: string, body: TReq, localPath: string) : Promise<void>
-    {
-        this.setHeaders();
-
-        const formBody = this.getFormDataFromRequest(body);
-        const whereToSave = localPath.endsWith('/') ? localPath + `bzero-download-${Math.floor(Date.now() / 1000)}` : localPath;
-
-        return new Promise((resolve, reject) => {
-            try {
-                const requestStream = this.httpClient.stream.post(
-                    route,
-                    {
-                        isStream: true,
-                        body: formBody
-                    }
-                );
-
-                // Buffer is returned by 'data' event
-                requestStream.on('data', (response: Buffer) => {
-                    fs.writeFileSync(whereToSave, response);
-                });
-
-                requestStream.on('end', () => {
-                    this.logger.info('File download complete');
-                    this.logger.info(whereToSave);
-                    resolve();
-                });
-            } catch (error) {
-                this.handleHttpException(route, error);
-                reject(error);
-            }
-        });
-    }
 }
 
 export class SessionService extends HttpService
@@ -288,41 +233,6 @@ export class EnvironmentService extends HttpService
     }
 }
 
-export class FileService extends HttpService
-{
-    constructor(configService: ConfigService, logger: Logger)
-    {
-        super(configService, 'api/v1/file/', logger);
-    }
-
-    public async uploadFile(targetId: string, targetType: TargetType, path: string, file: ReadStream, targetUser?: string): Promise<void> {
-        const request : UploadFileRequest = {
-            targetId: targetId,
-            targetType: targetType,
-            targetFilePath: path,
-            file: file,
-            targetUser: targetUser
-        };
-
-        const _ : UploadFileResponse = await this.FormPost('upload', request);
-
-        return;
-    }
-
-    public async downloadFile(targetId: string, targetType: TargetType, targetPath: string,localPath: string, targetUser?: string): Promise<any> {
-
-        const request: DownloadFileRequest = {
-            targetId: targetId,
-            targetType: targetType,
-            filePath: targetPath,
-            targetUser: targetUser
-        };
-
-        await this.FormStream('download', request, localPath);
-
-        return;
-    }
-}
 export class TokenService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)

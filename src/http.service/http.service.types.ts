@@ -1,4 +1,3 @@
-import { ReadStream } from 'fs';
 import { SessionState, SsmTargetStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {
@@ -112,38 +111,6 @@ export interface EnvironmentResourceDetails {
 }
 
 export interface ListEnvironmentsRequest {
-}
-
-export interface UploadFileRequest {
-    targetId: string,
-    targetType: TargetType,
-    targetFilePath: string,
-    file: ReadStream,
-    targetUser?: string
-};
-
-export interface UploadFileResponse {
-}
-
-
-export interface DownloadFileRequest {
-    targetId: string,
-    targetType: TargetType,
-    filePath: string,
-    targetUser?: string
-    downloadedFileName?: string
-};
-
-export interface DownloadFileResponse {
-}
-
-export enum FileServiceErrors {
-    UnknownError = 'UnknownError',
-    ScpException = 'ScpException'
-}
-
-export interface ScpErrorMsg {
-    reason: string;
 }
 
 export interface MixpanelTokenResponse
