@@ -27,7 +27,7 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     // Now build our token
     const kubeArgsRaw = process.argv.splice(2)
     const kubeArgsString = kubeArgsRaw.join(' ');
-    const formattedToken = `${token}bctl ${kubeArgsString}++++${logId}`;
+    const formattedToken = `${token}zli ${kubeArgsString}++++${logId}`;
 
     // Add the token to the args
     var kubeArgs: string[] = ['--token', formattedToken]
