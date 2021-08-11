@@ -13,8 +13,8 @@ import (
 
 // Declaring flags as package-accesible variables
 var (
-	sessionId, authHeader, assumeRole, assumeCluster, serviceUrl string
-	daemonPort, localhostToken, environmentId, certPath, keyPath string
+	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl string
+	daemonPort, localhostToken, environmentId, certPath, keyPath   string
 )
 
 const (
@@ -39,7 +39,7 @@ func startDatachannel() {
 	params := make(map[string]string)
 	params["session_id"] = sessionId
 	params["assume_role"] = assumeRole
-	params["assume_cluster"] = assumeCluster
+	params["assume_cluster_id"] = assumeClusterId
 	params["environment_id"] = environmentId
 
 	dataChannel, _ := dc.NewDataChannel(assumeRole, "", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
@@ -72,7 +72,7 @@ func parseFlags() {
 	// Our expected flags we need to start
 	flag.StringVar(&serviceUrl, "serviceURL", "", "Service URL to use")
 	flag.StringVar(&assumeRole, "assumeRole", "", "Kube Role to Assume")
-	flag.StringVar(&assumeCluster, "assumeCluster", "", "Kube Cluster to Connect to")
+	flag.StringVar(&assumeClusterId, "assumeClusterId", "", "Kube Cluster Id to Connect to")
 	flag.StringVar(&environmentId, "environmentId", "", "Environment Id of cluster we are connecting too")
 
 	// Plugin variables
@@ -84,7 +84,7 @@ func parseFlags() {
 	flag.Parse()
 
 	// Check we have all required flags
-	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeCluster == "" || serviceUrl == "" ||
+	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeClusterId == "" || serviceUrl == "" ||
 		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" {
 		log.Printf("Missing flags!")
 		os.Exit(1)
