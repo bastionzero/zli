@@ -1,6 +1,8 @@
 package kube
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -8,9 +10,11 @@ import (
 	"strings"
 
 	exec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	logaction "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+	stdreader "bastionzero.com/bctl/v1/bzerolib/stream/stdreader"
 )
 
 const (
@@ -34,7 +38,7 @@ type KubePlugin struct {
 	streamOutputChannel chan smsg.StreamMessage
 	serviceAccountToken string
 	kubeHost            string
-	runningActions      []IKubeAction // need something like this for streams and multiple tabs when running exec & logs
+	runningExecActions  map[int]*exec.ExecAction // need something like this for streams and multiple tabs when running exec & logs
 }
 
 func NewPlugin(ch chan smsg.StreamMessage, role string) plgn.IPlugin {
@@ -52,6 +56,7 @@ func NewPlugin(ch chan smsg.StreamMessage, role string) plgn.IPlugin {
 		streamOutputChannel: ch,
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
+		runningExecActions:  make(map[int]*exec.ExecAction),
 	}
 }
 
@@ -71,14 +76,67 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 	}
 	kubeAction := x[1]
 
+	// TODO: The below line removes the extra, surrounding quotation marks that get added at some point in the marshal/unmarshal
+	// so it messes up the umarshalling into a valid action payload.  We need to figure out why this is happening
+	// so that we can murder its family
+	actionPayload = actionPayload[1 : len(actionPayload)-1]
+
+	// Json unmarshalling encodes bytes in base64
+	actionPayloadSafe, _ := base64.StdEncoding.DecodeString(string(actionPayload))
+
 	switch KubeAction(kubeAction) {
 	case RestApi:
 		a, _ := rest.NewRestApiAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
-		return a.InputMessageHandler(action, actionPayload)
+		return a.InputMessageHandler(action, actionPayloadSafe)
 	case Exec:
-		a, _ := exec.NewExecAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
-		return a.InputMessageHandler(action, actionPayload)
+		// Determin what subcommand is it so we can get the request id
+		switch exec.ExecSubAction(action) {
+		case exec.StartExec:
+			// Unmarshal the message to get the requestId
+			var startExecRequest exec.KubeExecStartActionPayload
+			if err := json.Unmarshal(actionPayloadSafe, &startExecRequest); err != nil {
+				log.Printf("Error unmarshaling start: %v", err.Error())
+				return "", []byte{}, fmt.Errorf("Unable to unmarshal start message")
+			}
+
+			// Create our new exec action
+			a, _ := exec.NewExecAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+
+			// Add this to our running actions so we can search for this later
+			k.runningExecActions[startExecRequest.RequestId] = a
+
+			return a.StartExec(startExecRequest)
+		case exec.ExecInput:
+			// Unmarshal the message to get the requestId
+			var execStdinAction exec.KubeStdinActionPayload
+			if err := json.Unmarshal(actionPayloadSafe, &execStdinAction); err != nil {
+				log.Printf("Error unmarshaling input: %v", err.Error())
+				return "", []byte{}, fmt.Errorf("Unable to unmarshal stdin message")
+			}
+
+			// Check if we need to end the stream
+			var toSend []byte = execStdinAction.Stdin
+			if execStdinAction.End == true {
+				toSend = stdreader.EndStreamBytes
+			}
+
+			// Send the message to our running action
+			return k.runningExecActions[execStdinAction.RequestId].SendStdinToChannel(toSend)
+		case exec.ExecResize:
+			// Unmarshal the message to get the requestId
+			var execResizeAction exec.KubeExecResizeActionPayload
+			if err := json.Unmarshal(actionPayloadSafe, &execResizeAction); err != nil {
+				log.Printf("Error unmarshaling resize: %v", err.Error())
+				return "", []byte{}, fmt.Errorf("Unable to unmarshal resize message")
+			}
+
+			// Send the message to our running action
+			return k.runningExecActions[execResizeAction.RequestId].SendResizeToChannel(execResizeAction)
+		}
+		break
 	case Log:
+		a, _ := logaction.NewLogAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+		return a.InputMessageHandler(action, actionPayloadSafe)
 		break
 	default:
 		return "", []byte{}, fmt.Errorf("Unhandled action")

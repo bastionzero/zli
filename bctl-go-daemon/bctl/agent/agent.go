@@ -67,11 +67,14 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	var keysplittingPayload map[string]interface{}
 	if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
 		if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
-			// p := payload["keysplittingPayload"].(map[string]interface{})
 			switch keysplittingPayloadVal["action"] {
 			case "kube/restapi":
 				return "ResponseToBastionFromCluster", nil
 			case "kube/exec/start":
+				return "ResponseToBastionFromCluster", nil
+			case "kube/exec/input":
+				return "ResponseToBastionFromCluster", nil
+			case "kube/exec/resize":
 				return "ResponseToBastionFromCluster", nil
 			}
 		}
@@ -84,6 +87,10 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 		switch messagePayload.Type {
 		case "kube/exec/stdout":
 			return "StdoutToBastionFromCluster", nil
+		case "kube/exec/stderr":
+			return "StderrToBastionFromCluster", nil
+		case "kube/log":
+			return "ResponseLogToBastionFromCluster", nil
 		}
 	}
 

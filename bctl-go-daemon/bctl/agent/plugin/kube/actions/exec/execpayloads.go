@@ -11,12 +11,7 @@ type KubeExecStartActionPayload struct {
 type KubeStdinActionPayload struct {
 	RequestId int    `json:"requestId"`
 	Stdin     []byte `json:"stdin"`
-}
-
-// payload for "kube/exec/input"
-type KubeExecInputActionPayload struct {
-	RequestId  int    `json:"requestId"`
-	StreamType []byte `json:"streamType"`
+	End       bool   `json:"end"`
 }
 
 // payload for "kube/exec/resize"

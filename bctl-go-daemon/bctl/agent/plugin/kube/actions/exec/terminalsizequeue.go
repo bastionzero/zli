@@ -6,20 +6,20 @@ import (
 )
 
 type TerminalSizeQueue struct {
-	StreamType   smsg.StreamType
-	InputChannel chan KubeExecResizeActionPayload // pretty sure this needs to be buffered
-	RequestId    int
+	StreamType        smsg.StreamType
+	execResizeChannel chan KubeExecResizeActionPayload // pretty sure this needs to be buffered
+	RequestId         int
 }
 
-func NewTerminalSizeQueue(requestId int) *TerminalSizeQueue {
+func NewTerminalSizeQueue(requestId int, execResizeChannel chan KubeExecResizeActionPayload) *TerminalSizeQueue {
 	return &TerminalSizeQueue{
-		InputChannel: make(chan KubeExecResizeActionPayload),
-		RequestId:    requestId,
+		execResizeChannel: execResizeChannel,
+		RequestId:         requestId,
 	}
 }
 
 func (t *TerminalSizeQueue) Next() *remotecommand.TerminalSize {
-	tsMessage := <-t.InputChannel
+	tsMessage := <-t.execResizeChannel
 
 	return &remotecommand.TerminalSize{
 		Width:  tsMessage.Width,

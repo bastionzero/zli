@@ -27,12 +27,6 @@ func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, reques
 }
 
 func (w *StdWriter) Write(p []byte) (int, error) {
-	// TODO: Fix this bug, not sure why were are seeing so many of these random bytes, not ready bytes maybe?
-	// if w.ready == false && p[0] != notreadybytes[0] && p[0] != notreadybytes[1] {
-	// 	w.ready = true
-	// }
-
-	// if w.ready == true {
 	message := smsg.StreamMessage{
 		Type:           string(w.StdType),
 		RequestId:      w.RequestId,
@@ -41,7 +35,6 @@ func (w *StdWriter) Write(p []byte) (int, error) {
 	}
 	w.outputChannel <- message
 	w.SequenceNumber = w.SequenceNumber + 1
-	// }
 
 	return len(p), nil
 }

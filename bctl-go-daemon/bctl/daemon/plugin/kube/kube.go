@@ -10,6 +10,7 @@ import (
 	"time"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
+	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -45,7 +46,9 @@ type KubeDaemonPlugin struct {
 
 	// To keep track of all current, ongoing stream output channels for exec
 	execStdoutMapping map[int]chan smsg.StreamMessage
-	actions           map[int]IKubeDaemonAction
+	logChannelMapping map[int]chan smsg.StreamMessage
+
+	actions map[int]IKubeDaemonAction
 }
 
 func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) (*KubeDaemonPlugin, error) {
@@ -57,6 +60,7 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 		RequestChannel:        make(chan plgn.ActionWrapper, 100),
 		execStdoutMapping:     make(map[int]chan smsg.StreamMessage),
+		logChannelMapping:     make(map[int]chan smsg.StreamMessage),
 		actions:               make(map[int]IKubeDaemonAction),
 	}
 
@@ -82,10 +86,16 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 }
 
 func (k *KubeDaemonPlugin) handleStreamMessage(smessage smsg.StreamMessage) error {
-	// TODO: Determine if its stderr or stdout
-
 	// Push stdout to the correct handler, first get the kube action
-	k.execStdoutMapping[smessage.RequestId] <- smessage
+	switch smsg.StreamType(smessage.Type) {
+	case smsg.StdOut:
+		k.execStdoutMapping[smessage.RequestId] <- smessage
+		break
+	case smsg.LogOut:
+		k.logChannelMapping[smessage.RequestId] <- smessage
+		break
+	}
+
 	return nil
 }
 
@@ -181,7 +191,19 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			log.Printf("Error handling Exec call: %s", err.Error())
 		}
-		return
+	} else if strings.Contains(r.URL.Path, "log") { // TODO : maybe ends with?
+		// Make a new channel for log output
+		logChannel := make(chan smsg.StreamMessage)
+
+		// Update our mapping
+		k.logChannelMapping[id] = logChannel
+
+		logAction, _ := logaction.NewLogAction(id, k.RequestChannel, logChannel)
+		k.actions[id] = logAction
+		log.Printf("Created Log action with id %v", id)
+		if err := logAction.InputMessageHandler(w, r); err != nil {
+			log.Printf("Error handling Logs call: %s", err.Error())
+		}
 	} else {
 		restAction, _ := rest.NewRestApiAction(id, k.RequestChannel)
 		k.actions[id] = restAction
@@ -189,14 +211,5 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := restAction.InputMessageHandler(w, r); err != nil {
 			log.Printf("Error handling REST API call: %s", err.Error())
 		}
-		return
 	}
-
-	// if strings.Contains(r.URL.Path, "exec") {
-	// 	handleExec.HandleExec(w, r, wsClient)
-	// } else if strings.Contains(r.URL.Path, "log") {
-	// 	handleLogs.HandleLogs(w, r, commandBeingRun, logId, wsClient)
-	// } else {
-	// 	handleREST.HandleREST(w, r, commandBeingRun, logId, wsClient)
-	// }
 }

@@ -1,42 +1,39 @@
 package stdreader
 
 import (
+	"bytes"
 	"io"
 
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
+var (
+	EndStreamBytes = []byte{0x62, 0x61, 0x73, 0x74, 0x69, 0x6f, 0x6e, 0x7a, 0x65, 0x72, 0x6f}
+)
+
 type StdReader struct {
 	StreamType   smsg.StreamType
-	InputChannel chan []byte // alternatively, we can push the stream message and double check that the requestId matches
 	RequestId    int
+	stdinChannel chan []byte
 }
 
-func NewStdReader(streamType smsg.StreamType, requestId int) *StdReader {
+func NewStdReader(streamType smsg.StreamType, requestId int, stdinChannel chan []byte) *StdReader {
 	stdin := &StdReader{
 		StreamType:   streamType,
-		InputChannel: make(chan []byte),
 		RequestId:    requestId,
+		stdinChannel: stdinChannel,
 	}
-
-	// the idea here is to create a trigger on the channel such that whenever the action
-	// pushes to the channel, it will push to read
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case messageBytes := <-stdin.InputChannel:
-	// 			stdin.Read(messageBytes)
-	// 		}
-	// 	}
-	// }()
 
 	return stdin
 }
 
 func (r *StdReader) Read(p []byte) (int, error) {
-	if len(p) > 0 {
-		return len(p), nil // no fucking clue
-	} else {
-		return 0, io.EOF
+	// Listen for data on our stdinChannel
+	if bytes.Compare(p, EndStreamBytes) == 0 {
+		return 1, io.EOF
 	}
+	var stdin []byte
+	stdin = <-r.stdinChannel
+	n := copy(p, stdin)
+	return n, nil
 }

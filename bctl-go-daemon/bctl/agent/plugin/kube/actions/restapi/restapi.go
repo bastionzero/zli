@@ -3,7 +3,6 @@ package restapi
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -28,17 +27,8 @@ func NewRestApiAction(serviceAccountToken string, kubeHost string, impersonateGr
 }
 
 func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	log.Printf("Action recieved message")
-
-	// TODO: The below line removes the extra, surrounding quotation marks that get added at some point in the marshal/unmarshal
-	// so it messes up the umarshalling into a valid action payload.  We need to figure out why this is happening
-	// so that we can murder its family
-	actionPayload = actionPayload[1 : len(actionPayload)-1]
-	// Json unmarshalling encodes bytes in base64
-	safety, _ := base64.StdEncoding.DecodeString(string(actionPayload))
-
 	var apiRequest KubeRestApiActionPayload
-	if err := json.Unmarshal(safety, &apiRequest); err != nil {
+	if err := json.Unmarshal(actionPayload, &apiRequest); err != nil {
 		log.Printf("Error: %v", err.Error())
 		return action, []byte{}, fmt.Errorf("Malformed Keysplitting Action payload %v", actionPayload)
 	}

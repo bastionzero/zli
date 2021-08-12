@@ -18,4 +18,6 @@ const (
 	StdErr StreamType = "kube/exec/stderr"
 	StdOut StreamType = "kube/exec/stdout"
 	StdIn  StreamType = "kube/exec/stdin"
+
+	LogOut StreamType = "kube/log"
 )

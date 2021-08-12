@@ -188,30 +188,19 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			case <-ctx.Done():
 				return
 			case stdoutStreamMessage = <-r.stdoutChannel:
-				// Ensure that the RequestIdentifiers match up
-				// if stdoutStreamMessage.RequestId != r.requestId {
-				// 	// Rebroadcast the message
-				// 	wsClient.AlertOnExecStdoutChan(stdoutToDaemonFromBastionSignalRMessage)
-				// } else {
-				// TODO: Check if this is EOF, so we can end the stream
-				// Im not sure if this is the best way to close the
-
-				// Decode the content from base64
-				// log.Printf("WHAT?: %v", stdoutStreamMessage.Content)
-				// decodedStdout, err := base64.StdEncoding.DecodeString(string(stdoutStreamMessage.Content))
-				// if err != nil {
-				// 	log.Printf("Error decoding stdout: %s", err)
-				// 	break
-				// }
-				// log.Printf("HERE DAEMON: %v", decodedStdout)
-
 				if strings.Contains(string(stdoutStreamMessage.Content), "exit") {
 					// First let stdin know to close the stream for the server
-					// stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
-					// stdinToBastionFromDaemonMessage.Stdin = nil
-					// stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
-					// stdinToBastionFromDaemonMessage.End = true
-					// wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
+					payload := kubeexec.KubeStdinActionPayload{
+						RequestId: r.requestId,
+						Stdin:     []byte{},
+						End:       true,
+					}
+
+					payloadBytes, _ := json.Marshal(payload)
+					r.RequestChannel <- plgn.ActionWrapper{
+						Action:        string(kubeexec.ExecInput),
+						ActionPayload: payloadBytes,
+					}
 
 					// Close the connection and the context
 					conn.Close()
@@ -241,15 +230,10 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					cancel()
 				}
 				// Now we need to send this stdin to Bastion
-				// stdinToBastionFromDaemonMessage := daemonWebsocketTypes.StdinToBastionFromDaemonMessage{}
-				// stdinToBastionFromDaemonMessage.Stdin = buf[:n]
-				// stdinToBastionFromDaemonMessage.RequestIdentifier = requestIdentifier
-				// stdinToBastionFromDaemonMessage.End = false
-				// wsClient.SendStdinDaemonToBastion(stdinToBastionFromDaemonMessage)
-
 				payload := kubeexec.KubeStdinActionPayload{
 					RequestId: r.requestId,
 					Stdin:     buf[:n],
+					End:       false,
 				}
 
 				payloadBytes, _ := json.Marshal(payload)
@@ -262,6 +246,38 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			}
 		}
 
+	}()
+
+	// Set up a go function for resize
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				decoder := json.NewDecoder(proxy.resizeStream)
+
+				size := TerminalSize{}
+				if err := decoder.Decode(&size); err != nil {
+					log.Printf("Error decoding resize message: %s")
+					cancel()
+				} else {
+					// Emit this as a new resize event
+					payload := kubeexec.KubeExecResizeActionPayload{
+						RequestId: r.requestId,
+						Width:     size.Width,
+						Height:    size.Height,
+					}
+
+					payloadBytes, _ := json.Marshal(payload)
+					r.RequestChannel <- plgn.ActionWrapper{
+						Action:        string(kubeexec.ExecResize),
+						ActionPayload: payloadBytes,
+					}
+				}
+				break
+			}
+		}
 	}()
 
 	return nil

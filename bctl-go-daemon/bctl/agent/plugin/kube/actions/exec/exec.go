@@ -1,9 +1,6 @@
 package exec
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -31,7 +28,10 @@ type ExecAction struct {
 	ImpersonateGroup    string
 	Role                string
 	streamOutputChannel chan smsg.StreamMessage
-	// execInstances       map[string]map[string]interface{}
+
+	// To send input/resize to our exec sessions
+	execStdinChannel  chan []byte
+	execResizeChannel chan KubeExecResizeActionPayload
 }
 
 func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*ExecAction, error) {
@@ -41,44 +41,29 @@ func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup
 		ImpersonateGroup:    impersonateGroup,
 		Role:                role,
 		streamOutputChannel: ch,
+		execStdinChannel:    make(chan []byte, 10),
+		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
 	}, nil
 }
 
-func (r *ExecAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	log.Printf("Dealing with: %s", action)
-	switch ExecSubAction(action) {
-	case StartExec:
-		return r.StartExec(actionPayload)
-	case ExecInput:
-		break
-	case StopExec:
-		break
-	default:
-		return "", []byte{}, errors.New("Recieved unhandled exec action")
-	}
-	return "", []byte{}, nil // We don't need to return a payload with exec
+func (r *ExecAction) SendStdinToChannel(stdin []byte) (string, []byte, error) {
+	r.execStdinChannel <- stdin
+
+	return string(ExecInput), []byte{}, nil
 }
 
-func (r *ExecAction) StartExec(actionPayload []byte) (string, []byte, error) {
-	// TODO: The below line removes the extra, surrounding quotation marks that get added at some point in the marshal/unmarshal
-	// so it messes up the umarshalling into a valid action payload.  We need to figure out why this is happening
-	// so that we can murder its family
-	actionPayload = actionPayload[1 : len(actionPayload)-1]
+func (r *ExecAction) SendResizeToChannel(execResizeAction KubeExecResizeActionPayload) (string, []byte, error) {
+	r.execResizeChannel <- execResizeAction
 
-	// Json unmarshalling encodes bytes in base64
-	safety, _ := base64.StdEncoding.DecodeString(string(actionPayload))
+	return string(ExecResize), []byte{}, nil
+}
 
-	var startExecRequest KubeExecStartActionPayload
-	if err := json.Unmarshal(safety, &startExecRequest); err != nil {
-		log.Printf("Error: %v", err.Error())
-		return string(StartExec), []byte{}, fmt.Errorf("Malformed Keysplitting Action payload %v", actionPayload)
-	}
-
+func (r *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (string, []byte, error) {
 	// Now open up our local exec session
 	// Create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return string(StartExec), []byte{}, fmt.Errorf("Error creating in-custer config: %v", err.Error())
+		return "", []byte{}, fmt.Errorf("Error creating in-custer config: %v", err.Error())
 	}
 
 	// Add our impersonation information
@@ -90,6 +75,7 @@ func (r *ExecAction) StartExec(actionPayload []byte) (string, []byte, error) {
 
 	kubeExecApiUrl := r.KubeHost + startExecRequest.Endpoint
 	kubeExecApiUrlParsed, _ := url.Parse(kubeExecApiUrl)
+	log.Println(kubeExecApiUrlParsed)
 
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
@@ -102,20 +88,24 @@ func (r *ExecAction) StartExec(actionPayload []byte) (string, []byte, error) {
 	// with their own channel + some mutex locks?
 	stderrWriter := stdout.NewStdWriter(smsg.StdErr, r.streamOutputChannel, startExecRequest.RequestId)
 	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, r.streamOutputChannel, startExecRequest.RequestId)
-	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId)
-	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId)
+
+	// Give our stdinReader a channel to listen for
+	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, r.execStdinChannel)
+
+	// Make our terminal size queue
+	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId, r.execResizeChannel)
 
 	go func() {
-		if err := exec.Stream(remotecommand.StreamOptions{
+		err := exec.Stream(remotecommand.StreamOptions{
 			Stdin:             stdinReader,
 			Stdout:            stdoutWriter,
 			Stderr:            stderrWriter,
 			TerminalSizeQueue: terminalSizeQueue,
 			Tty:               true, // TODO: We dont always want tty
-		}); err != nil {
+		})
+		if err != nil {
 			// TODO: handle error, send end to daemon
 			log.Println("Error with spdy stream")
-			// return string(StartExec), []byte{}, fmt.Errorf("Error creating Spdy stream: %v", err.Error())
 		}
 	}()
 
