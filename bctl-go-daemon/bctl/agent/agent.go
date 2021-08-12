@@ -11,6 +11,7 @@ import (
 	controlwsmsg "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
 	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
+	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
 var (
@@ -62,15 +63,29 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
-	var payload map[string]interface{}
-	if err := json.Unmarshal(agentMessage.MessagePayload, &payload); err == nil {
-		p := payload["keysplittingPayload"].(map[string]interface{})
-		switch p["action"] {
-		case "kube/restapi":
-			return "ResponseToBastionFromCluster", nil
+	// First check if its a keysplitting message
+	var keysplittingPayload map[string]interface{}
+	if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
+		if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
+			// p := payload["keysplittingPayload"].(map[string]interface{})
+			switch keysplittingPayloadVal["action"] {
+			case "kube/restapi":
+				return "ResponseToBastionFromCluster", nil
+			}
 		}
 	}
-	return "", fmt.Errorf("")
+
+	// Else check if its a stream message
+	var messagePayload smsg.StreamMessage
+	if err := json.Unmarshal(agentMessage.MessagePayload, &messagePayload); err == nil {
+		// p := payload["keysplittingPayload"].(map[string]interface{})
+		switch messagePayload.Type {
+		case "kube/exec/stdout":
+			return "StdoutToBastionFromCluster", nil
+		}
+	}
+
+	return "", fmt.Errorf("Unable to determin SignalR endpoint.")
 }
 
 func parseFlags() {

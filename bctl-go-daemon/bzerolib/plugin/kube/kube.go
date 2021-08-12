@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	exec "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/exec"
 	rest "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/restapi"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -75,7 +76,8 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		a, _ := rest.NewRestApiAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
 		return a.InputMessageHandler(action, actionPayload)
 	case Exec:
-		break
+		a, _ := exec.NewExecAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+		return a.InputMessageHandler(action, actionPayload)
 	case Log:
 		break
 	default:

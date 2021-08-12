@@ -21,14 +21,14 @@ func NewStdReader(streamType smsg.StreamType, requestId int) *StdReader {
 
 	// the idea here is to create a trigger on the channel such that whenever the action
 	// pushes to the channel, it will push to read
-	go func() {
-		for {
-			select {
-			case messageBytes := <-stdin.InputChannel:
-				stdin.Read(messageBytes)
-			}
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case messageBytes := <-stdin.InputChannel:
+	// 			stdin.Read(messageBytes)
+	// 		}
+	// 	}
+	// }()
 
 	return stdin
 }

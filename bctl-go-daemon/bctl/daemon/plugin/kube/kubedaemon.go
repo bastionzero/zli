@@ -10,6 +10,7 @@ import (
 	"time"
 
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	exec "bastionzero.com/bctl/v1/bzerolib/plugin/kubedaemon/actions/exec"
 	rest "bastionzero.com/bctl/v1/bzerolib/plugin/kubedaemon/actions/restapi"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -42,8 +43,9 @@ type KubeDaemonPlugin struct {
 	streamResponseChannel chan smsg.StreamMessage
 	RequestChannel        chan plgn.ActionWrapper
 
-	// To keep track of all current, ongoing actions
-	actions map[int]IKubeDaemonAction
+	// To keep track of all current, ongoing stream output channels for exec
+	execStdoutMapping map[int]chan smsg.StreamMessage
+	actions           map[int]IKubeDaemonAction
 }
 
 func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) (*KubeDaemonPlugin, error) {
@@ -54,6 +56,7 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		keyPath:               keyPath,
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 		RequestChannel:        make(chan plgn.ActionWrapper, 100),
+		execStdoutMapping:     make(map[int]chan smsg.StreamMessage),
 		actions:               make(map[int]IKubeDaemonAction),
 	}
 
@@ -79,6 +82,10 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 }
 
 func (k *KubeDaemonPlugin) handleStreamMessage(smessage smsg.StreamMessage) error {
+	// TODO: Determine if its stderr or stdout
+
+	// Push stdout to the correct handler, first get the kube action
+	k.execStdoutMapping[smessage.RequestId] <- smessage
 	return nil
 }
 
@@ -102,7 +109,7 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 			} else {
 				// Json always unmarshals numbers as float64
 				if id, ok := payload["requestId"].(float64); ok {
-					log.Printf("Plugin recieved response for action with request ID: %v", id)
+					log.Printf("Plugin received response for action with request ID: %v", id)
 					if act, ok := k.actions[int(id)]; ok {
 						wrappedAction := plgn.ActionWrapper{
 							Action:        action,
@@ -158,8 +165,24 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/api") {
-		id := generateRequestId()
+	// Always generate a log id
+	id := generateRequestId()
+
+	if strings.Contains(r.URL.Path, "exec") {
+		// Make a new channel for stdout
+		stdoutChannel := make(chan smsg.StreamMessage)
+
+		// Update our mapping
+		k.execStdoutMapping[id] = stdoutChannel
+
+		execAction, _ := exec.NewExecAction(id, k.RequestChannel, k.streamResponseChannel, stdoutChannel)
+		k.actions[id] = execAction
+		log.Printf("Created Exec action with id %v", id)
+		if err := execAction.InputMessageHandler(w, r); err != nil {
+			log.Printf("Error handling Exec call: %s", err.Error())
+		}
+		return
+	} else {
 		restAction, _ := rest.NewRestApiAction(id, k.RequestChannel)
 		k.actions[id] = restAction
 		log.Printf("Created Rest API action with id %v", id)

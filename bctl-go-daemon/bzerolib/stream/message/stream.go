@@ -15,7 +15,7 @@ type StreamMessage struct {
 type StreamType string
 
 const (
-	StdErr StreamType = "stderr"
-	StdOut StreamType = "stdout"
-	StdIn  StreamType = "stdin"
+	StdErr StreamType = "kube/exec/stderr"
+	StdOut StreamType = "kube/exec/stdout"
+	StdIn  StreamType = "kube/exec/stdin"
 )

@@ -5,7 +5,12 @@ type KubeExecStartActionPayload struct {
 	RequestId int      `json:"requestId"`
 	Command   []string `json:"command"` // what does this look like? Does it contain flags?
 	Endpoint  string   `json:"endpoint"`
-	Role      string   `json:"role"`
+}
+
+// Exec payload for the "kube/exec/input" action
+type KubeStdinActionPayload struct {
+	RequestId int    `json:"requestId"`
+	Stdin     []byte `json:"stdin"`
 }
 
 // payload for "kube/exec/input"

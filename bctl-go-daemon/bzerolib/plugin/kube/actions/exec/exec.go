@@ -1,7 +1,11 @@
 package exec
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/url"
 
 	"k8s.io/client-go/rest"
@@ -15,51 +19,70 @@ import (
 type ExecSubAction string
 
 const (
-	StartExec  ExecSubAction = "exec/start"
-	ExecInput  ExecSubAction = "exec/input"
-	ExecResize ExecSubAction = "exec/resize"
-	StopExec   ExecSubAction = "exec/stop"
+	StartExec  ExecSubAction = "kube/exec/start"
+	ExecInput  ExecSubAction = "kube/exec/input"
+	ExecResize ExecSubAction = "kube/exec/resize"
+	StopExec   ExecSubAction = "kube/exec/stop"
 )
 
 type ExecAction struct {
 	ServiceAccountToken string
 	KubeHost            string
 	ImpersonateGroup    string
+	Role                string
 	streamOutputChannel chan smsg.StreamMessage
-	execInstances       map[string]map[string]interface{}
+	// execInstances       map[string]map[string]interface{}
 }
 
-func (r *ExecAction) InputMessageHandler(action string, actionPayload interface{}) (interface{}, error) {
+func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*ExecAction, error) {
+	return &ExecAction{
+		ServiceAccountToken: serviceAccountToken,
+		KubeHost:            kubeHost,
+		ImpersonateGroup:    impersonateGroup,
+		Role:                role,
+		streamOutputChannel: ch,
+	}, nil
+}
+
+func (r *ExecAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
 	switch ExecSubAction(action) {
 	case StartExec:
-		return smsg.StreamMessage{}, r.StartExec(actionPayload)
+		return r.StartExec(actionPayload)
 	case ExecInput:
 		break
 	case StopExec:
 		break
 	default:
-		return smsg.StreamMessage{}, fmt.Errorf("Recieved unhandled exec action")
+		return "", []byte{}, errors.New("Recieved unhandled exec action")
 	}
-	return smsg.StreamMessage{}, nil // We don't need to return a payload with exec
+	return "", []byte{}, nil // We don't need to return a payload with exec
 }
 
-func (r *ExecAction) StartExec(payload interface{}) error {
-	startExecRequest, ok := payload.(KubeExecStartActionPayload)
-	if !ok {
-		return fmt.Errorf("Recieved malformed payload")
+func (r *ExecAction) StartExec(actionPayload []byte) (string, []byte, error) {
+	// TODO: The below line removes the extra, surrounding quotation marks that get added at some point in the marshal/unmarshal
+	// so it messes up the umarshalling into a valid action payload.  We need to figure out why this is happening
+	// so that we can murder its family
+	actionPayload = actionPayload[1 : len(actionPayload)-1]
+
+	// Json unmarshalling encodes bytes in base64
+	safety, _ := base64.StdEncoding.DecodeString(string(actionPayload))
+
+	var startExecRequest KubeExecStartActionPayload
+	if err := json.Unmarshal(safety, &startExecRequest); err != nil {
+		log.Printf("Error: %v", err.Error())
+		return string(StartExec), []byte{}, fmt.Errorf("Malformed Keysplitting Action payload %v", actionPayload)
 	}
 
 	// Now open up our local exec session
 	// Create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return fmt.Errorf("Error creating in-custer config: %v", err.Error())
+		return string(StartExec), []byte{}, fmt.Errorf("Error creating in-custer config: %v", err.Error())
 	}
 
 	// Add our impersonation information
-	// TODO: Make this not hardcoded, bastion should send info here
 	config.Impersonate = rest.ImpersonationConfig{
-		UserName: startExecRequest.Role,
+		UserName: r.Role,
 		Groups:   []string{r.ImpersonateGroup},
 	}
 	config.BearerToken = r.ServiceAccountToken
@@ -70,7 +93,7 @@ func (r *ExecAction) StartExec(payload interface{}) error {
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
 	if err != nil {
-		return fmt.Errorf("Error creating Spdy executor")
+		return string(StartExec), []byte{}, fmt.Errorf("Error creating Spdy executor: %v", err.Error())
 	}
 
 	// I've added sequence numbers to stderr and stdout but they don't match up
@@ -88,8 +111,8 @@ func (r *ExecAction) StartExec(payload interface{}) error {
 		TerminalSizeQueue: terminalSizeQueue,
 		Tty:               true, // TODO: We dont always want tty
 	}); err != nil {
-		return fmt.Errorf("Error creating Spdy stream")
-	} else {
-		return nil
+		return string(StartExec), []byte{}, fmt.Errorf("Error creating Spdy stream: %v", err.Error())
 	}
+
+	return string(StartExec), []byte{}, nil
 }

@@ -61,9 +61,12 @@ func NewDataChannel(role string, startPlugin string, serviceUrl string, hubEndpo
 		for {
 			select {
 			case agentMessage := <-ret.websocket.InputChannel:
-				if err := ret.InputMessageHandler(agentMessage); err != nil {
-					log.Printf(err.Error())
-				}
+				// Handle each message in its own thread
+				go func() {
+					if err := ret.InputMessageHandler(agentMessage); err != nil {
+						log.Printf(err.Error())
+					}
+				}()
 			}
 		}
 	}()
@@ -80,8 +83,6 @@ func (d *DataChannel) SendAgentMessage(messageType wsmsg.MessageType, messagePay
 		MessagePayload: messageBytes,
 	}
 
-	// log.Printf("Return payload: %+v", messagePayload)
-
 	// Push message to websocket channel output
 	d.websocket.OutputChannel <- agentMessage
 	return nil
@@ -92,8 +93,7 @@ func (d *DataChannel) SendSyn() {
 	if action, payload, err := d.plugin.InputMessageHandler("", []byte{}); err != nil {
 		log.Printf(err.Error())
 	} else {
-		log.Printf("YEAHHHHHH BITCH")
-		// log.Printf("Action: %v, Payload: %v", action, payload)
+		log.Printf("Action: %v", action)
 
 		// should only be building this message once and it should only be the syn and it should be in a helper function
 		// this is a temporary workaround for getting the daemon working

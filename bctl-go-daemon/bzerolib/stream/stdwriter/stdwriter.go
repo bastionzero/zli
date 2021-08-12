@@ -1,7 +1,13 @@
 package stdwriter
 
 import (
+	"log"
+
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+)
+
+var (
+	notreadybytes = [2]byte{64, 94}
 )
 
 type StdWriter struct {
@@ -9,6 +15,7 @@ type StdWriter struct {
 	outputChannel  chan smsg.StreamMessage
 	RequestId      int
 	SequenceNumber int
+	ready          bool
 }
 
 func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, requestId int) *StdWriter {
@@ -17,10 +24,18 @@ func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, reques
 		outputChannel:  ch,
 		RequestId:      requestId,
 		SequenceNumber: 0,
+		ready:          false,
 	}
 }
 
 func (w *StdWriter) Write(p []byte) (int, error) {
+	// TODO: Fix this bug, not sure why were are seeing so many of these random bytes, not ready bytes maybe?
+	// if w.ready == false && p[0] != notreadybytes[0] && p[0] != notreadybytes[1] {
+	// 	w.ready = true
+	// }
+
+	// if w.ready == true {
+	log.Printf("HERE for %s: %s", string(w.StdType), p)
 	message := smsg.StreamMessage{
 		Type:           string(w.StdType),
 		RequestId:      w.RequestId,
@@ -29,6 +44,7 @@ func (w *StdWriter) Write(p []byte) (int, error) {
 	}
 	w.outputChannel <- message
 	w.SequenceNumber = w.SequenceNumber + 1
+	// }
 
 	return len(p), nil
 }
