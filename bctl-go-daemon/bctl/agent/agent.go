@@ -9,7 +9,7 @@ import (
 
 	controlws "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket"
 	controlwsmsg "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
-	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
+	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -70,6 +70,8 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 			// p := payload["keysplittingPayload"].(map[string]interface{})
 			switch keysplittingPayloadVal["action"] {
 			case "kube/restapi":
+				return "ResponseToBastionFromCluster", nil
+			case "kube/exec/start":
 				return "ResponseToBastionFromCluster", nil
 			}
 		}

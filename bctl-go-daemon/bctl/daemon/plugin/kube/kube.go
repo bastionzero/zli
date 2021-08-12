@@ -1,4 +1,4 @@
-package kubedaemon
+package kube
 
 import (
 	"encoding/json"
@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
+	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
-	exec "bastionzero.com/bctl/v1/bzerolib/plugin/kubedaemon/actions/exec"
-	rest "bastionzero.com/bctl/v1/bzerolib/plugin/kubedaemon/actions/restapi"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 

@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
+	exec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
-	exec "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/exec"
-	rest "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/restapi"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 

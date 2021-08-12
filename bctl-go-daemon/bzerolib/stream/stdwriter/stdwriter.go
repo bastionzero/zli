@@ -1,8 +1,6 @@
 package stdwriter
 
 import (
-	"log"
-
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
@@ -35,7 +33,6 @@ func (w *StdWriter) Write(p []byte) (int, error) {
 	// }
 
 	// if w.ready == true {
-	log.Printf("HERE for %s: %s", string(w.StdType), p)
 	message := smsg.StreamMessage{
 		Type:           string(w.StdType),
 		RequestId:      w.RequestId,

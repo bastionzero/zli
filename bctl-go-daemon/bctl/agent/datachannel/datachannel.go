@@ -6,20 +6,18 @@ import (
 	"log"
 	"strings"
 
+	kube "bastionzero.com/bctl/v1/bctl/agent/plugin/kube"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
 	bzc "bastionzero.com/bctl/v1/bzerolib/keysplitting/bzcert"
 	ksmsg "bastionzero.com/bctl/v1/bzerolib/keysplitting/message"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
-	kube "bastionzero.com/bctl/v1/bzerolib/plugin/kube"
-	kdmn "bastionzero.com/bctl/v1/bzerolib/plugin/kubedaemon"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
 type IDataChannel interface {
 	SendAgentMessage(messageType wsmsg.MessageType, messagePayload interface{}) error
 	InputMessageHandler(agentMessage wsmsg.AgentMessage) error
-	StartKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) error
 }
 
 type DataChannel struct {
@@ -209,15 +207,6 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		return fmt.Errorf("Invalid Keysplitting Payload")
 	}
 	return nil
-}
-
-func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) error {
-	if daemonPlugin, err := kdmn.NewKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
-		return err
-	} else {
-		d.plugin = daemonPlugin
-		return nil
-	}
 }
 
 func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {

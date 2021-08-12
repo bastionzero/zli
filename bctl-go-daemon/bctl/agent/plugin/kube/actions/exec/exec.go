@@ -45,6 +45,7 @@ func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup
 }
 
 func (r *ExecAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+	log.Printf("Dealing with: %s", action)
 	switch ExecSubAction(action) {
 	case StartExec:
 		return r.StartExec(actionPayload)
@@ -104,15 +105,19 @@ func (r *ExecAction) StartExec(actionPayload []byte) (string, []byte, error) {
 	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId)
 	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId)
 
-	if err := exec.Stream(remotecommand.StreamOptions{
-		Stdin:             stdinReader,
-		Stdout:            stdoutWriter,
-		Stderr:            stderrWriter,
-		TerminalSizeQueue: terminalSizeQueue,
-		Tty:               true, // TODO: We dont always want tty
-	}); err != nil {
-		return string(StartExec), []byte{}, fmt.Errorf("Error creating Spdy stream: %v", err.Error())
-	}
+	go func() {
+		if err := exec.Stream(remotecommand.StreamOptions{
+			Stdin:             stdinReader,
+			Stdout:            stdoutWriter,
+			Stderr:            stderrWriter,
+			TerminalSizeQueue: terminalSizeQueue,
+			Tty:               true, // TODO: We dont always want tty
+		}); err != nil {
+			// TODO: handle error, send end to daemon
+			log.Println("Error with spdy stream")
+			// return string(StartExec), []byte{}, fmt.Errorf("Error creating Spdy stream: %v", err.Error())
+		}
+	}()
 
 	return string(StartExec), []byte{}, nil
 }

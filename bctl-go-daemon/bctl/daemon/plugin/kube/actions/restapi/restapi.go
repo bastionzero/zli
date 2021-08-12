@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	kuberest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
-	kuberest "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/restapi"
 )
 
 const (

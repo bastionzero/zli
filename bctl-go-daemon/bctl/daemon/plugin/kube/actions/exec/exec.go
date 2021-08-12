@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
-	kubeexec "bastionzero.com/bctl/v1/bzerolib/plugin/kube/actions/exec"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -257,6 +257,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					Action:        string(kubeexec.ExecInput),
 					ActionPayload: payloadBytes,
 				}
+				log.Println("HERE? send stdin")
 				break
 			}
 		}

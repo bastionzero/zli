@@ -2,6 +2,8 @@ module bastionzero.com/bctl/v1/bzerolib
 
 go 1.16
 
+replace bastionzero.com/bctl/v1/bctl => ../bctl
+
 require (
 	github.com/coreos/go-oidc/v3 v3.0.0
 	github.com/google/uuid v1.1.2

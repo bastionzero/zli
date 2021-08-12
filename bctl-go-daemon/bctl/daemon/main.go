@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	dc "bastionzero.com/bctl/v1/bzerolib/channels/datachannel"
+	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 )
 
