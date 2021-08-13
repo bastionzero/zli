@@ -11,8 +11,8 @@ replace bastionzero.com/bctl/v1/commonWebsocketClient => ../CommonWebsocketClien
 require (
 	bastionzero.com/bctl/v1/Server v0.0.0-00010101000000-000000000000
 	bastionzero.com/bctl/v1/bzerolib v0.0.0-00010101000000-000000000000
-	github.com/google/uuid v1.1.2 // indirect
-	k8s.io/api v0.21.3 // indirect
+	github.com/google/uuid v1.1.2
+	k8s.io/api v0.21.3
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v0.21.3
 )

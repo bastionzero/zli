@@ -6,14 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"bastionzero.com/bctl/v1/bzerolib/keysplitting/hasher"
+	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
-
-// Syn, SynAck, Data, and DataAck all implement this payload
-// type IKeysplittingPayload interface {
-// 	GetSenderId() (string, time.Time, error)
-// 	BuildReplyPayload(payload interface{}, pubKey string) ([]byte, error)
-// }
 
 // Type restrictions for keysplitting messages
 type KeysplittingPayloadType string
@@ -23,6 +17,10 @@ const (
 	SynAck  KeysplittingPayloadType = "SynAck"
 	Data    KeysplittingPayloadType = "Data"
 	DataAck KeysplittingPayloadType = "DataAck"
+)
+
+const (
+	SchemaVersion = "1.0"
 )
 
 type IKeysplittingMessage interface {
@@ -37,34 +35,6 @@ type KeysplittingMessage struct {
 	Signature           string                  `json:"signature"`
 }
 
-func (k *KeysplittingMessage) BuildResponse(action string, actionPayload []byte, publickey string, privatekey string) (KeysplittingMessage, error) {
-	var ksMessage KeysplittingMessage
-	switch k.Type {
-	case Data:
-		dataPayload := k.KeysplittingPayload.(DataPayload)
-		if dataAckPayload, err := dataPayload.BuildResponsePayload(actionPayload, publickey); err != nil {
-			return KeysplittingMessage{}, err
-		} else {
-			ksMessage = KeysplittingMessage{
-				Type:                DataAck,
-				KeysplittingPayload: dataAckPayload,
-			}
-		}
-	case DataAck:
-		dataAckPayload := k.KeysplittingPayload.(DataAckPayload)
-		if dataPayload, err := dataAckPayload.BuildResponsePayload(action, actionPayload); err != nil {
-			return KeysplittingMessage{}, err
-		} else {
-			ksMessage = KeysplittingMessage{
-				Type:                Data,
-				KeysplittingPayload: dataPayload,
-			}
-		}
-	}
-	//return ksMessage.Sign(privatekey), nil
-	return ksMessage, nil
-}
-
 func (k *KeysplittingMessage) VerifySignature(publicKey string) error {
 	pubKeyBits, _ := base64.StdEncoding.DecodeString(publicKey)
 	if len(pubKeyBits) != 32 {
@@ -72,7 +42,7 @@ func (k *KeysplittingMessage) VerifySignature(publicKey string) error {
 	}
 	pubkey := ed.PublicKey(pubKeyBits)
 
-	hashBits, ok := hasher.HashPayload(k.KeysplittingPayload)
+	hashBits, ok := util.HashPayload(k.KeysplittingPayload)
 	if !ok {
 		return fmt.Errorf("Could not hash the keysplitting payload")
 	}
@@ -93,7 +63,7 @@ func (k *KeysplittingMessage) Sign(privateKey string) error {
 	}
 	privkey := ed.PrivateKey(keyBytes)
 
-	hashBits, _ := hasher.HashPayload(k.KeysplittingPayload)
+	hashBits, _ := util.HashPayload(k.KeysplittingPayload)
 
 	sig := ed.Sign(privkey, hashBits)
 	k.Signature = base64.StdEncoding.EncodeToString(sig)

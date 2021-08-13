@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"bastionzero.com/bctl/v1/bzerolib/keysplitting/hasher"
+	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
 
 const (
@@ -23,11 +23,6 @@ type BZCert struct {
 	ClientPublicKey string `json:"clientPublicKey"`
 	Rand            string `json:"rand"`
 	SignatureOnRand string `json:"signatureOnRand"`
-}
-
-type BZCertMetadata struct {
-	Cert   BZCert
-	Expiry time.Time
 }
 
 func (b *BZCert) Verify() (string, time.Time, error) {
@@ -49,7 +44,7 @@ func (b *BZCert) Verify() (string, time.Time, error) {
 }
 
 func (b *BZCert) Hash() (string, bool) {
-	if hashBytes, ok := hasher.HashPayload((*b)); ok {
+	if hashBytes, ok := util.HashPayload((*b)); ok {
 		return base64.StdEncoding.EncodeToString(hashBytes), ok
 	} else {
 		return "", ok

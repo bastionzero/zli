@@ -13,8 +13,8 @@ import (
 
 // Declaring flags as package-accesible variables
 var (
-	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl string
-	daemonPort, localhostToken, environmentId, certPath, keyPath   string
+	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl           string
+	daemonPort, localhostToken, environmentId, certPath, keyPath, configPath string
 )
 
 const (
@@ -42,7 +42,7 @@ func startDatachannel() {
 	params["assume_cluster_id"] = assumeClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(assumeRole, "", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dataChannel, _ := dc.NewDataChannel(configPath, assumeRole, "", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		log.Printf("Error starting Kube Daemon plugin: %s", err.Error())
 		return
@@ -88,6 +88,7 @@ func parseFlags() {
 	flag.StringVar(&daemonPort, "daemonPort", "", "Daemon Port To Use")
 	flag.StringVar(&certPath, "certPath", "", "Path to cert to use for our localhost server")
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
+	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
 
 	flag.Parse()
 

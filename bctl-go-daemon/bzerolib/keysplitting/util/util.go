@@ -1,16 +1,14 @@
-package hasher
+package util
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 
 	"golang.org/x/crypto/sha3"
 )
-
-type Hasher interface {
-	HashPayload(payload interface{}) ([]byte, bool)
-}
 
 func HashPayload(payload interface{}) ([]byte, bool) {
 	var payloadMap map[string]interface{}
@@ -38,4 +36,10 @@ func SafeMarshal(t interface{}) ([]byte, error) {
 	// Encode adds a newline character to the end that we dont want
 	// See https://golang.org/pkg/encoding/json/#Encoder.Encode
 	return buffer.Bytes()[:buffer.Len()-1], err
+}
+
+func Nonce() string {
+	b := make([]byte, 32) // 32-length byte array, to make it same length as hash pointer
+	rand.Read(b)          // populate with random bytes
+	return base64.StdEncoding.EncodeToString(b)
 }
