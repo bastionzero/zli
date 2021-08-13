@@ -7,6 +7,7 @@ type KubeLogsActionPayload struct {
 	Headers   map[string]string `json:"headers"`
 	Method    string            `json:"method"`
 	Body      string            `json:"body"`
-	RequestId int               `json:"requestIdentifier"`
+	RequestId string            `json:"requestIdentifier"`
 	End       bool              `json:"end"`
+	LogId     string            `json:"logId"`
 }

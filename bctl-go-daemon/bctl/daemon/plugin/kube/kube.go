@@ -4,16 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"strings"
-	"time"
+	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
 	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -45,10 +46,12 @@ type KubeDaemonPlugin struct {
 	RequestChannel        chan plgn.ActionWrapper
 
 	// To keep track of all current, ongoing stream output channels for exec
-	execStdoutMapping map[int]chan smsg.StreamMessage
-	logChannelMapping map[int]chan smsg.StreamMessage
+	execStdoutMapping map[string]chan smsg.StreamMessage
+	logChannelMapping map[string]chan smsg.StreamMessage
 
-	actions map[int]IKubeDaemonAction
+	actions map[string]IKubeDaemonAction
+
+	mapLock sync.RWMutex
 }
 
 func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) (*KubeDaemonPlugin, error) {
@@ -59,9 +62,10 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		keyPath:               keyPath,
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 		RequestChannel:        make(chan plgn.ActionWrapper, 100),
-		execStdoutMapping:     make(map[int]chan smsg.StreamMessage),
-		logChannelMapping:     make(map[int]chan smsg.StreamMessage),
-		actions:               make(map[int]IKubeDaemonAction),
+		execStdoutMapping:     make(map[string]chan smsg.StreamMessage),
+		logChannelMapping:     make(map[string]chan smsg.StreamMessage),
+		actions:               make(map[string]IKubeDaemonAction),
+		mapLock:               sync.RWMutex{},
 	}
 
 	go func() {
@@ -118,9 +122,9 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 				return "", []byte{}, fmt.Errorf("Could not unmarshal actionPayload: %v", string(actionPayload))
 			} else {
 				// Json always unmarshals numbers as float64
-				if id, ok := payload["requestId"].(float64); ok {
+				if id, ok := payload["requestId"].(string); ok {
 					log.Printf("Plugin received response for action with request ID: %v", id)
-					if act, ok := k.actions[int(id)]; ok {
+					if act, ok := k.actions[id]; ok {
 						wrappedAction := plgn.ActionWrapper{
 							Action:        action,
 							ActionPayload: actionPayload,
@@ -149,10 +153,11 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 	}
 }
 
-func generateRequestId() int {
+func generateRequestId() string {
 	// gotta mix up the see otherwise it always gives us the same number
-	rand.Seed(time.Now().UnixNano())
-	return rand.Intn(10000) // We REALLY want to be using a uuid
+	// rand.Seed(time.Now().UnixNano())
+	// return rand.Intn(10000) // We REALLY want to be using a uuid
+	return uuid.New().String()
 }
 
 func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) {
@@ -175,19 +180,33 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Always generate a log id
-	id := generateRequestId()
+	// Check if we have a command to extract
+	// TODO: Maybe we can push this work to the bastion
+	commandBeingRun := "N/A"
+	logId := "N/A"
+	if len(tokensSplit) == 3 {
+		commandBeingRun = tokensSplit[1]
+		logId = tokensSplit[2]
+	} else {
+		commandBeingRun = "N/A"
+		logId = generateRequestId()
+	}
+
+	// Always generate requestId
+	requestId := generateRequestId()
 
 	if strings.Contains(r.URL.Path, "exec") {
 		// Make a new channel for stdout
 		stdoutChannel := make(chan smsg.StreamMessage)
 
 		// Update our mapping
-		k.execStdoutMapping[id] = stdoutChannel
+		k.execStdoutMapping[requestId] = stdoutChannel
 
-		execAction, _ := exec.NewExecAction(id, k.RequestChannel, k.streamResponseChannel, stdoutChannel)
-		k.actions[id] = execAction
-		log.Printf("Created Exec action with id %v", id)
+		execAction, _ := exec.NewExecAction(requestId, logId, k.RequestChannel, k.streamResponseChannel, stdoutChannel, commandBeingRun)
+
+		k.updateActionsMap(execAction, requestId)
+
+		log.Printf("Created Exec action with requestId %v", requestId)
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			log.Printf("Error handling Exec call: %s", err.Error())
 		}
@@ -196,20 +215,31 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		logChannel := make(chan smsg.StreamMessage)
 
 		// Update our mapping
-		k.logChannelMapping[id] = logChannel
+		k.logChannelMapping[requestId] = logChannel
 
-		logAction, _ := logaction.NewLogAction(id, k.RequestChannel, logChannel)
-		k.actions[id] = logAction
-		log.Printf("Created Log action with id %v", id)
+		logAction, _ := logaction.NewLogAction(requestId, logId, k.RequestChannel, logChannel)
+
+		k.updateActionsMap(logAction, requestId)
+
+		log.Printf("Created Log action with requestId %v", requestId)
 		if err := logAction.InputMessageHandler(w, r); err != nil {
 			log.Printf("Error handling Logs call: %s", err.Error())
 		}
 	} else {
-		restAction, _ := rest.NewRestApiAction(id, k.RequestChannel)
-		k.actions[id] = restAction
-		log.Printf("Created Rest API action with id %v", id)
+		restAction, _ := rest.NewRestApiAction(requestId, logId, k.RequestChannel, commandBeingRun)
+
+		k.updateActionsMap(restAction, requestId)
+
+		log.Printf("Created Rest API action with requestId %v", requestId)
 		if err := restAction.InputMessageHandler(w, r); err != nil {
 			log.Printf("Error handling REST API call: %s", err.Error())
 		}
 	}
+}
+
+func (k *KubeDaemonPlugin) updateActionsMap(newAction IKubeDaemonAction, id string) {
+	// Helper function so we avoid writing to this map at the same time
+	k.mapLock.Lock()
+	k.actions[id] = newAction
+	k.mapLock.Unlock()
 }

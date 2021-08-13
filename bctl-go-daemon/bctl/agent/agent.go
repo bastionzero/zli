@@ -56,10 +56,13 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	params["daemon_connection_id"] = message.ConnectionId
 	params["token"] = token
 
+	// Disable auto-reconnect
+	autoReconnect := false
+
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dc.NewDataChannel(message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {

@@ -37,8 +37,8 @@ type DataChannel struct {
 	privatekey       string
 }
 
-func NewDataChannel(role string, startPlugin string, serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*DataChannel, error) {
-	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+func NewDataChannel(role string, startPlugin string, serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool) (*DataChannel, error) {
+	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 	if err != nil {
 		return &DataChannel{}, fmt.Errorf(err.Error())
 	}
@@ -65,6 +65,11 @@ func NewDataChannel(role string, startPlugin string, serviceUrl string, hubEndpo
 						log.Printf(err.Error())
 					}
 				}()
+				break
+			case <-ret.websocket.DoneChannel:
+				// The websocket has been closed
+				log.Println("Websocket has been closed, closing datachannel")
+				return
 			}
 		}
 	}()

@@ -13,11 +13,11 @@ var (
 
 type StdReader struct {
 	StreamType   smsg.StreamType
-	RequestId    int
+	RequestId    string
 	stdinChannel chan []byte
 }
 
-func NewStdReader(streamType smsg.StreamType, requestId int, stdinChannel chan []byte) *StdReader {
+func NewStdReader(streamType smsg.StreamType, requestId string, stdinChannel chan []byte) *StdReader {
 	stdin := &StdReader{
 		StreamType:   streamType,
 		RequestId:    requestId,

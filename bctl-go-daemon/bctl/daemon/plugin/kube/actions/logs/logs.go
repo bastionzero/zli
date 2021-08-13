@@ -19,16 +19,18 @@ const (
 )
 
 type LogsAction struct {
-	requestId         int
+	requestId         string
+	logId             string
 	ksResponseChannel chan plgn.ActionWrapper
 	RequestChannel    chan plgn.ActionWrapper
 	writer            http.ResponseWriter
 	logChannel        chan smsg.StreamMessage
 }
 
-func NewLogAction(id int, ch chan plgn.ActionWrapper, logChannel chan smsg.StreamMessage) (*LogsAction, error) {
+func NewLogAction(requestId string, logId string, ch chan plgn.ActionWrapper, logChannel chan smsg.StreamMessage) (*LogsAction, error) {
 	return &LogsAction{
-		requestId:         id,
+		requestId:         requestId,
+		logId:             logId,
 		RequestChannel:    ch,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
 		logChannel:        logChannel,
@@ -60,6 +62,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		Method:    request.Method,
 		Body:      string(bodyInBytes), // fix this
 		RequestId: r.requestId,
+		LogId:     r.logId,
 		End:       false,
 	}
 
@@ -83,6 +86,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				Method:    request.Method,
 				Body:      string(bodyInBytes), // fix this
 				RequestId: r.requestId,
+				LogId:     r.logId,
 				End:       true,
 			}
 

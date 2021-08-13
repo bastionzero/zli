@@ -8,10 +8,10 @@ import (
 type TerminalSizeQueue struct {
 	StreamType        smsg.StreamType
 	execResizeChannel chan KubeExecResizeActionPayload // pretty sure this needs to be buffered
-	RequestId         int
+	RequestId         string
 }
 
-func NewTerminalSizeQueue(requestId int, execResizeChannel chan KubeExecResizeActionPayload) *TerminalSizeQueue {
+func NewTerminalSizeQueue(requestId string, execResizeChannel chan KubeExecResizeActionPayload) *TerminalSizeQueue {
 	return &TerminalSizeQueue{
 		execResizeChannel: execResizeChannel,
 		RequestId:         requestId,

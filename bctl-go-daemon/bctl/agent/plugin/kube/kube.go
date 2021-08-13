@@ -38,7 +38,7 @@ type KubePlugin struct {
 	streamOutputChannel chan smsg.StreamMessage
 	serviceAccountToken string
 	kubeHost            string
-	runningExecActions  map[int]*exec.ExecAction // need something like this for streams and multiple tabs when running exec & logs
+	runningExecActions  map[string]*exec.ExecAction // need something like this for streams and multiple tabs when running exec & logs
 }
 
 func NewPlugin(ch chan smsg.StreamMessage, role string) plgn.IPlugin {
@@ -56,7 +56,7 @@ func NewPlugin(ch chan smsg.StreamMessage, role string) plgn.IPlugin {
 		streamOutputChannel: ch,
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
-		runningExecActions:  make(map[int]*exec.ExecAction),
+		runningExecActions:  make(map[string]*exec.ExecAction),
 	}
 }
 
@@ -100,7 +100,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 			}
 
 			// Create our new exec action
-			a, _ := exec.NewExecAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+			a, _ := exec.NewExecAction(k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel, startExecRequest.LogId)
 
 			// Add this to our running actions so we can search for this later
 			k.runningExecActions[startExecRequest.RequestId] = a

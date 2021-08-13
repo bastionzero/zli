@@ -46,16 +46,20 @@ type Websocket struct {
 	Cancel context.CancelFunc
 	Closed bool
 
-	// These are the channels for recieving and sending messages
+	// These are the channels for recieving and sending messages and done
 	InputChannel  chan wsmsg.AgentMessage
 	OutputChannel chan wsmsg.AgentMessage
+	DoneChannel   chan bool
 
 	// Function for figuring out correct Target SignalR Hub
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
+
+	// Flag to indicate if we should automatically try to reconnect
+	autoReconnect bool
 }
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
-func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*Websocket, error) {
+func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool) (*Websocket, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := Websocket{
@@ -64,7 +68,10 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 
 		InputChannel:        make(chan wsmsg.AgentMessage, 200),
 		OutputChannel:       make(chan wsmsg.AgentMessage, 200),
+		DoneChannel:         make(chan bool, 1),
 		targetSelectHandler: targetSelectHandler,
+
+		autoReconnect: autoReconnect,
 	}
 
 	// Connect to the websocket, catch any errors
@@ -97,7 +104,12 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 					// TODO: Handle this error better
 					log.Println("Error in websocket, will attempt to reconnect: ", err)
 					ret.IsReady = false
-					ret.Connect(serviceUrl, hubEndpoint, headers, params)
+					if ret.autoReconnect {
+						ret.Connect(serviceUrl, hubEndpoint, headers, params)
+					} else {
+						log.Println("Auto-recoonect disabled, returning")
+						return
+					}
 				} else if ret.Closed == true {
 					// If we are trying to close to connection, end the goroutine
 					return
@@ -122,6 +134,17 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 						if wrappedMessage.Type != signalRTypeNumber {
 							log.Printf("Ignoring SignalR message with type %v", wrappedMessage.Type)
 						} else if len(wrappedMessage.Arguments) != 0 {
+							if wrappedMessage.Target == "CloseConnectionToClusterFromBastion" {
+								log.Printf("Close Connection message received. Closing websocket")
+
+								// Cancel our context
+								cancel()
+
+								// Send an alert on our done channel for our datachannel
+								ret.DoneChannel <- true
+
+								return
+							}
 							ret.InputChannel <- wrappedMessage.Arguments[0]
 						}
 					}

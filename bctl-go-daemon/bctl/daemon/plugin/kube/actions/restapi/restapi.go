@@ -16,17 +16,21 @@ const (
 )
 
 type RestApiAction struct {
-	requestId         int
+	requestId         string
+	logId             string
 	ksResponseChannel chan plgn.ActionWrapper
 	RequestChannel    chan plgn.ActionWrapper
 	writer            http.ResponseWriter
+	commandBeingRun   string
 }
 
-func NewRestApiAction(id int, ch chan plgn.ActionWrapper) (*RestApiAction, error) {
+func NewRestApiAction(requestId string, logId string, ch chan plgn.ActionWrapper, commandBeingRun string) (*RestApiAction, error) {
 	return &RestApiAction{
-		requestId:         id,
+		requestId:         requestId,
+		logId:             logId,
 		RequestChannel:    ch,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
+		commandBeingRun:   commandBeingRun,
 	}, nil
 }
 
@@ -50,11 +54,13 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 
 	// Build the action payload
 	payload := kuberest.KubeRestApiActionPayload{
-		Endpoint:  request.URL.String(),
-		Headers:   headers,
-		Method:    request.Method,
-		Body:      string(bodyInBytes), // fix this
-		RequestId: r.requestId,
+		Endpoint:        request.URL.String(),
+		Headers:         headers,
+		Method:          request.Method,
+		Body:            string(bodyInBytes), // fix this
+		RequestId:       r.requestId,
+		LogId:           r.logId,
+		CommandBeingRun: r.commandBeingRun,
 	}
 
 	payloadBytes, _ := json.Marshal(payload)

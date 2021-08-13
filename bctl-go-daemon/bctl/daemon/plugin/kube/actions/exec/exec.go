@@ -101,21 +101,25 @@ type Options struct {
 }
 
 type ExecAction struct {
-	requestId             int
+	requestId             string
+	logId                 string
 	ksResponseChannel     chan plgn.ActionWrapper
 	RequestChannel        chan plgn.ActionWrapper
 	streamResponseChannel chan smsg.StreamMessage
 	stdoutChannel         chan smsg.StreamMessage
 	writer                http.ResponseWriter
+	commandBeingRun       string
 }
 
-func NewExecAction(id int, ch chan plgn.ActionWrapper, streamResponseChannel chan smsg.StreamMessage, stdoutChannel chan smsg.StreamMessage) (*ExecAction, error) {
+func NewExecAction(requestId string, logId string, ch chan plgn.ActionWrapper, streamResponseChannel chan smsg.StreamMessage, stdoutChannel chan smsg.StreamMessage, commandBeingRun string) (*ExecAction, error) {
 	return &ExecAction{
-		requestId:             id,
+		requestId:             requestId,
+		logId:                 logId,
 		RequestChannel:        ch,
 		streamResponseChannel: streamResponseChannel,
 		stdoutChannel:         stdoutChannel,
 		ksResponseChannel:     make(chan plgn.ActionWrapper),
+		commandBeingRun:       commandBeingRun,
 	}, nil
 }
 
@@ -167,6 +171,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	// Build the action payload
 	payload := kubeexec.KubeExecStartActionPayload{
 		RequestId: r.requestId,
+		LogId:     r.logId,
 		Command:   options.Command,
 		Endpoint:  request.URL.String(),
 	}
@@ -193,6 +198,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					payload := kubeexec.KubeStdinActionPayload{
 						RequestId: r.requestId,
 						Stdin:     []byte{},
+						LogId:     r.logId,
 						End:       true,
 					}
 
@@ -233,6 +239,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				payload := kubeexec.KubeStdinActionPayload{
 					RequestId: r.requestId,
 					Stdin:     buf[:n],
+					LogId:     r.logId,
 					End:       false,
 				}
 
@@ -241,7 +248,6 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					Action:        string(kubeexec.ExecInput),
 					ActionPayload: payloadBytes,
 				}
-				log.Println("HERE? send stdin")
 				break
 			}
 		}
@@ -265,6 +271,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					// Emit this as a new resize event
 					payload := kubeexec.KubeExecResizeActionPayload{
 						RequestId: r.requestId,
+						LogId:     r.logId,
 						Width:     size.Width,
 						Height:    size.Height,
 					}

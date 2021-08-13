@@ -11,18 +11,18 @@ var (
 type StdWriter struct {
 	StdType        smsg.StreamType
 	outputChannel  chan smsg.StreamMessage
-	RequestId      int
+	RequestId      string
 	SequenceNumber int
-	ready          bool
+	logId          string
 }
 
-func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, requestId int) *StdWriter {
+func NewStdWriter(streamType smsg.StreamType, ch chan smsg.StreamMessage, requestId string, logId string) *StdWriter {
 	return &StdWriter{
 		StdType:        streamType,
 		outputChannel:  ch,
 		RequestId:      requestId,
 		SequenceNumber: 0,
-		ready:          false,
+		logId:          logId,
 	}
 }
 
@@ -32,6 +32,7 @@ func (w *StdWriter) Write(p []byte) (int, error) {
 		RequestId:      w.RequestId,
 		SequenceNumber: w.SequenceNumber,
 		Content:        p,
+		LogId:          w.logId,
 	}
 	w.outputChannel <- message
 	w.SequenceNumber = w.SequenceNumber + 1

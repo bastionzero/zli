@@ -32,9 +32,11 @@ type ExecAction struct {
 	// To send input/resize to our exec sessions
 	execStdinChannel  chan []byte
 	execResizeChannel chan KubeExecResizeActionPayload
+
+	logId string
 }
 
-func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*ExecAction, error) {
+func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage, logId string) (*ExecAction, error) {
 	return &ExecAction{
 		ServiceAccountToken: serviceAccountToken,
 		KubeHost:            kubeHost,
@@ -43,6 +45,7 @@ func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup
 		streamOutputChannel: ch,
 		execStdinChannel:    make(chan []byte, 10),
 		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
+		logId:               logId,
 	}, nil
 }
 
@@ -86,8 +89,8 @@ func (r *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 	// I've added sequence numbers to stderr and stdout but they don't match up
 	// I think this is okay for now, but might be a nice feature in the future? Probably can do it
 	// with their own channel + some mutex locks?
-	stderrWriter := stdout.NewStdWriter(smsg.StdErr, r.streamOutputChannel, startExecRequest.RequestId)
-	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, r.streamOutputChannel, startExecRequest.RequestId)
+	stderrWriter := stdout.NewStdWriter(smsg.StdErr, r.streamOutputChannel, startExecRequest.RequestId, r.logId)
+	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, r.streamOutputChannel, startExecRequest.RequestId, r.logId)
 
 	// Give our stdinReader a channel to listen for
 	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, r.execStdinChannel)

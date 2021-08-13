@@ -4,7 +4,8 @@ package message
 
 type StreamMessage struct {
 	Type           string `json:"type"` // either stdout or stderr, see "StreamType"
-	RequestId      int    `json:"requestId"`
+	LogId          string `json:"logId"`
+	RequestId      string `json:"requestId"`
 	SequenceNumber int    `json:"sequenceId"`
 	Content        []byte `json:"content"`
 }

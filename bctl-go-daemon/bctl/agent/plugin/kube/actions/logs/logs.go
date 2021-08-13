@@ -65,12 +65,6 @@ func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	queryParams := endpointWithQuery.Query()
 	followFlag, _ := strconv.ParseBool(queryParams.Get("follow"))
 
-	// / Perform the api request through the kube sdk
-	// Prepare the responses
-	// responseLogClusterToBastion := daemonServerWebsocketTypes.ResponseClusterToBastion{}
-	// responseLogClusterToBastion.StatusCode = 200
-	// responseLogClusterToBastion.RequestIdentifier = requestLogForServer.RequestIdentifier
-
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -137,6 +131,7 @@ func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 				message := smsg.StreamMessage{
 					Type:           LogData,
 					RequestId:      logActionRequest.RequestId,
+					LogId:          logActionRequest.LogId,
 					SequenceNumber: -1,
 					Content:        buf[:numBytes],
 				}
