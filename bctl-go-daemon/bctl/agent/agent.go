@@ -62,7 +62,7 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	dc.NewDataChannel("", message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {

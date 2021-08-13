@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
@@ -47,6 +48,9 @@ func startDatachannel() {
 		log.Printf("Error starting Kube Daemon plugin: %s", err.Error())
 		return
 	}
+
+	// TODO: Integrate this with existing messaging
+	time.Sleep(3 * time.Second)
 	dataChannel.SendSyn()
 }
 
@@ -89,6 +93,8 @@ func parseFlags() {
 	flag.StringVar(&certPath, "certPath", "", "Path to cert to use for our localhost server")
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
 	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
+
+	log.Printf("configPath: %v", configPath)
 
 	flag.Parse()
 

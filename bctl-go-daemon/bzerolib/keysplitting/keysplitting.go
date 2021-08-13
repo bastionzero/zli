@@ -2,7 +2,10 @@ package keysplitting
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"time"
 
 	bzcrt "bastionzero.com/bctl/v1/bzerolib/keysplitting/bzcert"
@@ -12,7 +15,29 @@ import (
 
 const (
 	schemaVersion = "1.0"
+
+	// Config is in json
+	// keysplittingConfigName  = "keySplitting"
+	// tokenConfigName         = "tokenSet"
+	// currentIdTokenFieldName = "id_token"
 )
+
+type Config struct {
+	KSConfig KeysplittingConfig `json:"keySplitting"`
+	TokenSet TokenSetConfig     `json:"tokenSet"`
+}
+
+type KeysplittingConfig struct {
+	PrivateKey       string `json:"privateKey"`
+	PublicKey        string `json:"publicKey"`
+	CerRand          string `json:"cerRand"`
+	CerRandSignature string `json:"cerRandSig"`
+	InitialIdToken   string `json:"initialIdToken"`
+}
+
+type TokenSetConfig struct {
+	CurrentIdToken string `json:"id_token"`
+}
 
 type BZCertMetadata struct {
 	Cert bzcrt.BZCert
@@ -33,12 +58,12 @@ type Keysplitting struct {
 	privatekey       string
 
 	// daemon variables
-	targetId string
-	certPath string
-	bzcert   BZCertMetadata // Might not need this because we should be checking config everytime
+	targetId   string
+	configPath string
+	bzcertHash string // Might not need this because we should be checking config everytime
 }
 
-func NewKeysplitting(targetId string, certPath string) (IKeysplitting, error) {
+func NewKeysplitting(targetId string, configPath string) (IKeysplitting, error) {
 	// TODO: load keys from storage
 	return &Keysplitting{
 		hPointer:         "",
@@ -47,7 +72,7 @@ func NewKeysplitting(targetId string, certPath string) (IKeysplitting, error) {
 		publickey:        "legit",
 		privatekey:       "superlegit",
 		targetId:         targetId,
-		certPath:         certPath,
+		configPath:       configPath,
 	}, nil
 }
 
@@ -73,7 +98,7 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 
 		// Make sure targetId matches
 		if synPayload.TargetId != k.publickey {
-			return fmt.Errorf("Syn's TargetId did not match Target's actual ID")
+			return fmt.Errorf("syn's TargetId did not match Target's actual ID")
 		}
 	case ksmsg.SynAck:
 		synAckPayload := ksMessage.KeysplittingPayload.(ksmsg.SynAckPayload)
@@ -87,7 +112,7 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 
 		// Check BZCert matches one we have stored
 		if certMetadata, ok := k.bzCerts[dataPayload.BZCertHash]; !ok {
-			return fmt.Errorf("Could not match BZCert hash to one previously received")
+			return fmt.Errorf("could not match BZCert hash to one previously received")
 		} else {
 
 			// Verify the Signature
@@ -98,12 +123,12 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 
 		// Verify recieved hash pointer matches expected
 		if dataPayload.HPointer != k.expectedHPointer {
-			return fmt.Errorf("Data's hash pointer did not match expected")
+			return fmt.Errorf("data's hash pointer did not match expected")
 		}
 
 		// Make sure targetId matches
 		if dataPayload.TargetId != k.publickey {
-			return fmt.Errorf("Data's TargetId did not match Target's actual ID")
+			return fmt.Errorf("data's TargetId did not match Target's actual ID")
 		}
 	case ksmsg.DataAck:
 		dataAckPayload := ksMessage.KeysplittingPayload.(ksmsg.SynAckPayload)
@@ -113,7 +138,7 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 			return fmt.Errorf("SynAck's hash pointer did not match expected")
 		}
 	default:
-		return fmt.Errorf("Error validating unhandled Keysplitting type")
+		return fmt.Errorf("error validating unhandled Keysplitting type")
 	}
 	return nil
 }
@@ -173,7 +198,7 @@ func (k *Keysplitting) BuildResponse(ksMessage *ksmsg.KeysplittingMessage, actio
 	k.expectedHPointer = base64.StdEncoding.EncodeToString(hashBytes)
 
 	// Sign and send message
-	//signed := responseMessage.Sign(privatekey)
+	// signed := responseMessage.Sign(privatekey)
 	return responseMessage, nil
 }
 
@@ -187,16 +212,28 @@ func (k *Keysplitting) BuildSyn(action string, payload []byte) (ksmsg.Keysplitti
 		nonce = k.expectedHPointer
 	}
 
-	// TODO: Build/grab bzecert from somewhere
+	// Build the BZ Certificate then store hash for future messages
+	bzCert, err := k.BuildBZCert()
+	if err != nil {
+		return ksmsg.KeysplittingMessage{}, err
+	} else {
+		if hashBytes, ok := util.HashPayload(bzCert); !ok {
+			return ksmsg.KeysplittingMessage{}, fmt.Errorf("could not hash BZ Certificate")
+		} else {
+			k.bzcertHash = base64.StdEncoding.EncodeToString(hashBytes)
+		}
+	}
+
+	// Build the keysplitting message
 	synPayload := ksmsg.SynPayload{
 		Timestamp:     fmt.Sprint(time.Now().Unix()),
 		SchemaVersion: schemaVersion,
 		Type:          string(ksmsg.Syn),
 		Action:        action,
 		ActionPayload: payload,
-		TargetId:      k.targetId, // pass in as flag
+		TargetId:      k.targetId, // TODO
 		Nonce:         nonce,
-		BZCert:        bzcrt.BZCert{}, // pass in config file as flag, then grab data as needed
+		BZCert:        bzCert,
 	}
 
 	ksMessage := ksmsg.KeysplittingMessage{
@@ -204,10 +241,44 @@ func (k *Keysplitting) BuildSyn(action string, payload []byte) (ksmsg.Keysplitti
 		KeysplittingPayload: synPayload,
 	}
 
+	// Sign it and send it
 	if err := ksMessage.Sign(k.privatekey); err != nil {
-		// return ksMessage, fmt.Errorf("Could not sign payload: %v", err.Error())
-		return ksMessage, nil
+		return ksMessage, fmt.Errorf("could not sign payload: %v", err.Error())
 	} else {
 		return ksMessage, nil
+	}
+}
+
+func (k *Keysplitting) BuildBZCert() (bzcrt.BZCert, error) {
+	if configFile, err := os.Open(k.configPath); err != nil {
+		return bzcrt.BZCert{}, fmt.Errorf("could not open config file: %v", err.Error())
+	} else {
+		configFileBytes, _ := ioutil.ReadAll(configFile)
+
+		var config Config
+		err := json.Unmarshal(configFileBytes, &config)
+		if err != nil {
+			return bzcrt.BZCert{}, fmt.Errorf("could not unmarshal config file")
+		}
+
+		// Set public and private keys because someone maybe have logged out and logged back in again
+		k.publickey = config.KSConfig.PublicKey
+
+		// The golang ed25519 library uses a length 64 private key because the private key is the concatenated form
+		// privatekey = privatekey + publickey.  So if it was generated as length 32, we can correct for that here
+		if privatekeyBytes, _ := base64.StdEncoding.DecodeString(config.KSConfig.PrivateKey); len(privatekeyBytes) == 32 {
+			publickeyBytes, _ := base64.StdEncoding.DecodeString(k.publickey)
+			k.privatekey = base64.StdEncoding.EncodeToString(append(privatekeyBytes, publickeyBytes...))
+		} else {
+			k.privatekey = config.KSConfig.PrivateKey
+		}
+
+		return bzcrt.BZCert{
+			InitialIdToken:  config.KSConfig.InitialIdToken,
+			CurrentIdToken:  config.TokenSet.CurrentIdToken,
+			ClientPublicKey: config.KSConfig.PublicKey,
+			Rand:            config.KSConfig.CerRand,
+			SignatureOnRand: config.KSConfig.CerRandSignature,
+		}, nil
 	}
 }
