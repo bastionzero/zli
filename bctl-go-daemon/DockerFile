@@ -41,4 +41,4 @@ RUN if [[ "$PROD_TRUE" == "true" ]] ; then \
     rm -rf /bctl-agent-files; \
     else echo  "Not removing go source code"; fi
 
-ENTRYPOINT [ "./bctl-agent/start.sh" ]
+ENTRYPOINT [ "/bctl-agent/start.sh" ]

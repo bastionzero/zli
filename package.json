@@ -11,10 +11,10 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc && cd bctl-go-daemon/Daemon && go build",
+    "build": "tsc && cd bctl-go-daemon/bctl/daemon && go build",
     "package": "npm run copy-files && pkg .",
     "release": "npm run build && npm run package",
-    "copy-files": "copyfiles src/**/*.html src/**/*.css bctl-go-daemon/Daemon/* dist/",
+    "copy-files": "copyfiles src/**/*.html src/**/*.css bctl-go-daemon/bctl/daemon/* dist/",
     "clean": "rimraf dist/ && rimraf bin/",
     "test": "jest",
     "lint": "eslint 'src/**/*.ts' 'webshell-common-ts/**/*.ts' -c webshell-common-ts/.eslintrc.json"
@@ -89,7 +89,7 @@
     "scripts": [],
     "assets": [
       "node_modules/figlet/fonts/Standard.flf",
-      "bctl-go-daemon/Daemon/Daemon"
+      "bctl-go-daemon/bctl/daemon/main"
     ],
     "outputPath": "bin",
     "targets": [
