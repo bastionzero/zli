@@ -20,7 +20,7 @@ type DataAckPayload struct {
 	ActionResponsePayload []byte `json:"actionResponsePayload"`
 }
 
-func (d DataAckPayload) BuildResponsePayload(action string, actionPayload []byte) (DataPayload, string, error) {
+func (d DataAckPayload) BuildResponsePayload(action string, actionPayload []byte, bzCertHash string) (DataPayload, string, error) {
 	hashBytes, _ := util.HashPayload(d)
 	hash := base64.StdEncoding.EncodeToString(hashBytes)
 
@@ -32,6 +32,6 @@ func (d DataAckPayload) BuildResponsePayload(action string, actionPayload []byte
 		TargetId:      d.TargetPublicKey, //TODO: Make this come from storage
 		HPointer:      hash,
 		ActionPayload: actionPayload,
-		BZCertHash:    "", // TODO: Make this come from storage
+		BZCertHash:    bzCertHash, // TODO: Make this come from storage
 	}, hash, nil
 }

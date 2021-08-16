@@ -22,6 +22,9 @@ var (
 const (
 	hubEndpoint = "/api/v1/hub/kube-server"
 	token       = "1234" // TODO: figure this out
+
+	// Disable auto-reconnect
+	autoReconnect = false
 )
 
 func main() {
@@ -56,13 +59,10 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	params["daemon_connection_id"] = message.ConnectionId
 	params["token"] = token
 
-	// Disable auto-reconnect
-	autoReconnect := false
-
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel("", message.Role, "kube", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dc.NewDataChannel(message.Role, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
@@ -97,7 +97,7 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Unable to determin SignalR endpoint.")
+	return "", fmt.Errorf("unable to determine SignalR endpoint")
 }
 
 func parseFlags() {

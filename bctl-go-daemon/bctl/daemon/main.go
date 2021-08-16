@@ -19,7 +19,8 @@ var (
 )
 
 const (
-	hubEndpoint = "/api/v1/hub/kube"
+	hubEndpoint   = "/api/v1/hub/kube"
+	autoReconnect = true
 )
 
 func main() {
@@ -43,15 +44,16 @@ func startDatachannel() {
 	params["assume_cluster_id"] = assumeClusterId
 	params["environment_id"] = environmentId
 
-	dataChannel, _ := dc.NewDataChannel(configPath, assumeRole, "", serviceUrl, hubEndpoint, params, headers, targetSelectHandler)
+	dataChannel, _ := dc.NewDataChannel(configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	// TODO: Integrate this with existing messaging
+	time.Sleep(3 * time.Second)
+	dataChannel.SendSyn()
+
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		log.Printf("Error starting Kube Daemon plugin: %s", err.Error())
 		return
 	}
 
-	// TODO: Integrate this with existing messaging
-	time.Sleep(3 * time.Second)
-	dataChannel.SendSyn()
 }
 
 func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {

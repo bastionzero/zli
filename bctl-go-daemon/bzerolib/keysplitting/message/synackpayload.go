@@ -23,7 +23,7 @@ type SynAckPayload struct {
 	HPointer        string `json:"hPointer"`
 }
 
-func (s SynAckPayload) BuildResponsePayload(action string, actionPayload []byte) (DataPayload, string, error) {
+func (s SynAckPayload) BuildResponsePayload(action string, actionPayload []byte, bzCertHash string) (DataPayload, string, error) {
 	hashBytes, _ := util.HashPayload(s)
 	hash := base64.StdEncoding.EncodeToString(hashBytes)
 
@@ -35,6 +35,6 @@ func (s SynAckPayload) BuildResponsePayload(action string, actionPayload []byte)
 		TargetId:      s.TargetPublicKey, // TODO: Make this come from storage
 		HPointer:      hash,
 		ActionPayload: actionPayload,
-		BZCertHash:    "", // TODO: Make this come from storage
+		BZCertHash:    bzCertHash,
 	}, hash, nil
 }
