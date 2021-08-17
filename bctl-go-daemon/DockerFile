@@ -32,8 +32,7 @@ RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
 RUN mv /bctl-agent-files/start.sh /bctl-agent/start.sh && \
     chmod +X /bctl-agent/start.sh && chmod 777 /bctl-agent/start.sh
 RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
-    mv /bctl-agent-files/start-dev.sh /bctl-agent/start-dev.sh && \
-    chmod +X /bctl-agent/start-dev.sh && chmod 777 /bctl-agent/start-dev.sh; \
+    chmod +X /bctl-agent-files/start-dev.sh && chmod 777 /bctl-agent-files/start-dev.sh; \
     else echo "Not chmoding start-dev.sh"; fi
 
 # Remove all other files if we are building in prod
