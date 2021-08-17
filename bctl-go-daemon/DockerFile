@@ -1,22 +1,21 @@
 FROM golang:1.16-alpine
 
-RUN mkdir -p /bctl-server/Server
-WORKDIR /bctl-server
+RUN mkdir -p /bctl-agent-files && \
+    mkdir -p /bctl-agent
 
 # This flag defines if we are building a prod image or not
 ARG PROD_TRUE="false"
 
-COPY . .
-RUN cd Server && \
-    go get k8s.io/client-go/kubernetes && \
-    go get k8s.io/client-go/tools/remotecommand && \
-    go get k8s.io/client-go/rest && \
-    go get k8s.io/client-go/kubernetes/scheme && \
-    go get k8s.io/api/core/v1 && \ 
-    go get github.com/gorilla/websocket && \
-    go get github.com/NYTimes/gziphandler && \
-    go get k8s.io/apimachinery/pkg/apis/meta/v1@v0.21.3 && \
-    go install bastionzero.com/bctl/v1/Server 
+# Copy our repo
+COPY . /bctl-agent-files
+
+# Build our exectuable
+RUN cd /bctl-agent-files/bctl/agent && \
+    go build agent.go
+
+# Move the executable and make it runnable
+RUN mv /bctl-agent-files/bctl/agent/agent /bctl-agent && \
+    chmod +x /bctl-agent/agent
 
 # Install rsync for devs, and python3 for our systemd alt
 RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
@@ -25,13 +24,20 @@ RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
     wget https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -O /usr/local/bin/systemctl && \
     chmod +x /usr/local/bin/systemctl && \
     mkdir -p /etc/systemd/system/ && \
-    touch /etc/systemd/system/bctl-server.service && \ 
-    mv /bctl-server/bctl-server.service /etc/systemd/system/bctl-server.service; \
+    touch /etc/systemd/system/bctl-agent.service && \ 
+    mv /bctl-agent-files/bctl-agent.service /etc/systemd/system/bctl-agent.service; \
     else echo "Not Adding dev tools"; fi
 
-# Make start an executable
-RUN chmod +X /bctl-server/Server/start.sh && chmod 777 /bctl-server/Server/start.sh
-RUN chmod +X /bctl-server/Server/start-dev.sh && chmod 777 /bctl-server/Server/start-dev.sh
+# Move and make start an executable
+RUN mv /bctl-agent-files/start.sh /bctl-agent/start.sh && \
+    chmod +X /bctl-agent/start.sh && chmod 777 /bctl-agent/start.sh
+RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
+    chmod +X /bctl-agent-files/start-dev.sh && chmod 777 /bctl-agent-files/start-dev.sh; \
+    else echo "Not chmoding start-dev.sh"; fi
 
-WORKDIR /bctl-server/Server
-ENTRYPOINT [ "./start.sh" ]
+# Remove all other files if we are building in prod
+RUN if [[ "$PROD_TRUE" == "true" ]] ; then \
+    rm -rf /bctl-agent-files; \
+    else echo  "Not removing go source code"; fi
+
+ENTRYPOINT [ "/bctl-agent/start.sh" ]

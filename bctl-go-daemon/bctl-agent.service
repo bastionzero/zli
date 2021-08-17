@@ -1,0 +1,10 @@
+[Unit]
+Description=Bctl-Agent
+
+[Service]
+ExecStart=/bctl-agent-files/start-dev.sh
+StandardOutput=file:/var/log/cwc/bctl-agent.log
+StandardError=file:/var/log/cwc/bctl-agent.log
+
+[Install]
+WantedBy=multi-user.target

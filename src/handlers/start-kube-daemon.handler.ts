@@ -155,7 +155,7 @@ async function copyExecutableToTempDir(): Promise<string> {
     }
 
     // We have to go up 1 more directory bc when we compile we are inside /dist
-    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/Daemon/Daemon');
+    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/main');
 
     // Create our temp file
     const tmpobj = tmp.fileSync();
