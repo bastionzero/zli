@@ -340,4 +340,5 @@ ASALocalRun/
 .localhistory/
 
 # Our build agent 
-bctl-go-daemon/Daemon/Daemon
+bctl-go-daemon/bctl/daemon/daemon
+bctl-go-daemon/bctl/agent/agent

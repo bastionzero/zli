@@ -21,7 +21,6 @@ var (
 
 const (
 	hubEndpoint = "/api/v1/hub/kube-server"
-	token       = "1234" // TODO: figure this out
 
 	// Disable auto-reconnect
 	autoReconnect = false
@@ -60,7 +59,7 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	// Add our token to our params
 	params := make(map[string]string)
 	params["daemon_connection_id"] = message.ConnectionId
-	params["token"] = token
+	params["token"] = message.Token
 
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL

@@ -1,21 +1,21 @@
 package controlWebsocketTypes
 
 import (
+	"bytes"
+	"context"
+	"encoding/gob"
 	"encoding/json"
 	"log"
-	"sync"
 	"os"
-	"bytes"
-	"encoding/gob"
-	"context"
+	"sync"
 
 	"bastionzero.com/bctl/v1/commonWebsocketClient"
 
 	"github.com/gorilla/websocket"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	coreV1Types "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/kubernetes"
+	coreV1Types "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -28,6 +28,7 @@ type ProvisionNewWebsocketSignalRMessage struct {
 type ProvisionNewWebsocketMessage struct {
 	ConnectionId string `json:"connectionId"`
 	Role         string `json:"role"`
+	Token        string `json:"token"`
 }
 
 type AliveCheckToClusterFromBastionSignalRMessage struct {
@@ -92,11 +93,11 @@ func (client *ControlWebsocket) SendAliveCheckToBastionFromClusterMessage(aliveC
 
 func (client *ControlWebsocket) NewAgent() bool {
 	// Helper function to determin if this is a fresh install of an agent
-	// This works by checking the secret value 
+	// This works by checking the secret value
 	secret := client.GetSecret()
 
 	// Now check the value of the secret
-	if (bytes.Compare(secret.Data["secret"], []byte("coolbeans")) == 0) {
+	if bytes.Compare(secret.Data["secret"], []byte("coolbeans")) == 0 {
 		return true
 	}
 	return false
@@ -105,7 +106,7 @@ func (client *ControlWebsocket) NewAgent() bool {
 func (client *ControlWebsocket) GetParsedSecret() SecretConfig {
 	// First get the kube secret
 	secret := client.GetSecret()
-	
+
 	// Now parse the bytes and get the secret data
 	secretConfig := client.DecodeToSecretConfig(secret.Data["secret"])
 
@@ -130,7 +131,7 @@ func (client *ControlWebsocket) GetSecret() *coreV1.Secret {
 	// Build our client
 	secretsClient := client.GetSecretClient()
 
-	// Get the secret 
+	// Get the secret
 	secretName := "bctl-" + os.Getenv("CLUSTER_NAME") + "-secret"
 	secret, err := secretsClient.Get(context.Background(), secretName, metaV1.GetOptions{})
 	if err != nil {
@@ -167,7 +168,7 @@ func (client *ControlWebsocket) GetSecretClient() coreV1Types.SecretInterface {
 	secretsClient := clientset.CoreV1().Secrets(os.Getenv("NAMESPACE"))
 
 	return secretsClient
-} 
+}
 
 func (client *ControlWebsocket) EncodeToBytes(p interface{}) []byte {
 	// Ref: https://gist.github.com/SteveBate/042960baa7a4795c3565

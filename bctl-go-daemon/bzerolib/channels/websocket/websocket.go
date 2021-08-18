@@ -134,7 +134,7 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 						if wrappedMessage.Type != signalRTypeNumber {
 							log.Printf("Ignoring SignalR message with type %v", wrappedMessage.Type)
 						} else if len(wrappedMessage.Arguments) != 0 {
-							if wrappedMessage.Target == "CloseConnectionToClusterFromBastion" {
+							if wrappedMessage.Target == "CloseConnection" {
 								log.Printf("Close Connection message received. Closing websocket")
 
 								// Cancel our context
