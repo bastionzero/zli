@@ -66,7 +66,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         // If we set a custom path, we will try to start the daemon from the source code
         cwd = process.env.ZLI_CUSTOM_BCTL_PATH;
         finalDaemonPath = 'go';
-        args = ['run', 'main.go'].concat(args);
+        args = ['run', 'daemon.go'].concat(args);
     } else {
         finalDaemonPath = await copyExecutableToTempDir();
     }
@@ -155,7 +155,7 @@ async function copyExecutableToTempDir(): Promise<string> {
     }
 
     // We have to go up 1 more directory bc when we compile we are inside /dist
-    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/main');
+    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
 
     // Create our temp file
     const tmpobj = tmp.fileSync();

@@ -90,7 +90,7 @@
     "scripts": [],
     "assets": [
       "node_modules/figlet/fonts/Standard.flf",
-      "bctl-go-daemon/bctl/daemon/main"
+      "bctl-go-daemon/bctl/daemon/daemon"
     ],
     "outputPath": "bin",
     "targets": [
