@@ -145,5 +145,9 @@ func parseFlags() {
 }
 
 func getAgentVersion() string {
-	return "$AGENT_VERSION"
+	if os.Getenv("DEV") == "true" {
+		return "1.0"
+	} else {
+		return "$AGENT_VERSION"
+	}
 }
