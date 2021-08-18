@@ -3,6 +3,7 @@ package controlchannel
 type NewDatachannelMessage struct {
 	ConnectionId string `json:"connectionId"`
 	Role         string `json:"role"`
+	Token        string `json:"token"`
 }
 
 type AliveCheckToBastionFromClusterMessage struct {
