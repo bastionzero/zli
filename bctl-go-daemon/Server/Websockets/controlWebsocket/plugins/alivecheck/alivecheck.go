@@ -33,7 +33,8 @@ func AliveCheck(message controlWebsocketTypes.AliveCheckToClusterFromBastionSign
 		panic(err.Error())
 	}
 
-	aliveCheckToBastionFromClusterMessage.ClusterUsers = []string{}
+	clusterUsers := make(map[string]bool)
+
 	for _, clusterRoleBinding := range clusterRoleBindings.Items {
 		// Now loop over the subjects if we can find any user subjects
 		for _, subject := range clusterRoleBinding.Subjects {
@@ -41,10 +42,35 @@ func AliveCheck(message controlWebsocketTypes.AliveCheckToClusterFromBastionSign
 				// We do not consider any system:... or eks:..., basically any system: looking roles as valid. This can be overridden from Bastion
 				var systemRegexPatten = regexp.MustCompile(`[a-zA-Z0-9]*:[a-za-zA-Z0-9-]*`)
 				if !systemRegexPatten.MatchString(subject.Name) {
-					aliveCheckToBastionFromClusterMessage.ClusterUsers = append(aliveCheckToBastionFromClusterMessage.ClusterUsers, subject.Name)
+					clusterUsers[subject.Name] = true
 				}
 			}
 		}
+	}
+
+	// Then get all roles
+	roleBindings, err := clientset.RbacV1().RoleBindings("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for _, roleBindings := range roleBindings.Items {
+		// Now loop over the subjects if we can find any user subjects
+		for _, subject := range roleBindings.Subjects {
+			if subject.Kind == "User" {
+				// We do not consider any system:... or eks:..., basically any system: looking roles as valid. This can be overridden from Bastion
+				var systemRegexPatten = regexp.MustCompile(`[a-zA-Z0-9]*:[a-za-zA-Z0-9-]*`)
+				if !systemRegexPatten.MatchString(subject.Name) {
+					clusterUsers[subject.Name] = true
+				}
+			}
+		}
+	}
+
+	// Now build our response
+	aliveCheckToBastionFromClusterMessage.ClusterUsers = []string{}
+	for key, _ := range clusterUsers {
+		aliveCheckToBastionFromClusterMessage.ClusterUsers = append(aliveCheckToBastionFromClusterMessage.ClusterUsers, key)
 	}
 
 	// Let Bastion know everything
