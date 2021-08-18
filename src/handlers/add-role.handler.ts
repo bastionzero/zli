@@ -2,10 +2,14 @@ import { ConfigService } from '../config.service/config.service';
 import { PolicyService } from '../http.service/http.service';
 import { Logger } from '../logger.service/logger';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
 =======
 import { KubernetesPolicyClusterRoles } from '../http.service/http.service.types';
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
+>>>>>>> 724999e (Merged list-targets and list-clusters functionality. Fixed filtering for clusters. Added target users for list-targets)
 import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
@@ -28,10 +32,14 @@ export async function addRoleHandler(clusterUserName: string, policyName: string
             await policyService.UpdateKubePolicy(policy);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             logger.info(`Added ${clusterUserName} to ${policyName} policy!`);
 =======
             logger.info(`Added ${clusterUserName} to ${policyName} policy!`)
 >>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
+=======
+            logger.info(`Added ${clusterUserName} to ${policyName} policy!`);
+>>>>>>> 724999e (Merged list-targets and list-clusters functionality. Fixed filtering for clusters. Added target users for list-targets)
             await cleanExit(0, logger);
         }
     }

@@ -28,14 +28,19 @@ export async function removeRoleHandler(clusterUserName: string, policyName: str
             }
             // Then remove the role from the policy if it exists
 <<<<<<< HEAD
+<<<<<<< HEAD
             delete policy.context.clusterUsers[clusterUserName];
 =======
             delete policy.context.clusterRoles[clusterRoleName];
 >>>>>>> 9e71d7c (kubectl logs cancel (#130))
+=======
+            delete policy.context.clusterUsers[clusterUserName];
+>>>>>>> 724999e (Merged list-targets and list-clusters functionality. Fixed filtering for clusters. Added target users for list-targets)
 
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             logger.info(`Removed ${clusterUserName} from ${policyName} policy!`);
@@ -45,6 +50,9 @@ export async function removeRoleHandler(clusterUserName: string, policyName: str
 =======
             logger.info(`Removed ${clusterUserName} from ${policyName} policy!`)
 >>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
+=======
+            logger.info(`Removed ${clusterUserName} from ${policyName} policy!`);
+>>>>>>> 724999e (Merged list-targets and list-clusters functionality. Fixed filtering for clusters. Added target users for list-targets)
             await cleanExit(0, logger);
         }
     }

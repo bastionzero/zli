@@ -1,5 +1,5 @@
-import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType, KubeClusterStatus, ClusterSummary } from './types';
-import { max, filter, concat } from 'lodash';
+import { ConnectionDetails, ParsedTargetString, TargetStatus, TargetSummary, TargetType} from './types';
+import { max, filter, concat, map } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
@@ -15,7 +15,7 @@ export const targetStringExample : string = '[targetUser@]<targetId-or-targetNam
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const targetTypePattern = /^(ssm|dynamic)$/i; // case insensitive check for targetType
+    const targetTypePattern = /^(ssm|ssh|dynamic|cluster)$/i; // case insensitive check for targetType
 
     if(! targetTypePattern.test(targetType))
         return undefined;
@@ -23,35 +23,18 @@ export function parseTargetType(targetType: string) : TargetType
     return <TargetType> targetType.toUpperCase();
 }
 
-export function parseTargetStatus(targetStatus: string) : SsmTargetStatus {
+export function parseTargetStatus(targetStatus: string) : TargetStatus {
     switch (targetStatus.toLowerCase()) {
-    case SsmTargetStatus.NotActivated.toLowerCase():
-        return SsmTargetStatus.NotActivated;
-    case SsmTargetStatus.Offline.toLowerCase():
-        return SsmTargetStatus.Offline;
-    case SsmTargetStatus.Online.toLowerCase():
-        return SsmTargetStatus.Online;
-    case SsmTargetStatus.Terminated.toLowerCase():
-        return SsmTargetStatus.Terminated;
-    case SsmTargetStatus.Error.toLowerCase():
-        return SsmTargetStatus.Error;
-    default:
-        return undefined;
-    }
-}
-
-export function parseClusterStatus(clusterStatus: string) : KubeClusterStatus {
-    switch (clusterStatus.toLowerCase()) {
-    case KubeClusterStatus.NotActivated.toLowerCase():
-        return KubeClusterStatus.NotActivated;
-    case KubeClusterStatus.Offline.toLowerCase():
-        return KubeClusterStatus.Offline;
-    case KubeClusterStatus.Online.toLowerCase():
-        return KubeClusterStatus.Online;
-    case KubeClusterStatus.Terminated.toLowerCase():
-        return KubeClusterStatus.Terminated;
-    case KubeClusterStatus.Error.toLowerCase():
-        return KubeClusterStatus.Error;
+    case TargetStatus.NotActivated.toLowerCase():
+        return TargetStatus.NotActivated;
+    case TargetStatus.Offline.toLowerCase():
+        return TargetStatus.Offline;
+    case TargetStatus.Online.toLowerCase():
+        return TargetStatus.Online;
+    case TargetStatus.Terminated.toLowerCase():
+        return TargetStatus.Terminated;
+    case TargetStatus.Error.toLowerCase():
+        return TargetStatus.Error;
     default:
         return undefined;
     }
@@ -122,8 +105,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
 
     if(showDetail)
     {
-        header.push('Agent Version', 'Status');
-        columnWidths.push(15, 10);
+        header.push('Agent Version', 'Status', 'Target Users');
+        columnWidths.push(15, 10, 38);
     }
 
     // ref: https://github.com/cli-table/cli-table3
@@ -139,45 +122,9 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
         if(showDetail) {
             row.push(target.agentVersion);
             row.push(target.status || 'N/A'); // status is undefined for non-SSM targets
+            row.push(map(target.targetUsers).join(', \n') || 'N/A'); // targetUsers are undefined for now for non-cluster targets
         }
 
-        table.push(row);
-    }
-    );
-
-    return table.toString();
-}
-
-export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boolean = false, showGuid: boolean = false) : string {
-    const clusterNameLength = max(clusters.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
-    const statusNameLength = max(clusters.map(e => e.status.length).concat(16));
-    const header: string[] = ['Cluster Name', 'Status'];
-    const columnWidths = [clusterNameLength + 2, statusNameLength + 2];
-
-    if(showGuid || showDetail)
-    {
-        // For now showGuid and showDetail do the same thing
-        header.push('Valid Roles');
-        columnWidths.push(38);
-        header.push('Id');
-        columnWidths.push(38);
-        header.push('Agent Version');
-        columnWidths.push(38);
-        header.push('Last Agent Update');
-        columnWidths.push(38);
-    }
-
-    // ref: https://github.com/cli-table/cli-table3
-    const table = new Table({ head: header, colWidths: columnWidths });
-
-    clusters.forEach(cluster => {
-        const row = [cluster.name, cluster.status];
-        if (showGuid || showDetail) {
-            row.push(cluster.validUsers.toString());
-            row.push(cluster.id);
-            row.push(cluster.agentVersion);
-            row.push(cluster.lastAgentUpdate.toString());
-        }
         table.push(row);
     }
     );
@@ -223,7 +170,7 @@ export async function disambiguateTarget(
     let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
-    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));
+    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);

@@ -1,5 +1,5 @@
 import { ReadStream } from 'fs';
-import { SessionState, SsmTargetStatus, KubeClusterStatus, TargetType } from '../types';
+import { SessionState, TargetStatus, KubeClusterStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {
     displayName?: string;
@@ -80,7 +80,7 @@ export interface ListSsmTargetsRequest
 export interface SsmTargetSummary {
     id: string;
     name: string;
-    status: SsmTargetStatus;
+    status: TargetStatus;
     environmentId?: string;
     // ID of the agent (hash of public key)
     // Used as the targetId in keysplitting messages

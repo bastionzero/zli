@@ -51,7 +51,7 @@ export async function describeHandler(
 
     // Build our validUsers string
     let validUserString = '';
-    for (const validUser of clusterSummary.validUsers) {
+    for (const validUser of clusterSummary.targetUsers) {
         validUserString += validUser + ',';
     }
     validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,

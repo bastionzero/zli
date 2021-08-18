@@ -403,7 +403,7 @@ export class PolicyQueryService extends HttpService
         super(configService, 'api/v1/policy-query', logger);
     }
 
-    public ListTargetUsers(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<GetTargetPolicyResponse>
+    public ListTargetOSUsers(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<GetTargetPolicyResponse>
     {
         const request: GetTargetPolicyRequest = {
             targetId: targetId,

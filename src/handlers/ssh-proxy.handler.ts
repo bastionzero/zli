@@ -18,7 +18,7 @@ export async function sshProxyHandler(configService: ConfigService, logger: Logg
         await cleanExit(1, logger);
     }
     const policyQueryService = new PolicyQueryService(configService, logger);
-    const response = await policyQueryService.ListTargetUsers(sshTunnelParameters.parsedTarget.id, sshTunnelParameters.parsedTarget.type, {type: VerbType.Tunnel}, undefined);
+    const response = await policyQueryService.ListTargetOSUsers(sshTunnelParameters.parsedTarget.id, sshTunnelParameters.parsedTarget.type, {type: VerbType.Tunnel}, undefined);
 
     if(! response.allowed)
     {
