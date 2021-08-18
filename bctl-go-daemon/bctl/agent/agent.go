@@ -30,8 +30,11 @@ const (
 func main() {
 	parseFlags()
 
+	// Get agent version
+	version := getAgentVersion()
+
 	// Connect to the control channel
-	control := controlws.NewControlWebsocketClient(serviceUrl, activationToken, orgId, clusterName, environmentId, "1.0")
+	control := controlws.NewControlWebsocketClient(serviceUrl, activationToken, orgId, clusterName, environmentId, version)
 
 	// Subscribe to control channel
 	go func() {
@@ -138,5 +141,13 @@ func parseFlags() {
 	if len(missing) > 0 {
 		log.Printf("Missing flags! Missing: %v", missing)
 		os.Exit(1)
+	}
+}
+
+func getAgentVersion() string {
+	if os.Getenv("DEV") == "true" {
+		return "1.0"
+	} else {
+		return "$AGENT_VERSION"
 	}
 }
