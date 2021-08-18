@@ -60,10 +60,9 @@ func NewDataChannel(role string,
 				// Handle each message in its own thread
 				go func() {
 					if err := ret.InputMessageHandler(agentMessage); err != nil {
-						log.Printf(err.Error())
+						log.Print(err.Error())
 					}
 				}()
-				break
 			case <-ret.websocket.DoneChannel:
 				// The websocket has been closed
 				log.Println("Websocket has been closed, closing datachannel")
@@ -80,7 +79,7 @@ func (d *DataChannel) SendAgentMessage(messageType wsmsg.MessageType, messagePay
 	messageBytes, _ := json.Marshal(messagePayload)
 	agentMessage := wsmsg.AgentMessage{
 		MessageType:    string(messageType),
-		SchemaVersion:  wsmsg.Schema,
+		SchemaVersion:  wsmsg.SchemaVersion,
 		MessagePayload: messageBytes,
 	}
 
@@ -95,21 +94,21 @@ func (d *DataChannel) InputMessageHandler(agentMessage wsmsg.AgentMessage) error
 	case wsmsg.Keysplitting:
 		var ksMessage ksmsg.KeysplittingMessage
 		if err := json.Unmarshal(agentMessage.MessagePayload, &ksMessage); err != nil {
-			return fmt.Errorf("Malformed Keysplitting Message")
+			return fmt.Errorf("malformed Keysplitting Message")
 		} else {
 			if err := d.handleKeysplittingMessage(&ksMessage); err != nil {
 				return err
 			}
 		}
 	default:
-		return fmt.Errorf("Unhandled Message type: %v", agentMessage.MessageType)
+		return fmt.Errorf("unhandled Message type: %v", agentMessage.MessageType)
 	}
 	return nil
 }
 
 func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.KeysplittingMessage) error {
 	if err := d.keysplitting.Validate(keysplittingMessage); err != nil {
-		return fmt.Errorf("Invalid keysplitting message: %v", err.Error())
+		return fmt.Errorf("invalid keysplitting message: %v", err.Error())
 	}
 
 	switch keysplittingMessage.Type {
@@ -117,7 +116,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		synPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.SynPayload)
 		// Grab user's action
 		if x := strings.Split(synPayload.Action, "/"); len(x) <= 1 {
-			return fmt.Errorf("Malformed action: %v", synPayload.Action)
+			return fmt.Errorf("malformed action: %v", synPayload.Action)
 		} else {
 			// Start plugin
 			if err := d.startPlugin(plgn.PluginName(x[0])); err != nil {
@@ -126,7 +125,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 
 			// Build reply message with empty payload
 			if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, "", []byte{}); err != nil {
-				return fmt.Errorf("Could not build response message: %s", err.Error())
+				return fmt.Errorf("could not build response message: %s", err.Error())
 			} else {
 				d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
 			}
@@ -139,7 +138,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 
 			// Build and send response
 			if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, dataPayload.Action, returnPayload); err != nil {
-				return fmt.Errorf("Could not build response message: %s", err.Error())
+				return fmt.Errorf("could not build response message: %s", err.Error())
 			} else {
 				d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
 			}
@@ -147,7 +146,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			return err
 		}
 	default:
-		return fmt.Errorf("Invalid Keysplitting Payload")
+		return fmt.Errorf("invalid Keysplitting Payload")
 	}
 	return nil
 }
@@ -172,6 +171,6 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 		log.Printf("Plugin started!")
 		return nil
 	default:
-		return fmt.Errorf("Tried to start an unhandled plugin")
+		return fmt.Errorf("tried to start an unhandled plugin")
 	}
 }

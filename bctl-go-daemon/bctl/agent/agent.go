@@ -7,8 +7,7 @@ import (
 	"log"
 	"os"
 
-	controlws "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket"
-	controlwsmsg "bastionzero.com/bctl/v1/Server/Websockets/controlWebsocket/controlWebsocketTypes"
+	cc "bastionzero.com/bctl/v1/bctl/agent/controlchannel"
 	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -33,25 +32,28 @@ func main() {
 	version := getAgentVersion()
 
 	// Connect to the control channel
-	control := controlws.NewControlWebsocketClient(serviceUrl, activationToken, orgId, clusterName, environmentId, version)
+	control, err := cc.NewControlChannel(serviceUrl, activationToken, orgId, clusterName, environmentId, version, controlchannelTargetSelectHandler)
+	if err != nil {
+		log.Printf("Error starting Control Channel: %v", err.Error())
+	}
 
 	// Subscribe to control channel
 	go func() {
 		for {
 			select {
-			case message := <-control.ProvisionWebsocketChan:
+			case message := <-control.NewDatachannelChan:
 				// We have an incoming websocket request, attempt to make a new Daemon Websocket Client for the request
 				startDatachannel(message)
 			}
 		}
 	}()
 
-	// Sleep forever
+	// Sleep forever because otherwise kube will endlessly try restarting
 	// Ref: https://stackoverflow.com/questions/36419054/go-projects-main-goroutine-sleep-forever
-	select {} // I don't think we need this?
+	select {}
 }
 
-func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
+func startDatachannel(message cc.NewDatachannelMessage) {
 	// Create our headers and params, headers are empty
 	// TODO: We need to drop this session id auth header req and move to a token based system
 	headers := make(map[string]string)
@@ -64,10 +66,19 @@ func startDatachannel(message controlwsmsg.ProvisionNewWebsocketMessage) {
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(message.Role, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	dc.NewDataChannel(message.Role, serviceUrl, hubEndpoint, params, headers, datachannelTargetSelectHandler, autoReconnect)
 }
 
-func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
+func controlchannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
+	switch wsmsg.MessageType(agentMessage.MessageType) {
+	case wsmsg.HealthCheck:
+		return "AliveCheckToBastionFromCluster", nil
+	default:
+		return "", fmt.Errorf("unsupported message type")
+	}
+}
+
+func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	// First check if its a keysplitting message
 	var keysplittingPayload map[string]interface{}
 	if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {

@@ -6,7 +6,7 @@ structs: the 4 types of keysplitting messages and agent output streams.
 package message
 
 const (
-	Schema = "zero"
+	SchemaVersion = "1.0"
 )
 
 type AgentMessage struct {
@@ -25,8 +25,10 @@ const (
 	// Agent output stream message types
 	Stream MessageType = "stream"
 
-	// Meta control message types that do not have corresponding
-	// payload definitions
-	Ready MessageType = "ready"
-	Stop  MessageType = "stop"
+	// Error message type for reporting all error messages
+	Error MessageType = "error"
+
+	// For the control channel
+	NewDatachannel MessageType = "newDatachannel" // Can we make this into a single word?
+	HealthCheck    MessageType = "healthcheck"
 )
