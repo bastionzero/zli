@@ -1,9 +1,8 @@
 import { ConfigService } from '../config.service/config.service';
 import { PolicyService } from '../http.service/http.service';
-import { Logger } from "../logger.service/logger";
+import { Logger } from '../logger.service/logger';
 import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
-import { v4 as uuidv4 } from 'uuid';
-import { ClusterSummary, KubeClusterStatus } from "../types";
+import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
 
@@ -16,15 +15,15 @@ export async function addRoleHandler(clusterUserName: string, policyName: string
     for (const policy of policies) {
         if (policy.name == policyName) {
             // Then add the role to the policy
-            var clusterUserToAdd: KubernetesPolicyClusterUsers = {
+            const clusterUserToAdd: KubernetesPolicyClusterUsers = {
                 name: clusterUserName
-            }
-            policy.context.clusterUsers[clusterUserName] = clusterUserToAdd
-            
+            };
+            policy.context.clusterUsers[clusterUserName] = clusterUserToAdd;
+
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
-            logger.info(`Added ${clusterUserName} to ${policyName} policy!`)
+            logger.info(`Added ${clusterUserName} to ${policyName} policy!`);
             await cleanExit(0, logger);
         }
     }

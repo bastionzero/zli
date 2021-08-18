@@ -1,9 +1,7 @@
 import { ConfigService } from '../config.service/config.service';
 import { PolicyService } from '../http.service/http.service';
-import { Logger } from "../logger.service/logger";
-import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
-import { v4 as uuidv4 } from 'uuid';
-import { ClusterSummary, KubeClusterStatus } from "../types";
+import { Logger } from '../logger.service/logger';
+import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
 
@@ -21,12 +19,12 @@ export async function removeRoleHandler(clusterUserName: string, policyName: str
                 await cleanExit(1, logger);
             }
             // Then remove the role from the policy if it exists
-            delete policy.context.clusterUsers[clusterUserName]
+            delete policy.context.clusterUsers[clusterUserName];
 
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
-            logger.info(`Removed ${clusterUserName} from ${policyName} policy!`)
+            logger.info(`Removed ${clusterUserName} from ${policyName} policy!`);
             await cleanExit(0, logger);
         }
     }

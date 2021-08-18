@@ -40,9 +40,9 @@ export async function describeHandler(
     const policyService = new PolicyQueryService(configService, logger);
     const clusterPolicyInfo = await policyService.GetAllPoliciesForClusterId(clusterSummary.id);
 
-    // Build our policies string 
-    var policiesString = '';
-    for (var policy of clusterPolicyInfo.policies) {
+    // Build our policies string
+    let policiesString = '';
+    for (const policy of clusterPolicyInfo.policies) {
         policiesString += policy.name + ',';
     }
     if (clusterPolicyInfo.policies.length != 0) {
@@ -50,15 +50,15 @@ export async function describeHandler(
     }
 
     // Build our validUsers string
-    var validUserString = '';
-    for (var validUser of clusterSummary.validUsers) {
+    let validUserString = '';
+    for (const validUser of clusterSummary.validUsers) {
         validUserString += validUser + ',';
     }
     validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,
 
     // Now we can print all the information we know
     logger.info(`Cluster information for: ${clusterName}`);
-    logger.info(`    - Environment Name: ${environment.name}`)
-    logger.info(`    - Policies using this cluster: ${policiesString}`)
-    logger.info(`    - Valid Cluster Users: ${validUserString}`)
+    logger.info(`    - Environment Name: ${environment.name}`);
+    logger.info(`    - Policies using this cluster: ${policiesString}`);
+    logger.info(`    - Valid Cluster Users: ${validUserString}`);
 }
