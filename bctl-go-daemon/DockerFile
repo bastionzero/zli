@@ -9,6 +9,10 @@ ARG PROD_TRUE="false"
 # Copy our repo
 COPY . /bctl-agent-files
 
+# Update our agent version value
+RUN VERSION="$(cat /bctl-agent-files/VERSION)" && \
+    sed -i.bu 's/\$AGENT_VERSION/'"$VERSION"'/g' /bctl-agent-files/bctl/agent/agent.go
+
 # Build our exectuable
 RUN cd /bctl-agent-files/bctl/agent && \
     go build agent.go
