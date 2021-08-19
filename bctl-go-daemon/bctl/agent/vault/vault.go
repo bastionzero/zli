@@ -26,7 +26,6 @@ type Vault struct {
 }
 
 type SecretData struct {
-	Test       string
 	PublicKey  string
 	PrivateKey string
 }

@@ -83,6 +83,10 @@ func (d *DataChannel) SendAgentMessage(messageType wsmsg.MessageType, messagePay
 		MessagePayload: messageBytes,
 	}
 
+	if messageType == wsmsg.Stream {
+		log.Printf("VALUE AT STREAM OUTPUT: %+v", messagePayload)
+	}
+
 	// Push message to websocket channel output
 	d.websocket.OutputChannel <- agentMessage
 	return nil

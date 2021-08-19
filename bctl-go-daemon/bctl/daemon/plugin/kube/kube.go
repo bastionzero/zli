@@ -33,6 +33,7 @@ const (
 type IKubeDaemonAction interface {
 	InputMessageHandler(writer http.ResponseWriter, request *http.Request) error
 	PushKSResponse(actionWrapper plgn.ActionWrapper)
+	PushStreamResponse(streamMessage smsg.StreamMessage)
 }
 
 type KubeDaemonPlugin struct {
@@ -44,10 +45,6 @@ type KubeDaemonPlugin struct {
 	// Input and output streams
 	streamResponseChannel chan smsg.StreamMessage
 	RequestChannel        chan plgn.ActionWrapper
-
-	// To keep track of all current, ongoing stream output channels for exec
-	execStdoutMapping map[string]chan smsg.StreamMessage
-	logChannelMapping map[string]chan smsg.StreamMessage
 
 	actions map[string]IKubeDaemonAction
 
@@ -62,8 +59,6 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		keyPath:               keyPath,
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 		RequestChannel:        make(chan plgn.ActionWrapper, 100),
-		execStdoutMapping:     make(map[string]chan smsg.StreamMessage),
-		logChannelMapping:     make(map[string]chan smsg.StreamMessage),
 		actions:               make(map[string]IKubeDaemonAction),
 		mapLock:               sync.RWMutex{},
 	}
@@ -90,17 +85,12 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 }
 
 func (k *KubeDaemonPlugin) handleStreamMessage(smessage smsg.StreamMessage) error {
-	// Push stdout to the correct handler, first get the kube action
-	switch smsg.StreamType(smessage.Type) {
-	case smsg.StdOut:
-		k.execStdoutMapping[smessage.RequestId] <- smessage
-		break
-	case smsg.LogOut:
-		k.logChannelMapping[smessage.RequestId] <- smessage
-		break
+	if act, ok := k.actions[smessage.RequestId]; ok {
+		act.PushStreamResponse(smessage)
+		return nil
+	} else {
+		return fmt.Errorf("Unknown Request ID")
 	}
-
-	return nil
 }
 
 func (k *KubeDaemonPlugin) PushStreamInput(smessage smsg.StreamMessage) error {
@@ -154,9 +144,6 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 }
 
 func generateRequestId() string {
-	// gotta mix up the see otherwise it always gives us the same number
-	// rand.Seed(time.Now().UnixNano())
-	// return rand.Intn(10000) // We REALLY want to be using a uuid
 	return uuid.New().String()
 }
 
@@ -196,13 +183,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	requestId := generateRequestId()
 
 	if strings.Contains(r.URL.Path, "exec") {
-		// Make a new channel for stdout
-		stdoutChannel := make(chan smsg.StreamMessage)
-
-		// Update our mapping
-		k.execStdoutMapping[requestId] = stdoutChannel
-
-		execAction, _ := exec.NewExecAction(requestId, logId, k.RequestChannel, k.streamResponseChannel, stdoutChannel, commandBeingRun)
+		execAction, _ := exec.NewExecAction(requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
 
 		k.updateActionsMap(execAction, requestId)
 
@@ -211,13 +192,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 			log.Printf("Error handling Exec call: %s", err.Error())
 		}
 	} else if strings.Contains(r.URL.Path, "log") { // TODO : maybe ends with?
-		// Make a new channel for log output
-		logChannel := make(chan smsg.StreamMessage)
-
-		// Update our mapping
-		k.logChannelMapping[requestId] = logChannel
-
-		logAction, _ := logaction.NewLogAction(requestId, logId, k.RequestChannel, logChannel)
+		logAction, _ := logaction.NewLogAction(requestId, logId, k.RequestChannel)
 
 		k.updateActionsMap(logAction, requestId)
 

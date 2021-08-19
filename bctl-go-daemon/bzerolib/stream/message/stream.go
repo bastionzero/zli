@@ -7,7 +7,7 @@ type StreamMessage struct {
 	LogId          string `json:"logId"`
 	RequestId      string `json:"requestId"`
 	SequenceNumber int    `json:"sequenceId"`
-	Content        []byte `json:"content"`
+	Content        string `json:"content"`
 }
 
 // Type restriction on our different kinds of agent

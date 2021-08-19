@@ -2,6 +2,7 @@ package logs
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -128,12 +129,13 @@ func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 					return
 				}
 				// Stream the response back
+				content := base64.StdEncoding.EncodeToString(buf[:numBytes])
 				message := smsg.StreamMessage{
 					Type:           LogData,
 					RequestId:      logActionRequest.RequestId,
 					LogId:          logActionRequest.LogId,
 					SequenceNumber: -1,
-					Content:        buf[:numBytes],
+					Content:        content,
 				}
 				r.streamOutputChannel <- message
 

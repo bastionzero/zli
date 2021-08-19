@@ -9,6 +9,7 @@ import (
 
 	kuberest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
+	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
 const (
@@ -96,4 +97,8 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 
 func (r *RestApiAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 	r.ksResponseChannel <- wrappedAction
+}
+
+func (r *RestApiAction) PushStreamResponse(message smsg.StreamMessage) {
+	return
 }

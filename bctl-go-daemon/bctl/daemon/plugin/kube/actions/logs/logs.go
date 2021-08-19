@@ -2,6 +2,7 @@ package logs
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,21 +20,21 @@ const (
 )
 
 type LogsAction struct {
-	requestId         string
-	logId             string
-	ksResponseChannel chan plgn.ActionWrapper
-	RequestChannel    chan plgn.ActionWrapper
-	writer            http.ResponseWriter
-	logChannel        chan smsg.StreamMessage
+	requestId             string
+	logId                 string
+	ksResponseChannel     chan plgn.ActionWrapper
+	RequestChannel        chan plgn.ActionWrapper
+	writer                http.ResponseWriter
+	streamResponseChannel chan smsg.StreamMessage
 }
 
-func NewLogAction(requestId string, logId string, ch chan plgn.ActionWrapper, logChannel chan smsg.StreamMessage) (*LogsAction, error) {
+func NewLogAction(requestId string, logId string, ch chan plgn.ActionWrapper) (*LogsAction, error) {
 	return &LogsAction{
-		requestId:         requestId,
-		logId:             logId,
-		RequestChannel:    ch,
-		ksResponseChannel: make(chan plgn.ActionWrapper),
-		logChannel:        logChannel,
+		requestId:             requestId,
+		logId:                 logId,
+		RequestChannel:        ch,
+		ksResponseChannel:     make(chan plgn.ActionWrapper, 100),
+		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 	}, nil
 }
 
@@ -97,7 +98,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			}
 
 			return nil
-		case logData := <-r.logChannel:
+		case logData := <-r.streamResponseChannel:
 			// for name, value := range responseLogBastionToDaemon.Headers {
 			// 	if name != "Content-Length" {
 			// 		w.Header().Set(name, value)
@@ -105,7 +106,8 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			// }
 
 			// Then stream the response to kubectl
-			src := bytes.NewReader(logData.Content)
+			contentBytes, _ := base64.StdEncoding.DecodeString(logData.Content)
+			src := bytes.NewReader(contentBytes)
 			_, err = io.Copy(writer, src)
 			if err != nil {
 				log.Printf("Error streaming the log to kubectl: %v", err)
@@ -124,4 +126,8 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 func (r *LogsAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 	r.ksResponseChannel <- wrappedAction
+}
+
+func (r *LogsAction) PushStreamResponse(message smsg.StreamMessage) {
+	r.streamResponseChannel <- message
 }
