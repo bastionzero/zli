@@ -88,7 +88,7 @@ func (d *DataChannel) SendAgentMessage(messageType wsmsg.MessageType, messagePay
 	messageBytes, _ := json.Marshal(messagePayload)
 	agentMessage := wsmsg.AgentMessage{
 		MessageType:    string(messageType),
-		SchemaVersion:  wsmsg.Schema,
+		SchemaVersion:  wsmsg.SchemaVersion,
 		MessagePayload: messageBytes,
 	}
 

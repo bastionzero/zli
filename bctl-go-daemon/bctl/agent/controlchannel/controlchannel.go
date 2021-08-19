@@ -1,16 +1,22 @@
 package controlchannel
 
 import (
+	"context"
 	ed "crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"sync"
 
 	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -83,17 +89,88 @@ func NewControlChannel(serviceUrl string,
 						control.NewDatachannelChan <- dataMessage
 					}
 				case wsmsg.HealthCheck:
-					control.websocket.OutputChannel <- wsmsg.AgentMessage{
-						MessageType:    string(wsmsg.HealthCheck),
-						SchemaVersion:  wsmsg.SchemaVersion,
-						MessagePayload: []byte{}, // Double check we send an empty message
+					if msg, err := aliveCheck(); err != nil {
+						log.Printf(err.Error())
+						return
+					} else {
+						control.websocket.OutputChannel <- wsmsg.AgentMessage{
+							MessageType:    string(wsmsg.HealthCheck),
+							SchemaVersion:  wsmsg.SchemaVersion,
+							MessagePayload: msg,
+						}
 					}
 				}
 			}
 		}
 	}()
-
 	return &control, nil
+}
+
+func aliveCheck() ([]byte, error) {
+	// Also let bastion know a list of valid cluster roles
+	// Create our api object
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return []byte{}, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	// Then get all cluster roles
+	clusterRoleBindings, err := clientset.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	clusterUsers := make(map[string]bool)
+
+	for _, clusterRoleBinding := range clusterRoleBindings.Items {
+		// Now loop over the subjects if we can find any user subjects
+		for _, subject := range clusterRoleBinding.Subjects {
+			if subject.Kind == "User" {
+				// We do not consider any system:... or eks:..., basically any system: looking roles as valid. This can be overridden from Bastion
+				var systemRegexPatten = regexp.MustCompile(`[a-zA-Z0-9]*:[a-za-zA-Z0-9-]*`)
+				if !systemRegexPatten.MatchString(subject.Name) {
+					clusterUsers[subject.Name] = true
+				}
+			}
+		}
+	}
+
+	// Then get all roles
+	roleBindings, err := clientset.RbacV1().RoleBindings("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	for _, roleBindings := range roleBindings.Items {
+		// Now loop over the subjects if we can find any user subjects
+		for _, subject := range roleBindings.Subjects {
+			if subject.Kind == "User" {
+				// We do not consider any system:... or eks:..., basically any system: looking roles as valid. This can be overridden from Bastion
+				var systemRegexPatten = regexp.MustCompile(`[a-zA-Z0-9]*:[a-za-zA-Z0-9-]*`) // TODO: double check
+				if !systemRegexPatten.MatchString(subject.Name) {
+					clusterUsers[subject.Name] = true
+				}
+			}
+		}
+	}
+
+	// Now build our response
+	users := []string{}
+	for key := range clusterUsers {
+		users = append(users, key)
+	}
+
+	alive := AliveCheckToBastionFromClusterMessage{
+		Alive:        true,
+		ClusterUsers: users,
+	}
+
+	aliveBytes, _ := json.Marshal(alive)
+	return aliveBytes, nil
 }
 
 func newAgent() error {
