@@ -70,8 +70,6 @@ func (k *KeysplittingMessage) Sign(privateKey string) error {
 	sig := ed.Sign(privkey, hashBits)
 	k.Signature = base64.StdEncoding.EncodeToString(sig)
 
-	//log.Printf("\nprivatekey: %v\nhash: %v\nsignature: %v", privateKey, string(hashBits), k.Signature)
-
 	return nil
 }
 

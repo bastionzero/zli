@@ -104,6 +104,10 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 					// TODO: Handle this error better
 					log.Println("Error in websocket, will attempt to reconnect: ", err)
 					ret.IsReady = false
+					if err.Error() == "websocket: close 1000 (normal)" {
+						log.Println("Normal closure in websocket. Ending websocket connection")
+						return
+					}
 					if ret.autoReconnect {
 						ret.Connect(serviceUrl, hubEndpoint, headers, params)
 					} else {
