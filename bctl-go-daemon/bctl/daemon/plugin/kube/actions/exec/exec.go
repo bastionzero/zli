@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 
 	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
@@ -41,19 +40,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	}
 
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
-	// Build the action payload
-	payload := kubeexec.KubeExecStartActionPayload{
-		RequestId: r.requestId,
-		LogId:     r.logId,
-		Command:   request.URL.Query()["command"],
-		Endpoint:  request.URL.String(),
-	}
-
-	payloadBytes, _ := json.Marshal(payload)
-	r.RequestChannel <- plgn.ActionWrapper{
-		Action:        string(kubeexec.StartExec),
-		ActionPayload: payloadBytes,
-	}
+	r.RequestChannel <- wrapStartPayload(r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
 
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,41 +54,30 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			case <-ctx.Done():
 				return
 			case streamMessage := <-r.streamChannel:
-				if strings.Contains(string(streamMessage.Content), "exit") {
-					// First let stdin know to close the stream for the server
-					payload := kubeexec.KubeStdinActionPayload{
-						RequestId: r.requestId,
-						Stdin:     []byte{},
-						LogId:     r.logId,
-						End:       true,
-					}
+				contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
 
-					payloadBytes, _ := json.Marshal(payload)
-					r.RequestChannel <- plgn.ActionWrapper{
-						Action:        string(kubeexec.ExecInput),
-						ActionPayload: payloadBytes,
-					}
-
-					// Close the connection and the context
+				// Check for agent-initiated end e.g. user typing 'exit'
+				if string(contentBytes) == kubeexec.EndTimes {
 					spdy.conn.Close()
 					cancel()
-				} else {
-					if streamMessage.SequenceNumber == seqNumber {
-						contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
-						spdy.stdoutStream.Write(contentBytes)
-						seqNumber++
-						msg, ok := streamQueue[seqNumber]
-						for ok {
-							moreBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
-							spdy.stdoutStream.Write(moreBytes)
-							delete(streamQueue, seqNumber)
-							seqNumber++
-							msg, ok = streamQueue[seqNumber]
-						}
-					} else {
-						streamQueue[streamMessage.SequenceNumber] = streamMessage
-					}
+				}
 
+				// Check sequence number is correct, if not store it for later
+				if streamMessage.SequenceNumber == seqNumber {
+					spdy.stdoutStream.Write(contentBytes)
+					seqNumber++
+
+					// Process any existing messages that were recieved out of order
+					msg, ok := streamQueue[seqNumber]
+					for ok {
+						moreBytes, _ := base64.StdEncoding.DecodeString(msg.Content)
+						spdy.stdoutStream.Write(moreBytes)
+						delete(streamQueue, seqNumber)
+						seqNumber++
+						msg, ok = streamQueue[seqNumber]
+					}
+				} else {
+					streamQueue[streamMessage.SequenceNumber] = streamMessage
 				}
 			}
 		}
@@ -122,19 +98,8 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					// TODO: This means to close the stream
 					cancel()
 				}
-				// Now we need to send this stdin to Bastion
-				payload := kubeexec.KubeStdinActionPayload{
-					RequestId: r.requestId,
-					Stdin:     buf[:n],
-					LogId:     r.logId,
-					End:       false,
-				}
-
-				payloadBytes, _ := json.Marshal(payload)
-				r.RequestChannel <- plgn.ActionWrapper{
-					Action:        string(kubeexec.ExecInput),
-					ActionPayload: payloadBytes,
-				}
+				// Send message to agent
+				r.RequestChannel <- wrapStdinPayload(r.requestId, r.logId, buf[:n])
 			}
 		}
 
@@ -151,27 +116,18 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 				size := TerminalSize{}
 				if err := decoder.Decode(&size); err != nil {
-					log.Printf("Error decoding resize message: %s", err.Error())
-					cancel()
+					if err == io.EOF {
+						cancel()
+					} else {
+						log.Printf("Error decoding resize message: %s", err.Error())
+					}
 				} else {
 					// Emit this as a new resize event
-					payload := kubeexec.KubeExecResizeActionPayload{
-						RequestId: r.requestId,
-						LogId:     r.logId,
-						Width:     size.Width,
-						Height:    size.Height,
-					}
-
-					payloadBytes, _ := json.Marshal(payload)
-					r.RequestChannel <- plgn.ActionWrapper{
-						Action:        string(kubeexec.ExecResize),
-						ActionPayload: payloadBytes,
-					}
+					r.RequestChannel <- wrapResizePayload(r.requestId, r.logId, size.Width, size.Height)
 				}
 			}
 		}
 	}()
-
 	return nil
 }
 
@@ -181,4 +137,48 @@ func (r *ExecAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (r *ExecAction) PushStreamResponse(stream smsg.StreamMessage) {
 	r.streamChannel <- stream
+}
+
+func wrapStartPayload(requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {
+	payload := kubeexec.KubeExecStartActionPayload{
+		RequestId: requestId,
+		LogId:     logId,
+		Command:   command,
+		Endpoint:  endpoint,
+	}
+
+	payloadBytes, _ := json.Marshal(payload)
+	return plgn.ActionWrapper{
+		Action:        string(kubeexec.StartExec),
+		ActionPayload: payloadBytes,
+	}
+}
+
+func wrapResizePayload(requestId string, logId string, width uint16, height uint16) plgn.ActionWrapper {
+	payload := kubeexec.KubeExecResizeActionPayload{
+		RequestId: requestId,
+		LogId:     logId,
+		Width:     width,
+		Height:    height,
+	}
+
+	payloadBytes, _ := json.Marshal(payload)
+	return plgn.ActionWrapper{
+		Action:        string(kubeexec.ExecResize),
+		ActionPayload: payloadBytes,
+	}
+}
+
+func wrapStdinPayload(requestId string, logId string, stdin []byte) plgn.ActionWrapper {
+	payload := kubeexec.KubeStdinActionPayload{
+		RequestId: requestId,
+		LogId:     logId,
+		Stdin:     stdin,
+	}
+
+	payloadBytes, _ := json.Marshal(payload)
+	return plgn.ActionWrapper{
+		Action:        string(kubeexec.ExecInput),
+		ActionPayload: payloadBytes,
+	}
 }

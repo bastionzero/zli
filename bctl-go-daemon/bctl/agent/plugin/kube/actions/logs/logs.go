@@ -19,15 +19,17 @@ import (
 )
 
 type LogAction struct {
+	RequestId           string
 	serviceAccountToken string
 	kubeHost            string
 	impersonateGroup    string
 	role                string
 	streamOutputChannel chan smsg.StreamMessage
+	closed              bool
 }
 
 const (
-	LogData = "kube/log"
+	LogData = "kube/logs"
 )
 
 func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
@@ -37,20 +39,25 @@ func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup 
 		impersonateGroup:    impersonateGroup,
 		role:                role,
 		streamOutputChannel: ch,
+		closed:              false,
 	}, nil
 }
 
-func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+func (l *LogAction) Closed() bool {
+	return l.closed
+}
+
+func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
 	var logActionRequest KubeLogsActionPayload
 	if err := json.Unmarshal(actionPayload, &logActionRequest); err != nil {
 		log.Printf("Error: %v", err.Error())
-		return action, []byte{}, fmt.Errorf("Malformed Keysplitting Action payload %v", actionPayload)
+		return action, []byte{}, fmt.Errorf("malformed Kube Logs Action payload %v", actionPayload)
 	}
 
 	endpointWithQuery, err := url.Parse(logActionRequest.Endpoint)
 	if err != nil {
 		log.Printf("Error on url.Parse: %s", err)
-		return action, []byte{}, fmt.Errorf("Error on url.Parse %v", actionPayload)
+		return action, []byte{}, fmt.Errorf("error on url.Parse %v", actionPayload)
 	}
 
 	// TODO : Is this too hacky? Is there a better way to grab the namespace and podName?
@@ -84,10 +91,10 @@ func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	}
 	// Add our impersonation information
 	config.Impersonate = rest.ImpersonationConfig{
-		UserName: r.role,
-		Groups:   []string{r.impersonateGroup},
+		UserName: l.role,
+		Groups:   []string{l.impersonateGroup},
 	}
-	config.BearerToken = r.serviceAccountToken
+	config.BearerToken = l.serviceAccountToken
 
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -101,7 +108,7 @@ func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	stream, err := podLogRequest.Stream(context.TODO())
 	if err != nil {
 		log.Printf("Error on podLogRequest.Stream: %s", err)
-		return action, []byte{}, fmt.Errorf("Error on podLogRequest.Stream: %s", err)
+		return action, []byte{}, fmt.Errorf("error on podLogRequest.Stream: %s", err)
 	}
 
 	// Subscribe to normal log request
@@ -137,7 +144,7 @@ func (r *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 					SequenceNumber: -1,
 					Content:        content,
 				}
-				r.streamOutputChannel <- message
+				l.streamOutputChannel <- message
 
 				// responseLogClusterToBastion.Content = buf[:numBytes]
 				// wsClient.SendResponseLogClusterToBastion(responseLogClusterToBastion) // TODO: This returns err

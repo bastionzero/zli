@@ -127,7 +127,6 @@ func (d *DataChannel) InputMessageHandler(agentMessage wsmsg.AgentMessage) error
 		}
 	case wsmsg.Stream:
 		var sMessage smsg.StreamMessage
-		log.Printf("STREAM BEFORE UNMARSHAL: %v", string(agentMessage.MessagePayload))
 		if err := json.Unmarshal(agentMessage.MessagePayload, &sMessage); err != nil {
 			return fmt.Errorf("malformed Stream Message")
 		} else {

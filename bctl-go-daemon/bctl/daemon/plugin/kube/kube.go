@@ -21,6 +21,10 @@ const (
 	securityToken = "++++"
 )
 
+type JustRequestId struct {
+	RequestId string `json:"requestId"`
+}
+
 type KubeDaemonAction string
 
 const (
@@ -89,7 +93,7 @@ func (k *KubeDaemonPlugin) handleStreamMessage(smessage smsg.StreamMessage) erro
 		act.PushStreamResponse(smessage)
 		return nil
 	} else {
-		return fmt.Errorf("Unknown Request ID")
+		return fmt.Errorf("unknown Request ID")
 	}
 }
 
@@ -104,33 +108,23 @@ func (k *KubeDaemonPlugin) GetName() plgn.PluginName {
 
 func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
 	if len(actionPayload) > 0 {
-		if x := strings.Split(action, "/"); len(x) <= 1 {
-			return "", []byte{}, fmt.Errorf("Malformed action: %v", action)
+		// Get just the request ID so we can associate it with the previously started action object
+		var d JustRequestId
+		if err := json.Unmarshal(actionPayload, &d); err != nil {
+			return "", []byte{}, fmt.Errorf("could not unmarshal json: %v", err.Error())
 		} else {
-			var payload map[string]interface{}
-			if err := json.Unmarshal([]byte(actionPayload), &payload); err != nil {
-				return "", []byte{}, fmt.Errorf("Could not unmarshal actionPayload: %v", string(actionPayload))
-			} else {
-				// Json always unmarshals numbers as float64
-				if id, ok := payload["requestId"].(string); ok {
-					log.Printf("Plugin received response for action with request ID: %v", id)
-					if act, ok := k.actions[id]; ok {
-						wrappedAction := plgn.ActionWrapper{
-							Action:        action,
-							ActionPayload: actionPayload,
-						}
-						act.PushKSResponse(wrappedAction)
-					} else {
-						log.Printf("%+v", k.actions)
-						return "", []byte{}, fmt.Errorf("Unknown Request ID")
-					}
-				} else {
-					return "", []byte{}, fmt.Errorf("Action payload must include request ID")
+			if act, ok := k.actions[d.RequestId]; ok {
+				wrappedAction := plgn.ActionWrapper{
+					Action:        action,
+					ActionPayload: actionPayload,
 				}
+				act.PushKSResponse(wrappedAction)
+			} else {
+				log.Printf("%+v", k.actions)
+				return "", []byte{}, fmt.Errorf("unknown Request ID")
 			}
 		}
 	}
-	// TODO: check that plugin name is "kube"
 
 	log.Printf("Waiting for input...")
 	select {

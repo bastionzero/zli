@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -22,81 +23,111 @@ const (
 	StopExec   ExecSubAction = "kube/exec/stop"
 )
 
+const (
+	EndTimes = "^[" // ESC char
+)
+
 type ExecAction struct {
-	ServiceAccountToken string
-	KubeHost            string
-	ImpersonateGroup    string
-	Role                string
+	serviceAccountToken string
+	kubeHost            string
+	impersonateGroup    string
+	role                string
+	logId               string
+	closed              bool
+
+	// output channel to send all of our stream messages directly to datachannel
 	streamOutputChannel chan smsg.StreamMessage
 
 	// To send input/resize to our exec sessions
 	execStdinChannel  chan []byte
 	execResizeChannel chan KubeExecResizeActionPayload
-
-	logId string
 }
 
-func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage, logId string) (*ExecAction, error) {
+func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*ExecAction, error) {
 	return &ExecAction{
-		ServiceAccountToken: serviceAccountToken,
-		KubeHost:            kubeHost,
-		ImpersonateGroup:    impersonateGroup,
-		Role:                role,
+		serviceAccountToken: serviceAccountToken,
+		kubeHost:            kubeHost,
+		impersonateGroup:    impersonateGroup,
+		role:                role,
+		closed:              false,
 		streamOutputChannel: ch,
 		execStdinChannel:    make(chan []byte, 10),
 		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
-		logId:               logId,
 	}, nil
 }
 
-func (r *ExecAction) SendStdinToChannel(stdin []byte) (string, []byte, error) {
-	r.execStdinChannel <- stdin
-
-	return string(ExecInput), []byte{}, nil
+func (e *ExecAction) Closed() bool {
+	return e.closed
 }
 
-func (r *ExecAction) SendResizeToChannel(execResizeAction KubeExecResizeActionPayload) (string, []byte, error) {
-	r.execResizeChannel <- execResizeAction
+func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+	// TODO: Check request ID matches from startexec
+	switch ExecSubAction(action) {
 
-	return string(ExecResize), []byte{}, nil
+	// Start exec message required before anything else
+	case StartExec:
+		var startExecRequest KubeExecStartActionPayload
+		if err := json.Unmarshal(actionPayload, &startExecRequest); err != nil {
+			return "", []byte{}, fmt.Errorf("unable to unmarshal start message: %v", err.Error())
+		}
+
+		e.logId = startExecRequest.LogId
+		return e.StartExec(startExecRequest)
+
+	case ExecInput:
+		var execInputAction KubeStdinActionPayload
+		if err := json.Unmarshal(actionPayload, &execInputAction); err != nil {
+			log.Printf("Error unmarshaling input: %v", err.Error())
+			return "", []byte{}, fmt.Errorf("unable to unmarshal stdin message")
+		}
+
+		e.execStdinChannel <- execInputAction.Stdin
+		return string(ExecInput), []byte{}, nil
+
+	case ExecResize:
+		var execResizeAction KubeExecResizeActionPayload
+		if err := json.Unmarshal(actionPayload, &execResizeAction); err != nil {
+			log.Printf("Error unmarshaling resize: %v", err.Error())
+			return "", []byte{}, fmt.Errorf("unable to unmarshal resize message")
+		}
+
+		e.execResizeChannel <- execResizeAction
+		return string(ExecResize), []byte{}, nil
+
+	default:
+		return "", []byte{}, fmt.Errorf("unhandled exec action: %v", action)
+	}
 }
 
-func (r *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (string, []byte, error) {
+func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (string, []byte, error) {
 	// Now open up our local exec session
 	// Create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return "", []byte{}, fmt.Errorf("Error creating in-custer config: %v", err.Error())
+		return "", []byte{}, fmt.Errorf("error creating in-custer config: %v", err.Error())
 	}
 
 	// Add our impersonation information
 	config.Impersonate = rest.ImpersonationConfig{
-		UserName: r.Role,
-		Groups:   []string{r.ImpersonateGroup},
+		UserName: e.role,
+		Groups:   []string{e.impersonateGroup},
 	}
-	config.BearerToken = r.ServiceAccountToken
+	config.BearerToken = e.serviceAccountToken
 
-	kubeExecApiUrl := r.KubeHost + startExecRequest.Endpoint
+	kubeExecApiUrl := e.kubeHost + startExecRequest.Endpoint
 	kubeExecApiUrlParsed, _ := url.Parse(kubeExecApiUrl)
 	log.Println(kubeExecApiUrlParsed)
 
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
 	if err != nil {
-		return string(StartExec), []byte{}, fmt.Errorf("Error creating Spdy executor: %v", err.Error())
+		return string(StartExec), []byte{}, fmt.Errorf("error creating Spdy executor: %v", err.Error())
 	}
 
-	// I've added sequence numbers to stderr and stdout but they don't match up
-	// I think this is okay for now, but might be a nice feature in the future? Probably can do it
-	// with their own channel + some mutex locks?
-	stderrWriter := stdout.NewStdWriter(smsg.StdErr, r.streamOutputChannel, startExecRequest.RequestId, r.logId)
-	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, r.streamOutputChannel, startExecRequest.RequestId, r.logId)
-
-	// Give our stdinReader a channel to listen for
-	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, r.execStdinChannel)
-
-	// Make our terminal size queue
-	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId, r.execResizeChannel)
+	stderrWriter := stdout.NewStdWriter(smsg.StdErr, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
+	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
+	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, e.execStdinChannel)
+	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId, e.execResizeChannel)
 
 	go func() {
 		err := exec.Stream(remotecommand.StreamOptions{
@@ -110,6 +141,8 @@ func (r *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			// TODO: handle error, send end to daemon
 			log.Println("Error with spdy stream")
 		}
+		stdoutWriter.Write([]byte(EndTimes))
+		log.Printf("SPDY STREAM ENDED")
 	}()
 
 	return string(StartExec), []byte{}, nil
