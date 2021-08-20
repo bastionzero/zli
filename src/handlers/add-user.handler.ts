@@ -37,7 +37,7 @@ export async function addUserHandler(userEmail: string, policyName: string, clus
             // Then add the user to the policy
             const subjectToAdd: Subject = {
                 id: userInfo.id,
-                subjectType: SubjectType.User
+                type: SubjectType.User
             };
             policy.subjects.push(subjectToAdd);
 

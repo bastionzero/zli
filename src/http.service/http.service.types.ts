@@ -183,6 +183,7 @@ export interface UserSummary
     email: string;
     isAdmin: boolean;
     timeCreated: Date;
+    lastLogin: Date;
 }
 
 export interface DynamicAccessConfigSummary
@@ -264,28 +265,32 @@ export interface GetAllPoliciesForClusterIdResponse {
     policies: PolicySummary[]
 }
 
-interface PolicySummary {
-    name: string;
-    id: string;
+export type PolicyContext = TargetConnectContext | KubernetesPolicyContext;
+
+export interface KubernetesPolicyContext {
+    clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
+    environments: { [key: string]: PolicyEnvironment }
 }
 
-export interface KubernetesPolicySummary {
+export interface TargetConnectContext {
+    targets: object;
+    environments: object;
+    targetUsers: object;
+    verbs: object;
+  }
+
+export interface PolicySummary {
     id: string;
     name: string;
     metadata: PolicyMetadata
     type: PolicyType
     subjects: Subject[]
     groups: Group[]
-    context: KubernetesPolicyContext
+    context: PolicyContext
 }
 
 interface Group {
     id: string;
-}
-
-interface KubernetesPolicyContext {
-    clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
-    environments: { [key: string]: PolicyEnvironment }
 }
 
 export interface KubernetesPolicyClusterUsers {
@@ -298,7 +303,14 @@ interface PolicyEnvironment {
 
 export interface Subject {
     id: string;
-    subjectType: SubjectType;
+    // TODO : This was renamed to follow the api spec - test if this breaks something
+    type: SubjectType;
+}
+
+// TODO : TargetType in the webapp is not of the same type as here, check if okay
+export interface Target {
+    id: string;
+    targetType: TargetType;
 }
 
 interface PolicyMetadata {
@@ -310,7 +322,7 @@ export enum SubjectType {
     ApiKey = 'ApiKey'
 }
 
-enum PolicyType {
+export enum PolicyType {
     TargetConnect = 'TargetConnect',
     OrganizationControls = 'OrganizationControls',
     SessionRecording = 'SessionRecording',
@@ -335,3 +347,9 @@ export interface GetUserInfoResponse {
 export interface GetUserInfoRequest{
     email: string;
 }
+
+export interface ApiKeyDetails {
+    id: string;
+    name: string;
+    timeCreated: Date;
+  }

@@ -1,6 +1,6 @@
 import { ConnectionDetails, ParsedTargetString, TargetStatus, TargetSummary, TargetType} from './types';
 import { max, filter, concat, map } from 'lodash';
-import { EnvironmentDetails } from './http.service/http.service.types';
+import { ApiKeyDetails, EnvironmentDetails, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext, UserSummary } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
 import { cleanExit } from './handlers/clean-exit.handler';
@@ -21,6 +21,27 @@ export function parseTargetType(targetType: string) : TargetType
         return undefined;
 
     return <TargetType> targetType.toUpperCase();
+}
+
+export function parsePolicyType(policyType: string) : PolicyType
+{
+    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetesproxy)$/i; // case insensitive check for policyType
+
+    if(! policyTypePattern.test(policyType))
+        return undefined;
+
+    switch (policyType.toLowerCase()) {
+    case PolicyType.KubernetesProxy.toLowerCase():
+        return PolicyType.KubernetesProxy;
+    case PolicyType.OrganizationControls.toLowerCase():
+        return PolicyType.OrganizationControls;
+    case PolicyType.SessionRecording.toLowerCase():
+        return PolicyType.SessionRecording;
+    case PolicyType.TargetConnect.toLowerCase():
+        return PolicyType.TargetConnect;
+    default:
+        return undefined;
+    }
 }
 
 export function parseTargetStatus(targetStatus: string) : TargetStatus {
@@ -149,6 +170,126 @@ export function getTableOfConnections(connections: ConnectionDetails[], allTarge
 
     return table.toString();
 
+}
+
+export function getTableOfUsers(users: UserSummary[]) : string
+{
+    const nameLength = max(users.map(u => u.fullName.length).concat(16));
+    const emailLength = max(users.map(u => u.email.length).concat(36));
+    const header: string[] = ['Name', 'Email', 'Role', 'Last Login'];
+    const columnWidths = [nameLength + 2, emailLength + 2, 7, 20];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    const dateOptions = {year: '2-digit', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', hour12: true};
+    users.forEach(u => {
+        const row = [u.fullName, u.email, u.isAdmin ? 'Admin' : 'User', new Date(u.lastLogin).toLocaleString('en-US', dateOptions as any)];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+// TODO : The following functionality is very similar to the webapp, it could be abstracted to common-ts
+export function getTableOfPolicies(
+    policies: PolicySummary[],
+    userMap: {[id: string]: UserSummary},
+    apiKeyMap: {[id: string]: ApiKeyDetails},
+    environmentMap: {[id: string]: EnvironmentDetails},
+    targetMap : {[id: string]: string}
+) : string
+{
+    const nameLength = max(policies.map(p => p.name.length).concat(16));
+    const header: string[] = ['Name', 'Type', 'Subject', 'Resource'];
+    const columnWidths = [nameLength + 2, 22, 26, 35];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    policies.forEach(p => {
+
+        // Translate the policy subject ids to human readable subjects
+        const subjectNames : string [] = [];
+        p.subjects.forEach(subject => {
+            switch (subject.type) {
+            case SubjectType.ApiKey:
+                subjectNames.push('ApiKey:' + getApiKeyName(subject.id, apiKeyMap));
+                break;
+            case SubjectType.User:
+                subjectNames.push(getUserName(subject.id, userMap));
+                break;
+            default:
+                break;
+            }
+        });
+        const formattedSubjects = subjectNames.join( ', \n');
+
+        // Translate the resource ids to human readable resources
+        // TODO : This should get extended to support other policy types as well
+        let formattedResource = '';
+        if (p.type == PolicyType.KubernetesProxy) {
+            const kubernetesPolicyContext = p.context as KubernetesPolicyContext;
+            if (kubernetesPolicyContext.environments) {
+                const environmentNames : string [] = [];
+                Object.keys(kubernetesPolicyContext.environments).forEach(
+                    envId => environmentNames.push(getEnvironmentName(envId, environmentMap))
+                );
+                formattedResource = 'Environments: ' + environmentNames.join( ', \n');
+            } else if (kubernetesPolicyContext.clusterUsers) {
+                const clusterUsersNames : string [] = [];
+                Object.values(kubernetesPolicyContext.clusterUsers).forEach(
+                    clusterUser => clusterUsersNames.push(clusterUser.name)
+                );
+                formattedResource = 'Cluster Users: ' + clusterUsersNames.join( ', \n');
+            }
+        } else if (p.type == PolicyType.TargetConnect) {
+            const targetAccessContext = p.context as TargetConnectContext;
+            if (targetAccessContext.environments && Object.keys(targetAccessContext.environments).length > 0) {
+                const environmentsResourceStrings: string [] = [];
+                Object.values(targetAccessContext.environments).forEach(env => {
+                    environmentsResourceStrings.push(getEnvironmentName(env.id, environmentMap));
+                });
+                formattedResource = 'Environments: ' + environmentsResourceStrings.join( ', \n');
+            } else if (targetAccessContext.targets && Object.keys(targetAccessContext.targets).length > 0) {
+                const targetResourceStrings: string [] = [];
+                Object.values(targetAccessContext.targets).forEach(target => {
+                    targetResourceStrings.push(getTargetName(target.id, targetMap));
+                });
+                formattedResource = 'Targets: ' + targetResourceStrings.join( ', \n');
+            }
+        }
+
+        const row = [
+            p.name,
+            p.type,
+            formattedSubjects || 'N/A',
+            formattedResource || 'N/A'
+        ];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+function getApiKeyName(apiKeyId: string, apiKeyMap: {[id: string]: ApiKeyDetails}) : string {
+    return apiKeyMap[apiKeyId]
+        ? apiKeyMap[apiKeyId].name
+        : 'API KEY DELETED';
+}
+
+function getUserName(userId: string, userMap: {[id: string]: UserSummary}) : string {
+    return userMap[userId]
+        ? userMap[userId].fullName
+        : 'USER DELETED';
+}
+
+function getEnvironmentName(envId: string, environmentMap: {[id: string]: EnvironmentDetails}) : string {
+    return environmentMap[envId]
+        ? environmentMap[envId].name
+        : 'ENVIRONMENT DELETED';
+}
+
+function getTargetName(targetId: string, targetMap: {[id: string]: string}) : string {
+    return targetMap[targetId]
+        ? targetMap[targetId]
+        : 'TARGET DELETED';
 }
 
 // Figure out target id based on target name and target type.
