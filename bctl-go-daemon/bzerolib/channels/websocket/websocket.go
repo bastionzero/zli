@@ -49,7 +49,7 @@ type Websocket struct {
 	// These are the channels for recieving and sending messages and done
 	InputChannel  chan wsmsg.AgentMessage
 	OutputChannel chan wsmsg.AgentMessage
-	DoneChannel   chan bool
+	DoneChannel   chan string
 
 	// Function for figuring out correct Target SignalR Hub
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
@@ -68,7 +68,7 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 
 		InputChannel:        make(chan wsmsg.AgentMessage, 200),
 		OutputChannel:       make(chan wsmsg.AgentMessage, 200),
-		DoneChannel:         make(chan bool, 1),
+		DoneChannel:         make(chan string, 1),
 		targetSelectHandler: targetSelectHandler,
 
 		autoReconnect: autoReconnect,
@@ -144,8 +144,15 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 								// Cancel our context
 								cancel()
 
+								// Deserialize the argument
+								var closeMessage wsmsg.CloseMessage
+								if err := json.Unmarshal(wrappedMessage.Arguments[0].MessagePayload, &closeMessage); err != nil {
+									log.Printf("Error unmarshalling SignalR Close Message from Bastion: %v", string(wrappedMessage.Arguments[0].MessagePayload))
+									break
+								}
+
 								// Send an alert on our done channel for our datachannel
-								ret.DoneChannel <- true
+								ret.DoneChannel <- closeMessage.Message
 
 								return
 							}

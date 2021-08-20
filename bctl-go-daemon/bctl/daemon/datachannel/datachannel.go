@@ -27,6 +27,9 @@ type DataChannel struct {
 
 	// Kube-specific vars aka to-be-removed
 	role string
+
+	// Done channel to bubble up messages to kubectl
+	doneChannel chan string
 }
 
 func NewDataChannel(configPath string,
@@ -50,6 +53,7 @@ func NewDataChannel(configPath string,
 	ret := &DataChannel{
 		websocket:    wsClient,
 		keysplitting: keysplitter,
+		doneChannel:  make(chan string),
 	}
 
 	// Subscribe to our input channel
@@ -63,9 +67,12 @@ func NewDataChannel(configPath string,
 						log.Print(err.Error())
 					}
 				}()
-			case <-ret.websocket.DoneChannel:
+			case doneMessage := <-ret.websocket.DoneChannel:
 				// The websocket has been closed
 				log.Println("Websocket has been closed, closing datachannel")
+
+				// Send a message to our done channel to the kubectl can get the message
+				ret.doneChannel <- doneMessage
 				return
 			}
 		}
@@ -75,7 +82,7 @@ func NewDataChannel(configPath string,
 }
 
 func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) error {
-	if plugin, err := kube.NewKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
+	if plugin, err := kube.NewKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath, d.doneChannel); err != nil {
 		return fmt.Errorf("could not start kube daemon plugin: %v", err.Error())
 	} else {
 		d.plugin = plugin
@@ -174,36 +181,4 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	} else {
 		return err
 	}
-
-	// switch keysplittingMessage.Type {
-	// case ksmsg.SynAck:
-	// 	synAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.SynAckPayload)
-	// 	if action, returnPayload, err := d.plugin.InputMessageHandler(synAckPayload.Action, synAckPayload.ActionResponsePayload); err == nil {
-
-	// 		// Build and send response
-	// 		if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, returnPayload); err != nil {
-	// 			return fmt.Errorf("could not build response message: %s", err.Error())
-	// 		} else {
-	// 			d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
-	// 		}
-	// 	} else {
-	// 		return err
-	// 	}
-	// case ksmsg.DataAck:
-	// 	dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
-	// 	if action, returnPayload, err := d.plugin.InputMessageHandler(dataAckPayload.Action, dataAckPayload.ActionResponsePayload); err == nil {
-
-	// 		// Build and send response
-	// 		if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, returnPayload); err != nil {
-	// 			return fmt.Errorf("could not build response message: %s", err.Error())
-	// 		} else {
-	// 			d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
-	// 		}
-	// 	} else {
-	// 		return err
-	// 	}
-	// default:
-	// 	return fmt.Errorf("invalid keysplitting payload")
-	// }
-	// return nil
 }

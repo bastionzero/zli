@@ -20,6 +20,11 @@ type SignalRWrapper struct {
 	Arguments []AgentMessage `json:"arguments"`
 }
 
+// This is our close message struct
+type CloseMessage struct {
+	Message string `json:"message"`
+}
+
 // Hub name aka "Target" from "SignalRWrapper".  These are like API
 // endpoint that the message will hit
 type Hub string

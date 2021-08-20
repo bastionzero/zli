@@ -50,12 +50,16 @@ type KubeDaemonPlugin struct {
 	streamResponseChannel chan smsg.StreamMessage
 	RequestChannel        chan plgn.ActionWrapper
 
+	// Done channel to bubble up error to the user
+	DoneChannel chan string
+	ExitMessage string
+
 	actions map[string]IKubeDaemonAction
 
 	mapLock sync.RWMutex
 }
 
-func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) (*KubeDaemonPlugin, error) {
+func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string, doneChannel chan string) (*KubeDaemonPlugin, error) {
 	plugin := KubeDaemonPlugin{
 		localhostToken:        localhostToken,
 		daemonPort:            daemonPort,
@@ -63,6 +67,8 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		keyPath:               keyPath,
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 		RequestChannel:        make(chan plgn.ActionWrapper, 100),
+		DoneChannel:           doneChannel,
+		ExitMessage:           "",
 		actions:               make(map[string]IKubeDaemonAction),
 		mapLock:               sync.RWMutex{},
 	}
@@ -72,6 +78,15 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 			select {
 			case streamMessage := <-plugin.streamResponseChannel:
 				plugin.handleStreamMessage(streamMessage)
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case doneMessage := <-plugin.DoneChannel:
+				plugin.ExitMessage = doneMessage
 			}
 		}
 	}()
@@ -143,6 +158,13 @@ func generateRequestId() string {
 
 func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Handling %s - %s\n", r.URL.Path, r.Method)
+
+	if k.ExitMessage != "" {
+		// Return the exit message to the user
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Daemon connection has been closed by Bastion. Message: " + k.ExitMessage))
+		return
+	}
 
 	// Trim off localhost token
 	// TODO: Fix this
