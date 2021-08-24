@@ -270,6 +270,11 @@ export type PolicyContext = TargetConnectContext | KubernetesPolicyContext;
 export interface KubernetesPolicyContext {
     clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
     environments: { [key: string]: PolicyEnvironment }
+    clusters: { [key: string] : Cluster}
+}
+
+export interface Cluster {
+    id: string
 }
 
 export interface TargetConnectContext {

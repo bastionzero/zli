@@ -1,11 +1,12 @@
+import { PolicyType } from '../http.service/http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import { PolicyService,KubeService } from '../http.service/http.service';
 import { Logger } from '../logger.service/logger';
 import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
-
-export async function removeUserHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+// TODO : This currently supports only cluster users - this should be extended to target users
+export async function deleteUserFromPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
     const userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
@@ -22,15 +23,13 @@ export async function removeUserHandler(userEmail: string, policyName: string, c
 
     // Loop till we find the one we are looking for
     for (const policy of policies) {
-<<<<<<< HEAD
-<<<<<<< HEAD
         if (policy.name == policyName) {
-=======
-        if (policy.name == clusterName) {
->>>>>>> 9e71d7c (kubectl logs cancel (#130))
-=======
-        if (policy.name == policyName) {
->>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
+
+            if (policy.type !== PolicyType.KubernetesProxy){
+                logger.error(`Deleting user from policy ${policyName} failed. Support for deleting users from ${policy.type} policies will be added soon.`);
+                await cleanExit(1, logger);
+            }
+
             // TODO: This can be done better then looping
             // Then remove the user from the policy
             const newSubjects = [];
@@ -44,15 +43,7 @@ export async function removeUserHandler(userEmail: string, policyName: string, c
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
             logger.info(`Removed ${userEmail} from ${policyName} policy!`);
-=======
-            logger.info(`Removed ${userEmail} from ${clusterName} policy!`);
->>>>>>> 9e71d7c (kubectl logs cancel (#130))
-=======
-            logger.info(`Removed ${userEmail} from ${policyName} policy!`);
->>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
             await cleanExit(0, logger);
         }
     }

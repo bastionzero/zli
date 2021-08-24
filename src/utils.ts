@@ -189,6 +189,23 @@ export function getTableOfUsers(users: UserSummary[]) : string
     return table.toString();
 }
 
+export function getTableOfTargetUsers(targetUsers: string[]) : string
+{
+    const header: string[] = ['Allowed Target Users'];
+    const nameLength = max(targetUsers.map(u => u.length).concat(16));
+    // If the title's length is bigger than the longer user use that as the row length
+    const rowLength = nameLength > header[0].length ? nameLength : header[0].length;
+    const columnWidths = [rowLength + 2];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    targetUsers.forEach(u => {
+        const row = [u];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
 // TODO : The following functionality is very similar to the webapp, it could be abstracted to common-ts
 export function getTableOfPolicies(
     policies: PolicySummary[],
@@ -199,13 +216,14 @@ export function getTableOfPolicies(
 ) : string
 {
     const nameLength = max(policies.map(p => p.name.length).concat(16));
-    const header: string[] = ['Name', 'Type', 'Subject', 'Resource'];
+    const header: string[] = ['Name', 'Type', 'Subject', 'Resource', 'Target Users'];
     const columnWidths = [nameLength + 2, 22, 26, 35];
 
     const table = new Table({ head: header, colWidths: columnWidths });
     policies.forEach(p => {
 
         // Translate the policy subject ids to human readable subjects
+        // TODO : Add support for groups subjects
         const subjectNames : string [] = [];
         p.subjects.forEach(subject => {
             switch (subject.type) {
@@ -224,43 +242,64 @@ export function getTableOfPolicies(
         // Translate the resource ids to human readable resources
         // TODO : This should get extended to support other policy types as well
         let formattedResource = '';
+        let formattedTargetUsers = '';
         if (p.type == PolicyType.KubernetesProxy) {
             const kubernetesPolicyContext = p.context as KubernetesPolicyContext;
+            // If this policy gets applied on some environments
             if (kubernetesPolicyContext.environments) {
                 const environmentNames : string [] = [];
                 Object.keys(kubernetesPolicyContext.environments).forEach(
                     envId => environmentNames.push(getEnvironmentName(envId, environmentMap))
                 );
                 formattedResource = 'Environments: ' + environmentNames.join( ', \n');
-            } else if (kubernetesPolicyContext.clusterUsers) {
+            } else if (kubernetesPolicyContext.clusters) { // Alternatively if this policy gets applied straight on some clusters
+                const clusterNames : string [] = [];
+                Object.values(kubernetesPolicyContext.clusters).forEach(
+                    cluster => clusterNames.push(getTargetName(cluster.id, targetMap))
+                );
+                formattedResource = 'Clusters: ' + clusterNames.join( ', \n');
+            }
+
+            if (kubernetesPolicyContext.clusterUsers) {
                 const clusterUsersNames : string [] = [];
                 Object.values(kubernetesPolicyContext.clusterUsers).forEach(
                     clusterUser => clusterUsersNames.push(clusterUser.name)
                 );
-                formattedResource = 'Cluster Users: ' + clusterUsersNames.join( ', \n');
+                formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join( ', \n');
             }
         } else if (p.type == PolicyType.TargetConnect) {
             const targetAccessContext = p.context as TargetConnectContext;
+            // If this policy gets applied on some environments
             if (targetAccessContext.environments && Object.keys(targetAccessContext.environments).length > 0) {
                 const environmentsResourceStrings: string [] = [];
                 Object.values(targetAccessContext.environments).forEach(env => {
                     environmentsResourceStrings.push(getEnvironmentName(env.id, environmentMap));
                 });
                 formattedResource = 'Environments: ' + environmentsResourceStrings.join( ', \n');
-            } else if (targetAccessContext.targets && Object.keys(targetAccessContext.targets).length > 0) {
+            } else if (targetAccessContext.targets && Object.keys(targetAccessContext.targets).length > 0) { // Alternatively if this policy gets applied straight on some targets
                 const targetResourceStrings: string [] = [];
                 Object.values(targetAccessContext.targets).forEach(target => {
                     targetResourceStrings.push(getTargetName(target.id, targetMap));
                 });
                 formattedResource = 'Targets: ' + targetResourceStrings.join( ', \n');
             }
+
+            if (targetAccessContext.targetUsers && Object.keys(targetAccessContext.targetUsers).length > 0) {
+                const targetUsersStrings: string [] = [];
+                Object.values(targetAccessContext.targetUsers).forEach(tu => {
+                    targetUsersStrings.push(tu.userName);
+                });
+                formattedTargetUsers = 'Unix Users: ' + targetUsersStrings.join( ', \n');
+            }
+
         }
 
         const row = [
             p.name,
             p.type,
             formattedSubjects || 'N/A',
-            formattedResource || 'N/A'
+            formattedResource || 'N/A',
+            formattedTargetUsers || 'N/A'
         ];
         table.push(row);
     });

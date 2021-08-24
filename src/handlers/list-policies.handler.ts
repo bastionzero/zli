@@ -1,22 +1,24 @@
-import { ApiKeyService, DynamicAccessConfigService, EnvironmentService, PolicyService, SsmTargetService, UserService } from '../http.service/http.service';
+import { ApiKeyService, PolicyService, UserService } from '../http.service/http.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
 import { getTableOfPolicies, parsePolicyType } from '../utils';
 import { UserSummary, ApiKeyDetails, EnvironmentDetails } from '../http.service/http.service.types';
 import _ from 'lodash';
+import { ClusterSummary, TargetSummary } from '../types';
 
 export async function listPoliciesHandler(
     argv: any,
     configService: ConfigService,
     logger: Logger,
+    ssmTargets: Promise<TargetSummary[]>,
+    dynamicAccessConfigs: Promise<TargetSummary[]>,
+    clusterTargets: Promise<ClusterSummary[]>,
+    environments: Promise<EnvironmentDetails[]>
 ){
     const policyService = new PolicyService(configService, logger);
     const userService = new UserService(configService, logger);
     const apiKeyService = new ApiKeyService(configService, logger);
-    const environmentService = new EnvironmentService(configService, logger);
-    const ssmTargetService = new SsmTargetService(configService, logger);
-    const dynamicAccessConfigService = new DynamicAccessConfigService(configService, logger);
 
     let policies = await policyService.ListAllPolicies();
 
@@ -40,20 +42,20 @@ export async function listPoliciesHandler(
         apiKeyMap[apiKeyDetails.id] = apiKeyDetails;
     });
 
-    const environments = await environmentService.ListEnvironments();
     const environmentMap : { [id: string]: EnvironmentDetails } = {};
-    environments.forEach(environmentDetails => {
+    (await environments).forEach(environmentDetails => {
         environmentMap[environmentDetails.id] = environmentDetails;
     });
 
-    const ssmTargets = await ssmTargetService.ListSsmTargets(false);
-    const dynamicAccessConfigs= await dynamicAccessConfigService.ListDynamicAccessConfigs();
     const targetNameMap : { [id: string]: string } = {};
-    ssmTargets.forEach(ssmTarget => {
+    (await ssmTargets).forEach(ssmTarget => {
         targetNameMap[ssmTarget.id] = ssmTarget.name;
     });
-    dynamicAccessConfigs.forEach(dacs => {
+    (await dynamicAccessConfigs).forEach(dacs => {
         targetNameMap[dacs.id] = dacs.name;
+    });
+    (await clusterTargets).forEach(clusterTarget => {
+        targetNameMap[clusterTarget.id] = clusterTarget.name;
     });
 
     if(!! argv.json) {

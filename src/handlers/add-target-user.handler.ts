@@ -1,31 +1,22 @@
 import { ConfigService } from '../config.service/config.service';
 import { PolicyService } from '../http.service/http.service';
 import { Logger } from '../logger.service/logger';
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
-=======
-import { KubernetesPolicyClusterRoles } from '../http.service/http.service.types';
->>>>>>> 9e71d7c (kubectl logs cancel (#130))
-=======
-import { KubernetesPolicyClusterUsers } from '../http.service/http.service.types';
->>>>>>> 724999e (Merged list-targets and list-clusters functionality. Fixed filtering for clusters. Added target users for list-targets)
-=======
 import { KubernetesPolicyClusterUsers, KubernetesPolicyContext, PolicyType } from '../http.service/http.service.types';
->>>>>>> 06be4d5 (Added users listing functionality. Added policies listing functionality and policy type filter)
-import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
-
-export async function addRoleHandler(clusterUserName: string, policyName: string, force: boolean, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+// TODO : This currently supports only cluster users - this should be extended to target users
+export async function addTargetUserHandler(clusterUserName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy
     const policyService = new PolicyService(configService, logger);
     const policies = await policyService.ListAllPolicies();
 
     // Loop till we find the one we are looking for
     for (const policy of policies) {
-        if (policy.name == policyName && policy.type == PolicyType.KubernetesProxy) {
+        if (policy.name == policyName) {
+            if (policy.type !== PolicyType.KubernetesProxy){
+                logger.error(`Adding target user to policy ${policyName} failed. Support for adding target users to ${policy.type} policies will be added soon.`);
+                await cleanExit(1, logger);
+            }
             // Then add the role to the policy
             const clusterUserToAdd: KubernetesPolicyClusterUsers = {
                 name: clusterUserName
@@ -38,15 +29,8 @@ export async function addRoleHandler(clusterUserName: string, policyName: string
             policy.context = kubernetesPolicyContext;
             await policyService.UpdateKubePolicy(policy);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
             logger.info(`Added ${clusterUserName} to ${policyName} policy!`);
-=======
-            logger.info(`Added ${clusterUserName} to ${policyName} policy!`)
->>>>>>> 35eb4af (Refactor Kube Opa Policy and Commands (#137))
-=======
-            logger.info(`Added ${clusterUserName} to ${policyName} policy!`);
->>>>>>> 724999e (Merged list-targets and list-clusters functionality. Fixed filtering for clusters. Added target users for list-targets)
+
             await cleanExit(0, logger);
         }
     }
