@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"time"
 
 	ed "crypto/ed25519"
@@ -42,9 +43,9 @@ const (
 )
 
 func NewBZCertVerifier(bzcert *BZCert) IBZCertVerifier {
-	orgId := "placeholder"             // eventually load these from vault
-	provider := ProviderType("google") // eventually load these from vault
-	customIss := "https://test"        // add this variable and load it from vault
+	orgId := os.Getenv("IDP_ORG_ID")
+	provider := ProviderType(os.Getenv("IDP_PROVIDER"))
+	// customIss := os.Getenv("CUSTOM_IDP")
 
 	iss := ""
 	switch provider {
@@ -52,8 +53,8 @@ func NewBZCertVerifier(bzcert *BZCert) IBZCertVerifier {
 		iss = googleUrl
 	case Microsoft:
 		iss = getMicrosoftIssuerUrl(orgId)
-	case Custom:
-		iss = customIss // Any valid iss requires a discovery document
+	// case Custom:
+	// 	iss = customIss // Any valid iss requires a discovery document
 	default:
 		return &BZCertVerifier{} // return error
 	}
