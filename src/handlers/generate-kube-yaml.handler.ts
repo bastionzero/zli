@@ -32,7 +32,7 @@ export async function generateKubeYamlHandler(
         const labels: { [index: string ]: string } = {};
         for (const keyValueString of argv.labels) {
             const key = keyValueString.split(':')[0];
-            const value = keyValueString.split(':')[1];
+            const value = String(keyValueString.split(':')[1]);
             labels[key] = value;
         }
         labelsFormatted = JSON.stringify(labels);
