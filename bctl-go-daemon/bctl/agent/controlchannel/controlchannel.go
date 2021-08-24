@@ -25,7 +25,7 @@ import (
 const (
 	hubEndpoint       = "/api/v1/hub/kube-control"
 	registerEndpoint  = "/api/v1/kube/register-agent"
-	challangeEndpoint = "/api/v1/kube/get-challange"
+	challangeEndpoint = "/api/v1/kube/get-challenge"
 	autoReconnect     = true
 )
 
@@ -46,8 +46,8 @@ func NewControlChannel(serviceUrl string,
 	environmentId string,
 	agentVersion string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
-	// populate keys if they haven't been generated already
-	// TODO: revisit this
+
+	// Populate keys if they haven't been generated already
 	config, err := newAgent(serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)
 	if err != nil {
 		return &ControlChannel{}, err
@@ -234,7 +234,7 @@ func aliveCheck() ([]byte, error) {
 func newAgent(serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string) (*vault.Vault, error) {
 	config, _ := vault.LoadVault()
 
-	// Check if vault is empty, if not generate a private, public key pair
+	// Check if vault is empty, if so generate a private, public key pair
 	if config.IsEmpty() {
 		log.Println("Creating new agent secret")
 

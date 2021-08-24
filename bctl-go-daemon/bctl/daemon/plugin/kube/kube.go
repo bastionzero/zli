@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -73,9 +74,14 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		mapLock:               sync.RWMutex{},
 	}
 
+	// Make our cancel context
+	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case streamMessage := <-plugin.streamResponseChannel:
 				plugin.handleStreamMessage(streamMessage)
 			}
@@ -85,6 +91,8 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case doneMessage := <-plugin.DoneChannel:
 				plugin.ExitMessage = doneMessage
 			}
