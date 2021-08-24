@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -15,6 +14,8 @@ import (
 	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+
+	kuberest "k8s.io/client-go/rest"
 )
 
 const (
@@ -49,12 +50,13 @@ type KubePlugin struct {
 
 func NewPlugin(ch chan smsg.StreamMessage, role string) plgn.IPlugin {
 	// First load in our Kube variables
-	// TODO: Where should we save this, in the class? is this the best way to do this?
-	// TODO: Also we should be able to drop this req, and just load `IN CLUSTER CONFIG`
-	serviceAccountTokenPath := os.Getenv("KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH")
-	serviceAccountTokenBytes, _ := ioutil.ReadFile(serviceAccountTokenPath)
-	// TODO: Check for error
-	serviceAccountToken := string(serviceAccountTokenBytes)
+	config, err := kuberest.InClusterConfig()
+	if err != nil {
+		log.Printf("Error getting incluser config: %s", err)
+		return &KubePlugin{}
+	}
+
+	serviceAccountToken := config.BearerToken
 	kubeHost := "https://" + os.Getenv("KUBERNETES_SERVICE_HOST")
 
 	return &KubePlugin{

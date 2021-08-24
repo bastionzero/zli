@@ -1,12 +1,14 @@
 package controlchannel
 
 import (
+	"bytes"
 	"context"
 	ed "crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"regexp"
 	"sync"
 
@@ -14,14 +16,17 @@ import (
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
 
+	"golang.org/x/crypto/sha3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
 const (
-	hubEndpoint   = "/api/v1/hub/kube-control"
-	autoReconnect = true
+	hubEndpoint       = "/api/v1/hub/kube-control"
+	registerEndpoint  = "/api/v1/kube/register-agent"
+	challangeEndpoint = "/api/v1/kube/get-challenge"
+	autoReconnect     = true
 )
 
 type ControlChannel struct {
@@ -42,27 +47,33 @@ func NewControlChannel(serviceUrl string,
 	agentVersion string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
 
+	// Populate keys if they haven't been generated already
+	config, err := newAgent(serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)
+	if err != nil {
+		return &ControlChannel{}, err
+	}
+
+	solvedChallange, err := getAndSolveChallange(orgId, clusterName, serviceUrl, config.Data.PrivateKey)
+	if err != nil {
+		return &ControlChannel{}, err
+	}
+
 	// Create our headers and params, headers are empty
 	headers := make(map[string]string)
 
 	// Make and add our params
 	params := make(map[string]string)
-	params["activation_token"] = activationToken
+	params["solved_challange"] = solvedChallange
+	params["public_key"] = config.Data.PublicKey
 	params["org_id"] = orgId
 	params["cluster_name"] = clusterName
 	params["environment_id"] = environmentId
-	params["agent_version"] = agentVersion // TODO: this should come from somewhere else...
+	params["agent_version"] = agentVersion
 
 	log.Printf("\nserviceURL: %v, \nhubEndpoint: %v, \nparams: %v, \nheaders: %v", serviceUrl, hubEndpoint, params, headers)
 
 	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
 	if err != nil {
-		return &ControlChannel{}, err
-	}
-
-	// populate keys if they haven't been generated already
-	// TODO: revisit this
-	if err := newAgent(); err != nil {
 		return &ControlChannel{}, err
 	}
 
@@ -104,6 +115,53 @@ func NewControlChannel(serviceUrl string,
 		}
 	}()
 	return &control, nil
+}
+
+func getAndSolveChallange(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
+	// Get Challange
+	challangeRequest := GetChallangeMessage{
+		OrgId:       orgId,
+		ClusterName: clusterName,
+	}
+
+	challangeJson, err := json.Marshal(challangeRequest)
+	if err != nil {
+		log.Printf("Error marshalling register data")
+		return "", err
+	}
+
+	// Make our POST request
+	response, err := http.Post("https://"+serviceUrl+challangeEndpoint, "application/json",
+		bytes.NewBuffer(challangeJson))
+	if err != nil || response.StatusCode != http.StatusOK {
+		log.Printf("Error making post request to challange agent. Error: %s. Response: %s", err, response)
+		return "", err
+	}
+	defer response.Body.Close()
+
+	// Extract the challange
+	responseDecoded := GetChallangeResponse{}
+	json.NewDecoder(response.Body).Decode(&responseDecoded)
+
+	// Solve Chalange
+	return SignChallange(privateKey, responseDecoded.Challange)
+}
+
+func SignChallange(privateKey string, challange string) (string, error) {
+	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
+	if len(keyBytes) != 64 {
+		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
+	}
+	privkey := ed.PrivateKey(keyBytes)
+
+	hashBits := sha3.Sum256([]byte(challange))
+
+	sig := ed.Sign(privkey, hashBits[:])
+
+	// Convert the signature to base64 string
+	sigBase64 := base64.StdEncoding.EncodeToString(sig)
+
+	return sigBase64, nil
 }
 
 func aliveCheck() ([]byte, error) {
@@ -173,13 +231,15 @@ func aliveCheck() ([]byte, error) {
 	return aliveBytes, nil
 }
 
-func newAgent() error {
+func newAgent(serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string) (*vault.Vault, error) {
 	config, _ := vault.LoadVault()
 
-	// Check if vault is empty, if not generate a private, public key pair
+	// Check if vault is empty, if so generate a private, public key pair
 	if config.IsEmpty() {
+		log.Println("Creating new agent secret")
+
 		if publicKey, privateKey, err := ed.GenerateKey(nil); err != nil {
-			return fmt.Errorf("error generating key pair: %v", err.Error())
+			return nil, fmt.Errorf("error generating key pair: %v", err.Error())
 		} else {
 			pubkeyString := base64.StdEncoding.EncodeToString([]byte(publicKey))
 			privkeyString := base64.StdEncoding.EncodeToString([]byte(privateKey))
@@ -188,14 +248,37 @@ func newAgent() error {
 				PrivateKey: privkeyString,
 			}
 			if err := config.Save(); err != nil {
-				return fmt.Errorf("error saving vault: %v", err.Error())
-			} else {
-				return nil
+				return nil, fmt.Errorf("error saving vault: %v", err.Error())
+			}
+
+			// Register with Bastion
+			log.Println("Registering agent with Bastionn")
+			register := RegisterAgentMessage{
+				PublicKey:      pubkeyString,
+				ActivationCode: activationToken,
+				AgentVersion:   agentVersion,
+				OrgId:          orgId,
+				EnvironmentId:  environmentId,
+				ClusterName:    clusterName,
+			}
+
+			registerJson, err := json.Marshal(register)
+			if err != nil {
+				log.Printf("Error marshalling register data")
+				return nil, err
+			}
+
+			// Make our POST request
+			response, err := http.Post("https://"+serviceUrl+registerEndpoint, "application/json",
+				bytes.NewBuffer(registerJson))
+			if err != nil || response.StatusCode != http.StatusOK {
+				log.Printf("Error making post request to register agent. Error: %s. Response: %s", err, response)
+				return nil, err
 			}
 		}
 	} else {
 		// If the vault isn't empty, don't do anything
-		log.Printf("config data: %+v", config.Data)
-		return nil
+		log.Printf("Found Previous config data: %+v", config.Data)
 	}
+	return config, nil
 }
