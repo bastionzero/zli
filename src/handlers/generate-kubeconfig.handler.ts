@@ -2,7 +2,6 @@ import util from 'util';
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
-import { cleanExit } from './clean-exit.handler';
 
 const pem = require('pem');
 const path = require('path');

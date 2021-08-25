@@ -68,11 +68,13 @@
     "lodash": "^4.17.20",
     "mixpanel": "^0.13.0",
     "noble-ed25519": "^1.0.3",
+    "normalize-url": ">=4.5.1",
     "open": "^7.3.0",
     "openid-client": "^4.7.2",
     "pem": "^1.14.4",
     "qrcode": "^1.4.4",
-    "query-string": "^7.0.0",
+    "query-string": "^7.0.1",
+    "rand-token": "^1.0.1",
     "rxjs": "^6.6.3",
     "semver": "^7.3.2",
     "sha3": "^2.1.4",
@@ -83,8 +85,7 @@
     "ts-node": "^9.0.0",
     "uuid": "^8.3.2",
     "winston": "^3.3.3",
-    "yargs": "^16.1.1",
-    "normalize-url": ">=4.5.1"
+    "yargs": "^16.1.1"
   },
   "pkg": {
     "scripts": [],

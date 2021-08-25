@@ -1,4 +1,4 @@
-import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType } from './types';
+import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType, KubeClusterStatus, ClusterSummary } from './types';
 import { max, filter, concat } from 'lodash';
 import { EnvironmentDetails } from './http.service/http.service.types';
 import Table from 'cli-table3';
@@ -220,7 +220,7 @@ export async function disambiguateTarget(
         return undefined;
     }
 
-    let zippedTargets = _.concat(await ssmTargets, await dynamicConfigs);
+    let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
     zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));

@@ -14,7 +14,7 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { cleanExit } from './handlers/clean-exit.handler';
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, mixedPanelTrackingMiddleware, fetchDataMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handler';
 import { loginHandler } from './handlers/login.handler';
@@ -37,6 +37,7 @@ import { disconnectHandler } from './handlers/disconnect.handler';
 import { kubeStatusHandler } from './handlers/status.handler';
 import { describeHandler } from './handlers/describe.handler';
 import { bctlHandler } from './handlers/bctl.handler';
+import { listClustersHandler } from './handlers/list-clusters.handler'
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -75,9 +76,6 @@ export class CliDriver
 
     public start()
     {
-        // ref: https://nodejs.org/api/process.html#process_process_argv0
-        this.processName = process.argv0;
-
         // @ts-ignore TS2589
         yargs(process.argv.slice(2))
             .scriptName('zli')
@@ -483,50 +481,6 @@ export class CliDriver
                 },
                 async (argv) => {
                     await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
-                }
-            )
-            .command(
-                'copy <source> <destination>',
-                'Upload/download a file to target',
-                (yargs) => {
-                    return yargs
-                        .positional('source',
-                            {
-                                type: 'string'
-                            }
-                        )
-                        .positional('destination',
-                            {
-                                type: 'string'
-                            }
-                        )
-                        .option(
-                            'targetType',
-                            {
-                                type: 'string',
-                                choices: this.targetTypeChoices,
-                                demandOption: false,
-                                alias: 't'
-                            }
-                        )
-                        .example('copy ssm-user@neat-target:/home/ssm-user/file.txt /Users/coolUser/newFileName.txt', 'Download example, relative to your machine')
-                        .example('copy /Users/coolUser/secretFile ssm-user@neat-target:/home/ssm-user/newFileName', 'Upload example, relative to your machine');
-                },
-                async (argv) => {
-                    const sourceParsedTarget = await disambiguateTarget(argv.targetType, argv.source, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
-                    const destParsedTarget = await disambiguateTarget(argv.targetType, argv.destination, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
-
-                    if(! sourceParsedTarget && ! destParsedTarget)
-                    {
-                        this.logger.error('Either source or destination must be a valid target string');
-                        await cleanExit(1, this.logger);
-                    }
-
-                    const isTargetSource = !! sourceParsedTarget;
-                    const parsedTarget = sourceParsedTarget || destParsedTarget;
-                    const localFilePath = ! isTargetSource ? argv.source : argv.destination;
-
-                    await copyHandler(this.configService, this.logger, parsedTarget, localFilePath, isTargetSource);
                 }
             )
             .command(
