@@ -43,12 +43,18 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
 
     const configPath = configService.configPath();
 
+    // See if the user passed in a custom port
+    var daemonPort = kubeConfig['localPort'].toString();
+    if (argv.customPort != -1) {
+        daemonPort = argv.customPort.toString();
+    }
+
     // Build our args and cwd
     let args = [
         `-sessionId=${configService.sessionId()}`,
         `-assumeRole=${assumeUser}`,
         `-assumeClusterId=${clusterTarget.id}`,
-        `-daemonPort=${kubeConfig['localPort']}`,
+        `-daemonPort=${daemonPort}`,
         `-serviceURL=${configService.serviceUrl().slice(0, -1).replace('https://', '')}`,
         `-authHeader="${configService.getAuthHeader()}"`,
         `-localhostToken="${kubeConfig['token']}"`,

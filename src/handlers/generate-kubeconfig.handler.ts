@@ -2,6 +2,7 @@ import util from 'util';
 
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
+import { cleanExit } from './clean-exit.handler';
 
 const pem = require('pem');
 const path = require('path');
@@ -74,12 +75,18 @@ export async function generateKubeconfigHandler(
         await createCertPromise;
     }
 
+    // See if the user passed in a custom port
+    var daemonPort = kubeConfig['localPort'].toString();
+    if (argv.customPort != -1) {
+        daemonPort = argv.customPort.toString();
+    }
+
     // Now generate a kubeConfig
     const clientKubeConfig = `
 apiVersion: v1
 clusters:
 - cluster:
-    server: https://localhost:1234
+    server: https://${kubeConfig['localHost']}:${daemonPort}
     # certificate-authority: ${kubeConfig['certPath']}
     insecure-skip-tls-verify: true
   name: bctl-server

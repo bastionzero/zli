@@ -174,6 +174,10 @@ export class CliDriver
                             type: 'string',
                             default: null,
                             demandOption: false,
+                        }).option('customPort', {
+                            type: 'number',
+                            default: -1,
+                            demandOption: false
                         })
                         .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
                 },
@@ -646,12 +650,17 @@ export class CliDriver
                             default: null
                         }).option('namespace', {
                             type: 'string',
-                            default: ''
+                            default: '',
+                            demandOption: false
                         }).option('labels', {
                             type: 'array',
-                            default: []
-                        })
-                        .option('outputFile', {
+                            default: [],
+                            demandOption: false
+                        }).option('customPort', {
+                            type: 'number',
+                            default: -1,
+                            demandOption: false
+                        }).option('outputFile', {
                             type: 'string',
                             demandOption: false,
                             alias: 'o',
