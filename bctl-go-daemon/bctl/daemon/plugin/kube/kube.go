@@ -75,7 +75,7 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 	}
 
 	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, _ := context.WithCancel(context.Background())
 
 	go func() {
 		for {
