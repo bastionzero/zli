@@ -1,6 +1,6 @@
 import { ConnectionDetails, ParsedTargetString, TargetStatus, TargetSummary, TargetType} from './types';
 import { max, filter, concat, map } from 'lodash';
-import { ApiKeyDetails, EnvironmentDetails, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext, UserSummary } from './http.service/http.service.types';
+import { ApiKeyDetails, EnvironmentDetails, GroupSummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext, UserSummary } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
 import { cleanExit } from './handlers/clean-exit.handler';
@@ -212,7 +212,8 @@ export function getTableOfPolicies(
     userMap: {[id: string]: UserSummary},
     apiKeyMap: {[id: string]: ApiKeyDetails},
     environmentMap: {[id: string]: EnvironmentDetails},
-    targetMap : {[id: string]: string}
+    targetMap : {[id: string]: string},
+    groupMap : {[id: string]: GroupSummary}
 ) : string
 {
     const nameLength = max(policies.map(p => p.name.length).concat(16));
@@ -223,7 +224,12 @@ export function getTableOfPolicies(
     policies.forEach(p => {
 
         // Translate the policy subject ids to human readable subjects
-        // TODO : Add support for groups subjects
+        const groupNames : string [] = [];
+        p.groups.forEach(group => {
+            groupNames.push(getGroupName(group.id, groupMap));
+        });
+        const formattedGroups = !! groupNames.length ? 'Groups: ' + groupNames.join( ', \n') : '';
+
         const subjectNames : string [] = [];
         p.subjects.forEach(subject => {
             switch (subject.type) {
@@ -237,7 +243,11 @@ export function getTableOfPolicies(
                 break;
             }
         });
-        const formattedSubjects = subjectNames.join( ', \n');
+        let formattedSubjects = subjectNames.join( ', \n');
+        if (subjectNames.length > 0 && !!formattedGroups) {
+            formattedSubjects += '\n';
+        }
+        formattedSubjects += formattedGroups;
 
         // Translate the resource ids to human readable resources
         // TODO : This should get extended to support other policy types as well
@@ -329,6 +339,12 @@ function getTargetName(targetId: string, targetMap: {[id: string]: string}) : st
     return targetMap[targetId]
         ? targetMap[targetId]
         : 'TARGET DELETED';
+}
+
+function getGroupName(groupId: string, groupMap: {[id: string]: GroupSummary}) : string {
+    return groupMap[groupId]
+        ? groupMap[groupId].name
+        : 'GROUP DELETED';
 }
 
 // Figure out target id based on target name and target type.

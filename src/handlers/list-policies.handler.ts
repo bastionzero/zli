@@ -1,9 +1,9 @@
-import { ApiKeyService, PolicyService, UserService } from '../http.service/http.service';
+import { ApiKeyService, GroupsService, PolicyService, UserService } from '../http.service/http.service';
 import { ConfigService } from '../config.service/config.service';
 import { Logger } from '../logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
 import { getTableOfPolicies, parsePolicyType } from '../utils';
-import { UserSummary, ApiKeyDetails, EnvironmentDetails } from '../http.service/http.service.types';
+import { UserSummary, ApiKeyDetails, EnvironmentDetails, GroupSummary } from '../http.service/http.service.types';
 import _ from 'lodash';
 import { ClusterSummary, TargetSummary } from '../types';
 
@@ -19,6 +19,7 @@ export async function listPoliciesHandler(
     const policyService = new PolicyService(configService, logger);
     const userService = new UserService(configService, logger);
     const apiKeyService = new ApiKeyService(configService, logger);
+    const groupsService = new GroupsService(configService, logger);
 
     let policies = await policyService.ListAllPolicies();
 
@@ -41,6 +42,13 @@ export async function listPoliciesHandler(
     apiKeys.forEach(apiKeyDetails => {
         apiKeyMap[apiKeyDetails.id] = apiKeyDetails;
     });
+
+    const groupMap : { [id: string]: GroupSummary } = {};
+    const groups = await groupsService.ListGroups();
+    if (!!groups)
+        groups.forEach(groupSummary => {
+            groupMap[groupSummary.idPGroupId] = groupSummary;
+        });
 
     const environmentMap : { [id: string]: EnvironmentDetails } = {};
     (await environments).forEach(environmentDetails => {
@@ -67,7 +75,7 @@ export async function listPoliciesHandler(
             await cleanExit(0, logger);
         }
         // regular table output
-        const tableString = getTableOfPolicies(policies, userMap, apiKeyMap, environmentMap, targetNameMap);
+        const tableString = getTableOfPolicies(policies, userMap, apiKeyMap, environmentMap, targetNameMap, groupMap);
         console.log(tableString);
     }
 

@@ -357,4 +357,18 @@ export interface ApiKeyDetails {
     id: string;
     name: string;
     timeCreated: Date;
-  }
+}
+
+export interface GroupSummary {
+    idPGroupId: string;
+    name: string;
+}
+
+export interface IdentityProviderGroupsMetadataResponse {
+    customerId: string;
+    creationDate: Date;
+    lastUpdateDate: Date;
+    adminEmail: string;
+    userReadonlyScope: boolean;
+    groupReadonlyScope: boolean;
+}

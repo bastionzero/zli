@@ -42,6 +42,8 @@ import { ClientSecretResponse,
     GetAllPoliciesForClusterIdResponse,
     ApiKeyDetails,
     ShellConnectionAuthDetails
+    GroupSummary,
+    IdentityProviderGroupsMetadataResponse
 } from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
@@ -587,5 +589,31 @@ export class ApiKeyService extends HttpService
     public ListAllApiKeys(): Promise<ApiKeyDetails[]>
     {
         return this.Post('list', {});
+    }
+}
+
+export class GroupsService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/groups', logger);
+    }
+
+    public ListGroups(): Promise<GroupSummary[]>
+    {
+        return this.Get('list', {});
+    }
+}
+
+export class OrganizationService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/organization/', logger);
+    }
+
+    public GetCredentialsMetadata(): Promise<IdentityProviderGroupsMetadataResponse>
+    {
+        return this.Get('groups/credentials', {});
     }
 }
