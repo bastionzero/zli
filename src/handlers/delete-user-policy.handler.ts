@@ -5,7 +5,6 @@ import { Logger } from '../logger.service/logger';
 import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
-// TODO : This currently supports only cluster users - this should be extended to target users
 export async function deleteUserFromPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
@@ -24,9 +23,19 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
     // Loop till we find the one we are looking for
     for (const policy of policies) {
         if (policy.name == policyName) {
-
-            if (policy.type !== PolicyType.KubernetesProxy){
+            if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
                 logger.error(`Deleting user from policy ${policyName} failed. Support for deleting users from ${policy.type} policies will be added soon.`);
+                await cleanExit(1, logger);
+            }
+
+            // If this user exists already
+            let userExists : boolean = false;
+            policy.subjects.forEach(subject => {
+                if(subject.id == userInfo.id)
+                    userExists = true;
+            });
+            if(!userExists) {
+                logger.error(`No user ${userEmail} exists for policy: ${policyName}`);
                 await cleanExit(1, logger);
             }
 
@@ -41,7 +50,7 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
             policy.subjects = newSubjects;
 
             // And finally update the policy
-            await policyService.UpdateKubePolicy(policy);
+            await policyService.EditPolicy(policy);
 
             logger.info(`Deleted ${userEmail} from ${policyName} policy!`);
             await cleanExit(0, logger);

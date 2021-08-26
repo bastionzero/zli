@@ -282,7 +282,11 @@ export interface TargetConnectContext {
     environments: object;
     targetUsers: object;
     verbs: object;
-  }
+}
+
+export interface TargetUser {
+    userName: string;
+}
 
 export interface PolicySummary {
     id: string;
@@ -335,7 +339,7 @@ export enum PolicyType {
     KubernetesProxy = 'KubernetesProxy'
 }
 
-export interface UpdateKubePolicyRequest {
+export interface EditPolicyRequest {
     id: string;
     name: string;
     type: string;

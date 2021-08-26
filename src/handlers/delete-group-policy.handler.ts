@@ -4,7 +4,6 @@ import { Logger } from '../logger.service/logger';
 import { GroupSummary, PolicyType } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
 
-// TODO : This currently supports only cluster groups - this should be extended to target groups
 export async function deleteGroupFromPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the group
     const groupsService = new GroupsService(configService, logger);
@@ -26,10 +25,11 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
     // Loop till we find the one we are looking for
     for (const policy of policies) {
         if (policy.name == policyName) {
-            if (policy.type !== PolicyType.KubernetesProxy){
+            if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
                 logger.error(`Deleting group from policy ${policyName} failed. Support for deleting groups from ${policy.type} policies will be added soon.`);
                 await cleanExit(1, logger);
             }
+
             // Then delete the group from the policy
             // TODO : Here index/splice can be used
             const newGroups = [];
@@ -41,7 +41,7 @@ export async function deleteGroupFromPolicyHandler(groupName: string, policyName
             policy.groups = newGroups;
 
             // And finally update the policy
-            await policyService.UpdateKubePolicy(policy);
+            await policyService.EditPolicy(policy);
 
             logger.info(`Deleted ${groupName} from ${policyName} policy!`);
             await cleanExit(0, logger);

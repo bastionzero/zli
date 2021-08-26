@@ -4,7 +4,6 @@ import { Logger } from '../logger.service/logger';
 import { Group, GroupSummary, PolicyType } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
 
-// TODO : This currently supports only cluster groups - this should be extended to target groups
 export async function addGroupToPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the group
     const groupsService = new GroupsService(configService, logger);
@@ -26,10 +25,19 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
     // Loop till we find the one we are looking for
     for (const policy of policies) {
         if (policy.name == policyName) {
-            if (policy.type !== PolicyType.KubernetesProxy){
+            if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
                 logger.error(`Adding group to policy ${policyName} failed. Support for adding groups to ${policy.type} policies will be added soon.`);
                 await cleanExit(1, logger);
             }
+
+            // If this group exists already
+            for (const group of policy.groups) {
+                if(group.name == groupSummary.name){
+                    logger.error(`Group ${groupSummary.name} exists already for policy: ${policyName}`);
+                    await cleanExit(1, logger);
+                }
+            }
+
             // Then add the group to the policy
             const groupToAdd: Group = {
                 id: groupSummary.idPGroupId,
@@ -38,7 +46,7 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
             policy.groups.push(groupToAdd);
 
             // And finally update the policy
-            await policyService.UpdateKubePolicy(policy);
+            await policyService.EditPolicy(policy);
 
             logger.info(`Added ${groupName} to ${policyName} policy!`);
             await cleanExit(0, logger);

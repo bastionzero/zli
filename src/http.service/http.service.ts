@@ -35,13 +35,13 @@ import { ClientSecretResponse,
     KubeProxyResponse,
     KubeProxyRequest,
     PolicySummary,
-    UpdateKubePolicyRequest,
+    EditPolicyRequest,
     GetUserInfoResponse,
     GetUserInfoRequest,
     GetAllPoliciesForClusterIdRequest,
     GetAllPoliciesForClusterIdResponse,
     ApiKeyDetails,
-    ShellConnectionAuthDetails
+    ShellConnectionAuthDetails,
     GroupSummary,
     IdentityProviderGroupsMetadataResponse
 } from './http.service.types';
@@ -453,10 +453,10 @@ export class PolicyService extends HttpService
     }
 
     // TODO : Check this still works after the policy context renaming/abstraction
-    public UpdateKubePolicy(
+    public EditPolicy(
         policy: PolicySummary
     ): Promise<void> {
-        const request: UpdateKubePolicyRequest = {
+        const request: EditPolicyRequest = {
             id: policy.id,
             name: policy.name,
             type: policy.type,
