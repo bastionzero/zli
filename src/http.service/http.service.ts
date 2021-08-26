@@ -603,6 +603,11 @@ export class GroupsService extends HttpService
     {
         return this.Get('list', {});
     }
+
+    public FetchGroups(): Promise<GroupSummary[]>
+    {
+        return this.Post('fetch', {});
+    }
 }
 
 export class OrganizationService extends HttpService

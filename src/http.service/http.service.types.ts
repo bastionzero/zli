@@ -294,8 +294,9 @@ export interface PolicySummary {
     context: PolicyContext
 }
 
-interface Group {
+export interface Group {
     id: string;
+    name: string;
 }
 
 export interface KubernetesPolicyClusterUsers {

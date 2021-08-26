@@ -43,7 +43,7 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
             // And finally update the policy
             await policyService.UpdateKubePolicy(policy);
 
-            logger.info(`Removed ${userEmail} from ${policyName} policy!`);
+            logger.info(`Deleted ${userEmail} from ${policyName} policy!`);
             await cleanExit(0, logger);
         }
     }

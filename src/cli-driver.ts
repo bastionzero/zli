@@ -40,11 +40,14 @@ import { kubeStatusHandler } from './handlers/status.handler';
 import { bctlHandler } from './handlers/bctl.handler';
 import { listPoliciesHandler } from './handlers/list-policies.handler';
 import { listTargetUsersHandler } from './handlers/list-target-users.handler';
+import { fetchGroupsHandler } from './handlers/fetch-groups.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
 import { describeClusterHandler } from './handlers/describe-cluster.handler';
+import { deleteGroupFromPolicyHandler } from './handlers/delete-group-policy.handler';
+import { addGroupToPolicyHandler } from './handlers/add-group-policy.handler';
 
 export class CliDriver
 {
@@ -545,6 +548,71 @@ export class CliDriver
                         await deleteUserFromPolicyHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
                     } else if (!(!!argv.add && !!argv.delete)) {
                         await listUsersHandler(argv, this.configService, this.logger);
+                    } else {
+                        this.logger.error(`Invalid flags combination. Please see help`);
+                        await cleanExit(1, this.logger);
+                    }
+                }
+            )
+            .command(
+                ['group [policyName] [groupName]'],
+                'List all groups, add group to policy, delete group from policy',
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'add',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'a',
+                                implies: ['groupName', 'policyName']
+                            }
+                        )
+                        .option(
+                            'delete',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'd',
+                                implies: ['groupName', 'policyName']
+                            }
+                        )
+                        .conflicts('add', 'delete')
+                        .positional('groupName',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .positional('policyName',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('group --json', 'List all groups, output as json, pipeable')
+                        .example('group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
+                        .example('group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
+                },
+                async (argv) => {
+                    // TODO : Handle more gracefully addition of already added group - same for deletion
+                    if (!! argv.add) {
+                        await addGroupToPolicyHandler(argv.groupName, argv.policyName, this.configService, this.logger);
+                    } else if (!! argv.delete) {
+                        await deleteGroupFromPolicyHandler(argv.groupName, argv.policyName, this.configService, this.logger);
+                    } else if (!(!!argv.add && !!argv.delete)) {
+                        await fetchGroupsHandler(argv, this.configService, this.logger);
                     } else {
                         this.logger.error(`Invalid flags combination. Please see help`);
                         await cleanExit(1, this.logger);

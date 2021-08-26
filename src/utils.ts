@@ -189,6 +189,21 @@ export function getTableOfUsers(users: UserSummary[]) : string
     return table.toString();
 }
 
+export function getTableOfGroups(groups: GroupSummary[]) : string
+{
+    const nameLength = max(groups.map(g => g.name.length).concat(16));
+    const header: string[] = ['Group Name'];
+    const columnWidths = [nameLength + 2];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    groups.forEach(g => {
+        const row = [g.name];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
 export function getTableOfTargetUsers(targetUsers: string[]) : string
 {
     const header: string[] = ['Allowed Target Users'];
