@@ -452,7 +452,6 @@ export class PolicyService extends HttpService
         return this.Post('list', {});
     }
 
-    // TODO : Check this still works after the policy context renaming/abstraction
     public EditPolicy(
         policy: PolicySummary
     ): Promise<void> {

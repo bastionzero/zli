@@ -313,14 +313,7 @@ interface PolicyEnvironment {
 
 export interface Subject {
     id: string;
-    // TODO : This was renamed to follow the api spec - test if this breaks something
     type: SubjectType;
-}
-
-// TODO : TargetType in the webapp is not of the same type as here, check if okay
-export interface Target {
-    id: string;
-    targetType: TargetType;
 }
 
 interface PolicyMetadata {

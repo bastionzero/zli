@@ -16,7 +16,6 @@ export async function fetchGroupsHandler(
         console.log(JSON.stringify(groups));
     } else {
         if (groups.length === 0){
-            // TODO : No integr?
             logger.info('There are no available groups');
             await cleanExit(0, logger);
         }
