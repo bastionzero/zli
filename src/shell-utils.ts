@@ -57,7 +57,9 @@ export async function createAndRunShell(
         // ref: https://nodejs.org/api/readline.html#readline_readline_emitkeypressevents_stream_interface
         const readline = require('readline');
         readline.emitKeypressEvents(process.stdin);
-        process.stdin.setRawMode(true);
+        if (process.stdin.isTTY) {
+            process.stdin.setRawMode(true);
+        }
         process.stdin.on('keypress', (_, key) => observer.next(key.sequence));
     });
     source.pipe(bufferTime(50), filter(buffer => buffer.length > 0)).subscribe(keypresses => {
