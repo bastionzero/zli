@@ -20,7 +20,6 @@ import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handl
 import { loginHandler } from './handlers/login.handler';
 import { connectHandler } from './handlers/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets.handler';
-import { copyHandler } from './handlers/copy.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/start-kube-daemon.handler';
@@ -458,41 +457,6 @@ export class CliDriver
                 (yargs) => {
                     return yargs
                         .option(
-                            'status',
-                            {
-                                type: 'string',
-                                array: true,
-                                choices: this.ssmTargetStatusChoices,
-                                alias: 'u'
-                            }
-                        )
-                        .option(
-                            'name',
-                            {
-                                type: 'string',
-                                demandOption: false,
-                                alias: 'n'
-                            }
-                        )
-                        .option(
-                            'detail',
-                            {
-                                type: 'boolean',
-                                default: false,
-                                demandOption: false,
-                                alias: 'd'
-                            }
-                        )
-                        .option(
-                            'showId',
-                            {
-                                type: 'boolean',
-                                default: false,
-                                demandOption: false,
-                                alias: 'i'
-                            }
-                        )
-                        .option(
                             'json',
                             {
                                 type: 'boolean',
@@ -501,10 +465,10 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('lc -i', 'List all clusters and show unique ids');
+                        .example('lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listClustersHandler(this.logger, argv, this.clusterTargets);
+                    await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
                 }
             )
             .command(
