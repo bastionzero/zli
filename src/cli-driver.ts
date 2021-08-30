@@ -279,7 +279,7 @@ export class CliDriver
             )
             .command(
                 ['policy [type]'],
-                'List all policies',
+                false, // This removes the command from the help text
                 (yargs) => {
                     return yargs
                         .option(
@@ -473,7 +473,7 @@ export class CliDriver
             )
             .command(
                 ['user [policyName] [idpEmail]'],
-                'List all users, add user to policy, delete user from policy',
+                false, // This removes the command from the help text
                 (yargs) => {
                     return yargs
                         .option(
@@ -537,7 +537,7 @@ export class CliDriver
             )
             .command(
                 ['group [policyName] [groupName]'],
-                'List all groups, add group to policy, delete group from policy',
+                false, // This removes the command from the help text
                 (yargs) => {
                     return yargs
                         .option(
@@ -601,7 +601,7 @@ export class CliDriver
             )
             .command(
                 ['targetUser <policyName> [user]'],
-                'List all users of a target, add a user of a target to policy, delete a user of a target from policy',
+                false, // This removes the command from the help text
                 (yargs) => {
                     return yargs
                         .option(
