@@ -74,19 +74,18 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	followFlag, _ := strconv.ParseBool(queryParams.Get("follow"))
 	containerName := queryParams.Get("container")
 
-	if containerName == "" {
-		containerName = "Default"
-	}
-
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
 	podLogOptions := v1.PodLogOptions{
-		Container: containerName,
-		Follow:    followFlag,
+		Follow: followFlag,
 		// TailLines: &count,
+	}
+
+	if containerName != "" {
+		podLogOptions.Container = containerName
 	}
 
 	// Create our api object
