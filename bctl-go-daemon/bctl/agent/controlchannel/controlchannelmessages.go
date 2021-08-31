@@ -19,12 +19,3 @@ type RegisterAgentMessage struct {
 	EnvironmentId  string `json:"environmentId"`
 	ClusterName    string `json:"clusterName"`
 }
-
-type GetChallangeMessage struct {
-	OrgId       string `json:"orgId"`
-	ClusterName string `json:"clusterName"`
-}
-
-type GetChallangeResponse struct {
-	Challange string `json:"challange"`
-}

@@ -29,7 +29,7 @@ type LogAction struct {
 }
 
 const (
-	LogData = "kube/logs"
+	LogData = "kube/log"
 )
 
 func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
@@ -72,6 +72,11 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	// Add any kubect flags that were past as query params
 	queryParams := endpointWithQuery.Query()
 	followFlag, _ := strconv.ParseBool(queryParams.Get("follow"))
+	containerName := queryParams.Get("container")
+
+	if containerName == "" {
+		containerName = "Default"
+	}
 
 	// Make our cancel context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -79,7 +84,7 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
 	podLogOptions := v1.PodLogOptions{
-		Container: "bastion",
+		Container: containerName,
 		Follow:    followFlag,
 		// TailLines: &count,
 	}
