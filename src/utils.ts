@@ -112,11 +112,21 @@ export function isGuid(id: string): boolean{
 
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
-    const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
-    const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
+    // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
+    const targetNameLength = max(targets.map(t => t.name.length)) + 2;
+    const envNameLength = max(envs.map(e => e.name.length)) + 2;
 
     const header: string[] = ['Type', 'Name', 'Environment'];
-    const columnWidths = [10, targetNameLength + 2, envNameLength + 2];
+    const columnWidths = [];
+    if (!showDetail) {
+        columnWidths.push(9);
+        columnWidths.push(targetNameLength > 44 ? 44 : targetNameLength);
+        columnWidths.push(envNameLength > 47 ? 47 : envNameLength);
+    } else {
+        columnWidths.push(9);
+        columnWidths.push(targetNameLength > 32 ? 32 : targetNameLength);
+        columnWidths.push(envNameLength > 31 ? 31 : envNameLength);
+    }
 
     if(showGuid)
     {
@@ -127,7 +137,7 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
     if(showDetail)
     {
         header.push('Agent Version', 'Status', 'Target Users');
-        columnWidths.push(15, 10, 38);
+        columnWidths.push(15, 9, 29);
     }
 
     // ref: https://github.com/cli-table/cli-table3
@@ -231,9 +241,8 @@ export function getTableOfPolicies(
     groupMap : {[id: string]: GroupSummary}
 ) : string
 {
-    const nameLength = max(policies.map(p => p.name.length).concat(16));
     const header: string[] = ['Name', 'Type', 'Subject', 'Resource', 'Target Users'];
-    const columnWidths = [nameLength + 2, 22, 26, 35];
+    const columnWidths = [24, 19, 26, 28, 29];
 
     const table = new Table({ head: header, colWidths: columnWidths });
     policies.forEach(p => {
