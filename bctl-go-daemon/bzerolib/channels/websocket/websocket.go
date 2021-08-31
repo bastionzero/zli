@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,6 +18,7 @@ import (
 
 	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 
 	ed "crypto/ed25519"
 
@@ -33,30 +35,29 @@ const (
 	// SignalR
 	signalRMessageTerminatorByte = 0x1E
 	signalRTypeNumber            = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
+
+	cleanWebsocketExit = "websocket: close 1000 (normal)"
 )
 
 type IWebsocket interface {
-	Connect(serviceUrl string, hubEndpoint string, headers map[string]string, params map[string]string) error
+	Connect() error
+	Receive()
 	Send(agentMessage wsmsg.AgentMessage) error
-	// We should probably also have a close method here too
 }
 
 // This will be the client that we use to store our websocket connection
 type Websocket struct {
 	Client  *websocket.Conn
+	logger  *lggr.Logger
 	IsReady bool
 
 	// Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
 	SocketLock sync.Mutex
 
-	// These objects are used for closing the websocket
-	Cancel context.CancelFunc
-	Closed bool
-
 	// These are the channels for recieving and sending messages and done
 	InputChannel  chan wsmsg.AgentMessage
 	OutputChannel chan wsmsg.AgentMessage
-	DoneChannel   chan string
+	DoneChannel   chan bool
 
 	// Function for figuring out correct Target SignalR Hub
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
@@ -64,38 +65,47 @@ type Websocket struct {
 	// Flag to indicate if we should automatically try to reconnect
 	autoReconnect bool
 
-	// Flag to indicate if we should solve the challenge first before connecting
-	getChallenge bool
+	// Connection variables
+	serviceUrl  string
+	hubEndpoint string
+	params      map[string]string
+	headers     map[string]string
 }
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
-func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool, getChallenge bool) (*Websocket, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewWebsocket(logger *lggr.Logger,
+	serviceUrl string,
+	hubEndpoint string,
+	params map[string]string,
+	headers map[string]string,
+	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
+	autoReconnect bool,
+	getChallenge bool) (*Websocket, error) {
+
+	ctx := context.TODO() // TODO: get this from parent channel
 
 	ret := Websocket{
-		Cancel: cancel,
-		Closed: false,
-
+		logger:              logger,
 		InputChannel:        make(chan wsmsg.AgentMessage, 200),
 		OutputChannel:       make(chan wsmsg.AgentMessage, 200),
-		DoneChannel:         make(chan string, 1),
+		DoneChannel:         make(chan bool),
 		targetSelectHandler: targetSelectHandler,
-
-		autoReconnect: autoReconnect,
-
-		getChallenge: getChallenge,
+		getChallenge:        getChallenge,
+		autoReconnect:       autoReconnect,
+		serviceUrl:          serviceUrl,
+		hubEndpoint:         hubEndpoint,
+		params:              params,
+		headers:             headers,
 	}
 
-	// Connect to the websocket, catch any errors
-	// if err := ret.Connect(serviceUrl, hubEndpoint, headers, params); err != nil {
-	// 	return &ret, fmt.Errorf("Error connecting to websocket: %s", err.Error())
-	// }
+	ret.Connect()
 
-	ret.Connect(serviceUrl, hubEndpoint, headers, params)
-
+	// Listener for any outgoing messages
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case msg := <-ret.OutputChannel:
 				ret.Send(msg)
 			}
@@ -109,74 +119,65 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 			case <-ctx.Done():
 				return
 			default:
-				_, rawMessage, err := ret.Client.ReadMessage()
-
-				if err != nil && ret.Closed == false {
-					// If we see an error, and we are not trying to close the connection
-					// TODO: Handle this error better
-					log.Println("Error in websocket, will attempt to reconnect: ", err)
-					ret.IsReady = false
-					if err.Error() == "websocket: close 1000 (normal)" {
-						log.Println("Normal closure in websocket. Ending websocket connection")
-						return
-					}
-					if ret.autoReconnect {
-						ret.Connect(serviceUrl, hubEndpoint, headers, params)
-					} else {
-						log.Println("Auto-recoonect disabled, returning")
-						return
-					}
-				} else if ret.Closed == true {
-					// If we are trying to close to connection, end the goroutine
+				if err := ret.Receive(); err != nil {
+					ret.logger.Error(err)
+					ret.DoneChannel <- true
 					return
-				} else {
-					// Always trim off the termination char if its there
-					if rawMessage[len(rawMessage)-1] == signalRMessageTerminatorByte {
-						rawMessage = rawMessage[0 : len(rawMessage)-1]
-					}
-
-					// Also check to see if we have multiple messages
-					splitmessages := bytes.Split(rawMessage, []byte{signalRMessageTerminatorByte})
-
-					for _, msg := range splitmessages {
-						// unwrap signalR
-						var wrappedMessage wsmsg.SignalRWrapper
-						if err := json.Unmarshal(msg, &wrappedMessage); err != nil {
-							log.Printf("Error unmarshalling SignalR message from Bastion: %v", string(msg))
-							break
-						}
-
-						// push to channel
-						if wrappedMessage.Type != signalRTypeNumber {
-							log.Printf("Ignoring SignalR message with type %v", wrappedMessage.Type)
-						} else if len(wrappedMessage.Arguments) != 0 {
-							if wrappedMessage.Target == "CloseConnection" {
-								log.Printf("Close Connection message received. Closing websocket")
-
-								// Cancel our context
-								cancel()
-
-								// Deserialize the argument
-								var closeMessage wsmsg.CloseMessage
-								if err := json.Unmarshal(wrappedMessage.Arguments[0].MessagePayload, &closeMessage); err != nil {
-									log.Printf("Error unmarshalling SignalR Close Message from Bastion: %v", string(wrappedMessage.Arguments[0].MessagePayload))
-									break
-								}
-
-								// Send an alert on our done channel for our datachannel
-								ret.DoneChannel <- closeMessage.Message
-
-								return
-							}
-							ret.InputChannel <- wrappedMessage.Arguments[0]
-						}
-					}
 				}
-				break
 			}
 		}
 	}()
 	return &ret, nil
+}
+
+// Returns error on websocket closed
+func (w *Websocket) Receive() error {
+	// Read incoming message(s)
+	_, rawMessage, err := w.Client.ReadMessage()
+
+	if err != nil {
+		w.IsReady = false
+
+		// Check if it's a clean exit or we don't need to reconnect
+		if err.Error() == cleanWebsocketExit || !w.autoReconnect {
+			return errors.New("Websocket closed")
+		} else { // else, reconnect
+			msg := fmt.Errorf("error in websocket, will attempt to reconnect: %s", err)
+			w.logger.Error(msg)
+			w.Connect()
+		}
+	} else {
+		// Always trim off the termination char if its there
+		if rawMessage[len(rawMessage)-1] == signalRMessageTerminatorByte {
+			rawMessage = rawMessage[0 : len(rawMessage)-1]
+		}
+
+		// Also check to see if we have multiple messages
+		splitmessages := bytes.Split(rawMessage, []byte{signalRMessageTerminatorByte})
+
+		for _, msg := range splitmessages {
+			// unwrap signalR
+			var wrappedMessage wsmsg.SignalRWrapper
+			if err := json.Unmarshal(msg, &wrappedMessage); err != nil {
+				msg := fmt.Errorf("error unmarshalling SignalR message from Bastion: %v", string(msg))
+				w.logger.Error(msg)
+				break
+			}
+
+			// push to channel
+			if wrappedMessage.Type != signalRTypeNumber {
+				msg := fmt.Sprintf("Ignoring SignalR message with type # %v", wrappedMessage.Type)
+				w.logger.Info(msg)
+
+			} else if len(wrappedMessage.Arguments) != 0 {
+				if wrappedMessage.Target == "CloseConnection" {
+					return errors.New("closing message received; websocket closed")
+				}
+				w.InputChannel <- wrappedMessage.Arguments[0]
+			}
+		}
+	}
+	return nil
 }
 
 // Function to write signalr message to websocket
@@ -189,37 +190,35 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	w.SocketLock.Lock()
 	defer w.SocketLock.Unlock()
 
-	log.Printf("Sending message to the Bastion")
-
 	// Select target
-	target, err := w.targetSelectHandler(agentMessage)
+	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
 	if err != nil {
-		return fmt.Errorf("Error in selecting SignalR Endpoint target name: %v", err.Error())
+		return fmt.Errorf("error in selecting SignalR Endpoint target name: %v", err.Error())
 	}
-	log.Printf("Target: %v", target)
+
+	msg := fmt.Sprintf("Sending %s message to the Bastion", target)
+	w.logger.Info(msg)
 
 	signalRMessage := wsmsg.SignalRWrapper{
-		Target:    target, // Leave up to daemon and agent to write more specific target specification function
+		Target:    target,
 		Type:      signalRTypeNumber,
 		Arguments: []wsmsg.AgentMessage{agentMessage},
 	}
 
-	msgBytes, err := json.Marshal(signalRMessage)
-	if err != nil {
-		return fmt.Errorf("Error marshalling outgoing SignalR Message: %v", signalRMessage)
+	if msgBytes, err := json.Marshal(signalRMessage); err != nil {
+		return fmt.Errorf("error marshalling outgoing SignalR Message: %v", signalRMessage)
+	} else {
+		// Write our message to websocket
+		if err = w.Client.WriteMessage(websocket.TextMessage, append(msgBytes, signalRMessageTerminatorByte)); err != nil {
+			return err
+		} else {
+			return nil
+		}
 	}
-
-	// Write our message to websocket
-	if err = w.Client.WriteMessage(websocket.TextMessage, append(msgBytes, signalRMessageTerminatorByte)); err != nil {
-		return err
-	}
-
-	return nil
 }
 
-func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[string]string, params map[string]string) {
-	connected := false
-	for connected == false {
+func (w *Websocket) Connect() {
+	for !w.IsReady {
 
 		if w.getChallenge {
 			// First get the config from the vault
@@ -238,18 +237,18 @@ func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[s
 
 		// First negotiate in order to get a url to connect to
 		httpClient := &http.Client{}
-		negotiateUrl := "https://" + serviceUrl + hubEndpoint + "/negotiate"
+		negotiateUrl := "https://" + w.serviceUrl + w.hubEndpoint + "/negotiate"
 		req, _ := http.NewRequest("POST", negotiateUrl, nil)
 
 		// Add the expected headers
-		for name, values := range headers {
+		for name, values := range w.headers {
 			// Loop over all values for the name.
 			req.Header.Set(name, values)
 		}
 
 		// Set any query params
 		q := req.URL.Query()
-		for key, values := range params {
+		for key, values := range w.params {
 			q.Add(key, values)
 		}
 
@@ -258,7 +257,7 @@ func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[s
 		req.URL.RawQuery = q.Encode()
 
 		// Make the request and wait for the body to close
-		log.Printf("Starting negotiation with URL %s", negotiateUrl)
+		w.logger.Info(fmt.Sprintf("Starting negotiation with URL %s", negotiateUrl))
 		res, _ := httpClient.Do(req)
 		defer res.Body.Close()
 
@@ -271,55 +270,55 @@ func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[s
 		// Extract out the connection token
 		bodyBytes, _ := ioutil.ReadAll(res.Body)
 		var m map[string]interface{}
-		err := json.Unmarshal(bodyBytes, &m)
-		if err != nil {
+
+		if err := json.Unmarshal(bodyBytes, &m); err != nil {
 			// TODO: Add error handling around this, we should at least retry and then bubble up the error to the user
-			log.Printf("Error un-marshalling negotiate response: %s", m)
-			connected = false
+			w.logger.Error(fmt.Errorf("error un-marshalling negotiate response: %s", m))
+		}
+
+		connectionId := m["connectionId"]
+
+		// Add the connection id to the list of params
+		w.params["id"] = connectionId.(string)
+		w.params["clientProtocol"] = "1.5"
+		w.params["transport"] = "WebSockets"
+
+		// Make an interrupt channel
+		// TODO: Think this can be removed
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+
+		// Build our url u , add our params as well
+		websocketUrl := url.URL{Scheme: "wss", Host: w.serviceUrl, Path: w.hubEndpoint}
+		q = websocketUrl.Query()
+		for key, value := range w.params {
+			q.Set(key, value)
+		}
+		websocketUrl.RawQuery = q.Encode()
+
+		msg := fmt.Sprintf("Negotiation finished, received %d. Connecting to %s", res.StatusCode, websocketUrl.String())
+		w.logger.Info(msg)
+
+		var err error
+		w.Client, _, err = websocket.DefaultDialer.Dial(
+			websocketUrl.String(),
+			http.Header{"Authorization": []string{w.headers["Authorization"]}})
+		if err != nil {
+			w.logger.Error(err)
 		} else {
-			connectionId := m["connectionId"]
-
-			// Add the connection id to the list of params
-			params["id"] = connectionId.(string)
-			params["clientProtocol"] = "1.5"
-			params["transport"] = "WebSockets"
-
-			// Make an interrupt channel
-			// TODO: Think this can be removed
-			interrupt := make(chan os.Signal, 1)
-			signal.Notify(interrupt, os.Interrupt)
-
-			// Build our url u , add our params as well
-			websocketUrl := url.URL{Scheme: "wss", Host: serviceUrl, Path: hubEndpoint}
-			q = websocketUrl.Query()
-			for key, value := range params {
-				q.Set(key, value)
-			}
-			websocketUrl.RawQuery = q.Encode()
-
-			log.Printf("Negotiation finished, received %d. Connecting to %s", res.StatusCode, websocketUrl.String())
-
-			w.Client, _, err = websocket.DefaultDialer.Dial(websocketUrl.String(), http.Header{"Authorization": []string{headers["Authorization"]}})
-
 			// Define our protocol and version
 			// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
 			if err := w.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), 0x1E)); err != nil {
-				log.Println("Error when trying to agree on version for SignalR!")
-				connected = false
+				w.logger.Info("Error when trying to agree on version for SignalR!")
 				w.Client.Close()
+			} else {
+				w.IsReady = true
+				break
 			}
 		}
 
-		if err != nil {
-			connected = false
-		} else {
-			connected = true
-			w.IsReady = true
-			break
-		}
-
 		// Sleep in between
-		log.Printf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds)
+		w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
 		time.Sleep(time.Second * sleepIntervalInSeconds)
 	}
 }
