@@ -38,7 +38,7 @@ export async function generateKubeconfigHandler(
                         reject();
                         return;
                     }
-                    logger.info('Generated and saved key file');
+                    logger.debug('Generated and saved key file');
                 });
 
                 await fs.writeFile(pathToCert, keys.certificate, function (err: any) {
@@ -47,7 +47,7 @@ export async function generateKubeconfigHandler(
                         reject();
                         return;
                     }
-                    logger.info('Generated and saved cert file');
+                    logger.debug('Generated and saved cert file');
                 });
 
                 // Generate a token that can be used for auth
@@ -94,7 +94,6 @@ apiVersion: v1
 clusters:
 - cluster:
     server: https://${kubeConfig['localHost']}:${daemonPort}
-    # certificate-authority: ${kubeConfig['certPath']}
     insecure-skip-tls-verify: true
   name: bctl-server
 contexts:
