@@ -3,10 +3,8 @@ import util from 'util';
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 
-const pem = require('pem');
 const path = require('path');
 const fs = require('fs');
-
 
 export async function generateKubeconfigHandler(
     argv: any,
@@ -21,6 +19,8 @@ export async function generateKubeconfigHandler(
 
         // Create and save key/cert
         const createCertPromise = new Promise<void>(async (resolve, reject) => {
+            // Define pem here as if the config has already been created, this codeblock will never be executed
+            const pem = require('pem');
             pem.createCertificate({ days: 999, selfSigned: true }, async function (err: any, keys: any) {
                 if (err) {
                     throw err;
@@ -54,13 +54,21 @@ export async function generateKubeconfigHandler(
                 const randtoken = require('rand-token');
                 const token = randtoken.generate(128) + '++++';
 
+                // Find an open port, define it here as if the config has already been created, this codeblock will never be executed
+                const findPort = require('find-open-port');
+                const localPort = new Promise<number>(async (resolve, reject) => {
+                    findPort().then((port: any) => {
+                        resolve(port);
+                    });
+                });
+
                 // Now save the path in the configService
                 kubeConfig = {
                     keyPath: pathToKey,
                     certPath: pathToCert,
                     token: token,
                     localHost: 'localhost',
-                    localPort: 1234,
+                    localPort: await localPort,
                     localPid: null,
                     assumeRole: null,
                     assumeCluster: null
