@@ -34,5 +34,22 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     // Then add the extract the args
     kubeArgs = kubeArgs.concat(kubeArgsRaw);
 
-    spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
+    const kubeCommandProcess = spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
+
+    kubeCommandProcess.on('close', async (code: number) => {
+        logger.debug(`Kube command process exited with code ${code}`);
+
+        if (code != 0) {
+            // Check to ensure they are using the right context
+            // Imported here since the code should usually be 0 
+            const { promisify } = require('util');
+            const exec = promisify(require('child_process').exec)
+
+            const currentContext = await exec('kubectl config current-context ');
+
+            if (currentContext != 'bctl-server') {
+                logger.warn('Make sure you using the correct kube config!');
+            }
+        }
+    });
 }
