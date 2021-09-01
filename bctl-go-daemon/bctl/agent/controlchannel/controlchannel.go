@@ -49,18 +49,15 @@ func NewControlChannel(logger *lggr.Logger,
 	clusterName string,
 	environmentId string,
 	agentVersion string,
+	idpProvider string,
+	idpOrgId string,
+	namespace string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
 
 	subLogger := logger.GetWebsocketLogger()
 
 	// Populate keys if they haven't been generated already
-	config, err := newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)
-	if err != nil {
-		logger.Error(err)
-		return &ControlChannel{}, err
-	}
-
-	solvedChallenge, err := getAndSolveChallenge(orgId, clusterName, serviceUrl, config.Data.PrivateKey)
+	config, err := newAgent(serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName, idpProvider, idpOrgId, namespace)
 	if err != nil {
 		logger.Error(err)
 		return &ControlChannel{}, err
@@ -253,7 +250,7 @@ func healthCheck() ([]byte, error) {
 	return aliveBytes, nil
 }
 
-func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string) (*vault.Vault, error) {
+func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string, idpProvider string, idpOrgId string, namespace string) (*vault.Vault, error) {
 	config, _ := vault.LoadVault()
 
 	// Check if vault is empty, if so generate a private, public key pair
@@ -266,11 +263,15 @@ func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, ag
 			pubkeyString := base64.StdEncoding.EncodeToString([]byte(publicKey))
 			privkeyString := base64.StdEncoding.EncodeToString([]byte(privateKey))
 			config.Data = vault.SecretData{
-				PublicKey:  pubkeyString,
-				PrivateKey: privkeyString,
-			}
-			if err := config.Save(); err != nil {
-				return nil, fmt.Errorf("error saving vault: %s", err)
+				PublicKey:     pubkeyString,
+				PrivateKey:    privkeyString,
+				OrgId:         orgId,
+				ServiceUrl:    serviceUrl,
+				ClusterName:   clusterName,
+				EnvironmentId: environmentId,
+				Namespace:     namespace,
+				IdpProvider:   idpProvider,
+				IdpOrgId:      idpOrgId,
 			}
 
 			// Register with Bastion
@@ -296,6 +297,11 @@ func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, ag
 			if err != nil || response.StatusCode != http.StatusOK {
 				rerr := fmt.Errorf("error making post request to register agent. Error: %s. Response: %v", err, response)
 				return nil, rerr
+			}
+
+			// If the registration went ok, save the config
+			if err := config.Save(); err != nil {
+				return nil, fmt.Errorf("error saving vault: %v", err.Error())
 			}
 		}
 	} else {

@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	serviceUrl, orgId, clusterName string
-	environmentId, activationToken string
+	serviceUrl, orgId, clusterName   string
+	environmentId, activationToken   string
+	idpProvider, namespace, idpOrgId string
 )
 
 const (
@@ -46,7 +47,7 @@ func main() {
 	}
 
 	// Connect to the control channel
-	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, version, controlchannelTargetSelectHandler)
+	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, version, idpProvider, idpOrgId, namespace, controlchannelTargetSelectHandler)
 	if err != nil {
 		select {} // TODO: Should we be trying again here?
 	}
@@ -148,6 +149,9 @@ func parseFlags() error {
 	orgId = os.Getenv("ORG_ID")
 	clusterName = os.Getenv("CLUSTER_NAME")
 	environmentId = os.Getenv("ENVIRONMENT")
+	idpProvider = os.Getenv("IDP_PROVIDER")
+	idpOrgId = os.Getenv("IDP_ORG_ID")
+	namespace = os.Getenv("NAMESPACE")
 
 	// Ensure we have all needed vars
 	missing := []string{}
@@ -161,8 +165,6 @@ func parseFlags() error {
 	case clusterName == "":
 		missing = append(missing, "clusterName")
 		fallthrough
-	// case environmentId == "":
-	// 	missing = append(missing, "environmentId")
 	case activationToken == "":
 		missing = append(missing, "activationToken")
 	}

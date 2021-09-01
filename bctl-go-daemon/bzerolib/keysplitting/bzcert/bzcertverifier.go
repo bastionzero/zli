@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"time"
 
 	ed "crypto/ed25519"
@@ -42,9 +41,8 @@ const (
 	Custom    ProviderType = "custom"
 )
 
-func NewBZCertVerifier(bzcert *BZCert) IBZCertVerifier {
-	orgId := os.Getenv("IDP_ORG_ID")
-	provider := ProviderType(os.Getenv("IDP_PROVIDER"))
+func NewBZCertVerifier(bzcert *BZCert, idpProvider string, idpOrgId string) IBZCertVerifier {
+	provider := ProviderType(idpProvider)
 	// customIss := os.Getenv("CUSTOM_IDP")
 
 	iss := ""
@@ -52,7 +50,7 @@ func NewBZCertVerifier(bzcert *BZCert) IBZCertVerifier {
 	case Google:
 		iss = googleUrl
 	case Microsoft:
-		iss = getMicrosoftIssuerUrl(orgId)
+		iss = getMicrosoftIssuerUrl(idpOrgId)
 	// case Custom:
 	// 	iss = customIss // Any valid iss requires a discovery document
 	default:
@@ -60,7 +58,7 @@ func NewBZCertVerifier(bzcert *BZCert) IBZCertVerifier {
 	}
 
 	return &BZCertVerifier{
-		orgId:       orgId,
+		orgId:       idpOrgId,
 		orgProvider: provider,
 		iss:         iss,
 		cert:        bzcert,
