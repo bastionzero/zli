@@ -300,7 +300,7 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('policy --json', 'List all policies, output as json, pipeable');
+                        .example('$0 policy --json', 'List all policies, output as json, pipeable');
                 },
                 async (argv) => {
                     await listPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
@@ -465,7 +465,7 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('lc --json', 'List all open zli connections, output as json, pipeable');
+                        .example('$0 lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
                     await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
@@ -518,9 +518,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('user --json', 'List all users, output as json, pipeable')
-                        .example('user --add test@test.com test-cluster', 'Adds the test@test.com IDP user to test-cluster policy')
-                        .example('user -d test@test.com test-cluster', 'Removes the test@test.com IDP user from test-cluster policy');
+                        .example('$0 user --json', 'List all users, output as json, pipeable')
+                        .example('$0 user --add test@test.com test-cluster', 'Adds the test@test.com IDP user to test-cluster policy')
+                        .example('$0 user -d test@test.com test-cluster', 'Removes the test@test.com IDP user from test-cluster policy');
                 },
                 async (argv) => {
                     if (!! argv.add) {
@@ -582,9 +582,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('group --json', 'List all groups, output as json, pipeable')
-                        .example('group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
-                        .example('group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
+                        .example('$0 group --json', 'List all groups, output as json, pipeable')
+                        .example('$0 group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
+                        .example('$0 group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
                 },
                 async (argv) => {
                     if (!! argv.add) {
@@ -646,9 +646,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('targetUser --json', 'List all target users, output as json, pipeable')
-                        .example('targetUser --add cool-policy centos', 'Adds the centos user to cool-policy')
-                        .example('targetUser -d test-cluster admin', 'Removes the admin RBAC Role to the test-cluster policy');
+                        .example('$0 targetUser --json', 'List all target users, output as json, pipeable')
+                        .example('$0 targetUser --add cool-policy centos', 'Adds the centos user to cool-policy')
+                        .example('$0 targetUser -d test-cluster admin', 'Removes the admin RBAC Role to the test-cluster policy');
                 },
                 async (argv) => {
                     if (!! argv.add) {
