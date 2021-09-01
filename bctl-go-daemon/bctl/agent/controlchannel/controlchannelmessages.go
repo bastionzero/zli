@@ -6,7 +6,7 @@ type NewDatachannelMessage struct {
 	Token        string `json:"token"`
 }
 
-type AliveCheckToBastionFromClusterMessage struct {
+type AliveCheckClusterToBastionMessage struct {
 	Alive        bool     `json:"alive"`
 	ClusterUsers []string `json:"clusterUsers"`
 }

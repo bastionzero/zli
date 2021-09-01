@@ -72,7 +72,7 @@ func startDatachannel(message cc.NewDatachannelMessage) {
 func controlchannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 	switch wsmsg.MessageType(agentMessage.MessageType) {
 	case wsmsg.HealthCheck:
-		return "AliveCheckToBastionFromCluster", nil
+		return "AliveCheckClusterToBastion", nil
 	default:
 		return "", fmt.Errorf("unsupported message type")
 	}
@@ -85,13 +85,13 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 		if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
 			switch keysplittingPayloadVal["action"] {
 			case "kube/restapi":
-				return "ResponseToBastionFromCluster", nil
+				return "ResponseClusterToBastion", nil
 			case "kube/exec/start":
-				return "ResponseToBastionFromCluster", nil
+				return "ResponseClusterToBastion", nil
 			case "kube/exec/input":
-				return "ResponseToBastionFromCluster", nil
+				return "ResponseClusterToBastion", nil
 			case "kube/exec/resize":
-				return "ResponseToBastionFromCluster", nil
+				return "ResponseClusterToBastion", nil
 			}
 		}
 	}
@@ -102,11 +102,11 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 		// p := payload["keysplittingPayload"].(map[string]interface{})
 		switch messagePayload.Type {
 		case "kube/exec/stdout":
-			return "StdoutToBastionFromCluster", nil
+			return "StdoutClusterToBastion", nil
 		case "kube/exec/stderr":
-			return "StderrToBastionFromCluster", nil
+			return "StderrClusterToBastion", nil
 		case "kube/log":
-			return "ResponseLogToBastionFromCluster", nil
+			return "ResponseLogClusterToBastion", nil
 		}
 	}
 
