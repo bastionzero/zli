@@ -1,7 +1,50 @@
 import { IdP, TargetType } from '../types';
 import got, { Got, HTTPError } from 'got/dist/source';
 import { Dictionary } from 'lodash';
-import { ClientSecretResponse, CloseConnectionRequest, CloseSessionRequest, CloseSessionResponse, ConnectionSummary, CreateConnectionRequest, CreateConnectionResponse, CreateSessionRequest, CreateSessionResponse, DynamicAccessConfigSummary, EnvironmentDetails, GetAutodiscoveryScriptRequest, GetAutodiscoveryScriptResponse, GetTargetPolicyRequest, GetTargetPolicyResponse, ListSessionsResponse, ListSsmTargetsRequest, MfaClearRequest, MfaResetRequest, MfaResetResponse, MfaTokenRequest, MixpanelTokenResponse, SessionDetails, SsmTargetSummary, TargetUser, UserRegisterResponse, UserSummary, Verb, GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, ClusterSummary, KubeProxyResponse, KubeProxyRequest, KubernetesPolicySummary, UpdateKubePolicyRequest, GetUserInfoResponse, GetUserInfoRequest, GetAllPoliciesForClusterIdRequest, GetAllPoliciesForClusterIdResponse, ShellConnectionAuthDetails} from './http.service.types';
+import { ClientSecretResponse,
+    CloseConnectionRequest,
+    CloseSessionRequest,
+    CloseSessionResponse,
+    ConnectionSummary,
+    CreateConnectionRequest,
+    CreateConnectionResponse,
+    CreateSessionRequest,
+    CreateSessionResponse,
+    DynamicAccessConfigSummary,
+    EnvironmentDetails,
+    GetAutodiscoveryScriptRequest,
+    GetAutodiscoveryScriptResponse,
+    GetTargetPolicyRequest,
+    GetTargetPolicyResponse,
+    ListSessionsResponse,
+    ListSsmTargetsRequest,
+    MfaClearRequest,
+    MfaResetRequest,
+    MfaResetResponse,
+    MfaTokenRequest,
+    MixpanelTokenResponse,
+    SessionDetails,
+    SsmTargetSummary,
+    TargetUser,
+    UserRegisterResponse,
+    UserSummary,
+    Verb,
+    GetKubeUnregisteredAgentYamlResponse,
+    GetKubeUnregisteredAgentYamlRequest,
+    ClusterSummary,
+    KubeProxyResponse,
+    KubeProxyRequest,
+    PolicySummary,
+    EditPolicyRequest,
+    GetUserInfoResponse,
+    GetUserInfoRequest,
+    GetAllPoliciesForClusterIdRequest,
+    GetAllPoliciesForClusterIdResponse,
+    ApiKeyDetails,
+    ShellConnectionAuthDetails,
+    GroupSummary,
+    IdentityProviderGroupsMetadataResponse
+} from './http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
@@ -377,6 +420,11 @@ export class UserService extends HttpService
     {
         return this.Get('me', {});
     }
+
+    public ListUsers(): Promise<UserSummary[]>
+    {
+        return this.Post('list', {});
+    }
 }
 
 export class DynamicAccessConfigService extends HttpService
@@ -392,6 +440,34 @@ export class DynamicAccessConfigService extends HttpService
     }
 }
 
+export class PolicyService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/Policy', logger);
+    }
+
+    public ListAllPolicies(): Promise<PolicySummary[]>
+    {
+        return this.Post('list', {});
+    }
+
+    public EditPolicy(
+        policy: PolicySummary
+    ): Promise<void> {
+        const request: EditPolicyRequest = {
+            id: policy.id,
+            name: policy.name,
+            type: policy.type,
+            subjects: policy.subjects,
+            groups: policy.groups,
+            context: JSON.stringify(policy.context),
+            policyMetadata: policy.metadata
+        };
+        return this.Post('edit', request);
+    }
+}
+
 export class PolicyQueryService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
@@ -399,7 +475,7 @@ export class PolicyQueryService extends HttpService
         super(configService, 'api/v1/policy-query', logger);
     }
 
-    public ListTargetUsers(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<GetTargetPolicyResponse>
+    public ListTargetOSUsers(targetId: string, targetType: TargetType, verb?: Verb, targetUser?: TargetUser): Promise<GetTargetPolicyResponse>
     {
         const request: GetTargetPolicyRequest = {
             targetId: targetId,
@@ -502,31 +578,46 @@ export class KubeService extends HttpService
     }
 }
 
-export class PolicyService extends HttpService
+export class ApiKeyService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
     {
-        super(configService, 'api/v1/Policy', logger);
+        super(configService, 'api/v1/ApiKey', logger);
     }
 
-    public ListAllPolicies(
-    ): Promise<KubernetesPolicySummary[]>
+    public ListAllApiKeys(): Promise<ApiKeyDetails[]>
     {
         return this.Post('list', {});
     }
+}
 
-    public UpdateKubePolicy(
-        policy: KubernetesPolicySummary
-    ): Promise<void> {
-        const request: UpdateKubePolicyRequest = {
-            id: policy.id,
-            name: policy.name,
-            type: policy.type,
-            subjects: policy.subjects,
-            groups: policy.groups,
-            context: JSON.stringify(policy.context),
-            policyMetadata: policy.metadata
-        };
-        return this.Post('edit', request);
+export class GroupsService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/groups', logger);
+    }
+
+    public ListGroups(): Promise<GroupSummary[]>
+    {
+        return this.Get('list', {});
+    }
+
+    public FetchGroups(): Promise<GroupSummary[]>
+    {
+        return this.Post('fetch', {});
+    }
+}
+
+export class OrganizationService extends HttpService
+{
+    constructor(configService: ConfigService, logger: Logger)
+    {
+        super(configService, 'api/v1/organization/', logger);
+    }
+
+    public GetCredentialsMetadata(): Promise<IdentityProviderGroupsMetadataResponse>
+    {
+        return this.Get('groups/credentials', {});
     }
 }

@@ -1,6 +1,6 @@
-import { ConnectionDetails, ParsedTargetString, SsmTargetStatus, TargetSummary, TargetType, KubeClusterStatus, ClusterSummary } from './types';
-import { max, filter, concat } from 'lodash';
-import { EnvironmentDetails } from './http.service/http.service.types';
+import { ConnectionDetails, ParsedTargetString, TargetStatus, TargetSummary, TargetType} from './types';
+import { max, filter, concat, map } from 'lodash';
+import { ApiKeyDetails, EnvironmentDetails, GroupSummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext, UserSummary } from './http.service/http.service.types';
 import Table from 'cli-table3';
 import { Logger } from './logger.service/logger';
 import { cleanExit } from './handlers/clean-exit.handler';
@@ -15,7 +15,7 @@ export const targetStringExample : string = '[targetUser@]<targetId-or-targetNam
 
 export function parseTargetType(targetType: string) : TargetType
 {
-    const targetTypePattern = /^(ssm|dynamic)$/i; // case insensitive check for targetType
+    const targetTypePattern = /^(ssm|ssh|dynamic|cluster)$/i; // case insensitive check for targetType
 
     if(! targetTypePattern.test(targetType))
         return undefined;
@@ -23,35 +23,39 @@ export function parseTargetType(targetType: string) : TargetType
     return <TargetType> targetType.toUpperCase();
 }
 
-export function parseTargetStatus(targetStatus: string) : SsmTargetStatus {
-    switch (targetStatus.toLowerCase()) {
-    case SsmTargetStatus.NotActivated.toLowerCase():
-        return SsmTargetStatus.NotActivated;
-    case SsmTargetStatus.Offline.toLowerCase():
-        return SsmTargetStatus.Offline;
-    case SsmTargetStatus.Online.toLowerCase():
-        return SsmTargetStatus.Online;
-    case SsmTargetStatus.Terminated.toLowerCase():
-        return SsmTargetStatus.Terminated;
-    case SsmTargetStatus.Error.toLowerCase():
-        return SsmTargetStatus.Error;
+export function parsePolicyType(policyType: string) : PolicyType
+{
+    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetesproxy)$/i; // case insensitive check for policyType
+
+    if(! policyTypePattern.test(policyType))
+        return undefined;
+
+    switch (policyType.toLowerCase()) {
+    case PolicyType.KubernetesProxy.toLowerCase():
+        return PolicyType.KubernetesProxy;
+    case PolicyType.OrganizationControls.toLowerCase():
+        return PolicyType.OrganizationControls;
+    case PolicyType.SessionRecording.toLowerCase():
+        return PolicyType.SessionRecording;
+    case PolicyType.TargetConnect.toLowerCase():
+        return PolicyType.TargetConnect;
     default:
         return undefined;
     }
 }
 
-export function parseClusterStatus(clusterStatus: string) : KubeClusterStatus {
-    switch (clusterStatus.toLowerCase()) {
-    case KubeClusterStatus.NotActivated.toLowerCase():
-        return KubeClusterStatus.NotActivated;
-    case KubeClusterStatus.Offline.toLowerCase():
-        return KubeClusterStatus.Offline;
-    case KubeClusterStatus.Online.toLowerCase():
-        return KubeClusterStatus.Online;
-    case KubeClusterStatus.Terminated.toLowerCase():
-        return KubeClusterStatus.Terminated;
-    case KubeClusterStatus.Error.toLowerCase():
-        return KubeClusterStatus.Error;
+export function parseTargetStatus(targetStatus: string) : TargetStatus {
+    switch (targetStatus.toLowerCase()) {
+    case TargetStatus.NotActivated.toLowerCase():
+        return TargetStatus.NotActivated;
+    case TargetStatus.Offline.toLowerCase():
+        return TargetStatus.Offline;
+    case TargetStatus.Online.toLowerCase():
+        return TargetStatus.Online;
+    case TargetStatus.Terminated.toLowerCase():
+        return TargetStatus.Terminated;
+    case TargetStatus.Error.toLowerCase():
+        return TargetStatus.Error;
     default:
         return undefined;
     }
@@ -108,11 +112,21 @@ export function isGuid(id: string): boolean{
 
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
-    const targetNameLength = max(targets.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
-    const envNameLength = max(envs.map(e => e.name.length).concat(16));       // same same
+    // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
+    const targetNameLength = max(targets.map(t => t.name.length)) + 2;
+    const envNameLength = max(envs.map(e => e.name.length)) + 2;
 
     const header: string[] = ['Type', 'Name', 'Environment'];
-    const columnWidths = [10, targetNameLength + 2, envNameLength + 2];
+    const columnWidths = [];
+    if (!showDetail) {
+        columnWidths.push(9);
+        columnWidths.push(targetNameLength > 44 ? 44 : targetNameLength);
+        columnWidths.push(envNameLength > 47 ? 47 : envNameLength);
+    } else {
+        columnWidths.push(9);
+        columnWidths.push(targetNameLength > 32 ? 32 : targetNameLength);
+        columnWidths.push(envNameLength > 31 ? 31 : envNameLength);
+    }
 
     if(showGuid)
     {
@@ -122,8 +136,8 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
 
     if(showDetail)
     {
-        header.push('Agent Version', 'Status');
-        columnWidths.push(15, 10);
+        header.push('Agent Version', 'Status', 'Target Users');
+        columnWidths.push(15, 9, 29);
     }
 
     // ref: https://github.com/cli-table/cli-table3
@@ -139,45 +153,9 @@ export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDet
         if(showDetail) {
             row.push(target.agentVersion);
             row.push(target.status || 'N/A'); // status is undefined for non-SSM targets
+            row.push(map(target.targetUsers).join(', \n') || 'N/A'); // targetUsers are undefined for now for non-cluster targets
         }
 
-        table.push(row);
-    }
-    );
-
-    return table.toString();
-}
-
-export function getTableOfClusters(clusters: ClusterSummary[], showDetail: boolean = false, showGuid: boolean = false) : string {
-    const clusterNameLength = max(clusters.map(t => t.name.length).concat(16)); // if max is 0 then use 16 as width
-    const statusNameLength = max(clusters.map(e => e.status.length).concat(16));
-    const header: string[] = ['Cluster Name', 'Status'];
-    const columnWidths = [clusterNameLength + 2, statusNameLength + 2];
-
-    if(showGuid || showDetail)
-    {
-        // For now showGuid and showDetail do the same thing
-        header.push('Valid Roles');
-        columnWidths.push(38);
-        header.push('Id');
-        columnWidths.push(38);
-        header.push('Agent Version');
-        columnWidths.push(38);
-        header.push('Last Agent Update');
-        columnWidths.push(38);
-    }
-
-    // ref: https://github.com/cli-table/cli-table3
-    const table = new Table({ head: header, colWidths: columnWidths });
-
-    clusters.forEach(cluster => {
-        const row = [cluster.name, cluster.status];
-        if (showGuid || showDetail) {
-            row.push(cluster.validUsers.toString());
-            row.push(cluster.id);
-            row.push(cluster.agentVersion);
-            row.push(cluster.lastAgentUpdate.toString());
-        }
         table.push(row);
     }
     );
@@ -204,6 +182,195 @@ export function getTableOfConnections(connections: ConnectionDetails[], allTarge
 
 }
 
+export function getTableOfUsers(users: UserSummary[]) : string
+{
+    const nameLength = max(users.map(u => u.fullName.length).concat(16));
+    const emailLength = max(users.map(u => u.email.length).concat(36));
+    const header: string[] = ['Name', 'Email', 'Role', 'Last Login'];
+    const columnWidths = [nameLength + 2, emailLength + 2, 7, 20];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    const dateOptions = {year: '2-digit', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', hour12: true};
+    users.forEach(u => {
+        const row = [u.fullName, u.email, u.isAdmin ? 'Admin' : 'User', new Date(u.lastLogin).toLocaleString('en-US', dateOptions as any)];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfGroups(groups: GroupSummary[]) : string
+{
+    const nameLength = max(groups.map(g => g.name.length).concat(16));
+    const header: string[] = ['Group Name'];
+    const columnWidths = [nameLength + 2];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    groups.forEach(g => {
+        const row = [g.name];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+export function getTableOfTargetUsers(targetUsers: string[]) : string
+{
+    const header: string[] = ['Allowed Target Users'];
+    const nameLength = max(targetUsers.map(u => u.length).concat(16));
+    // If the title's length is bigger than the longer user use that as the row length
+    const rowLength = nameLength > header[0].length ? nameLength : header[0].length;
+    const columnWidths = [rowLength + 2];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    targetUsers.forEach(u => {
+        const row = [u];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+// TODO : The following functionality is very similar to the webapp, it could be abstracted to common-ts
+export function getTableOfPolicies(
+    policies: PolicySummary[],
+    userMap: {[id: string]: UserSummary},
+    apiKeyMap: {[id: string]: ApiKeyDetails},
+    environmentMap: {[id: string]: EnvironmentDetails},
+    targetMap : {[id: string]: string},
+    groupMap : {[id: string]: GroupSummary}
+) : string
+{
+    const header: string[] = ['Name', 'Type', 'Subject', 'Resource', 'Target Users'];
+    const columnWidths = [24, 19, 26, 28, 29];
+
+    const table = new Table({ head: header, colWidths: columnWidths });
+    policies.forEach(p => {
+
+        // Translate the policy subject ids to human readable subjects
+        const groupNames : string [] = [];
+        p.groups.forEach(group => {
+            groupNames.push(getGroupName(group.id, groupMap));
+        });
+        const formattedGroups = !! groupNames.length ? 'Groups: ' + groupNames.join( ', \n') : '';
+
+        const subjectNames : string [] = [];
+        p.subjects.forEach(subject => {
+            switch (subject.type) {
+            case SubjectType.ApiKey:
+                subjectNames.push('ApiKey:' + getApiKeyName(subject.id, apiKeyMap));
+                break;
+            case SubjectType.User:
+                subjectNames.push(getUserName(subject.id, userMap));
+                break;
+            default:
+                break;
+            }
+        });
+        let formattedSubjects = subjectNames.join( ', \n');
+        if (subjectNames.length > 0 && !!formattedGroups) {
+            formattedSubjects += '\n';
+        }
+        formattedSubjects += formattedGroups;
+
+        // Translate the resource ids to human readable resources
+        // TODO : This should get extended to support other policy types as well
+        let formattedResource = '';
+        let formattedTargetUsers = '';
+        if (p.type == PolicyType.KubernetesProxy) {
+            const kubernetesPolicyContext = p.context as KubernetesPolicyContext;
+            // If this policy gets applied on some environments
+            if (kubernetesPolicyContext.environments) {
+                const environmentNames : string [] = [];
+                Object.keys(kubernetesPolicyContext.environments).forEach(
+                    envId => environmentNames.push(getEnvironmentName(envId, environmentMap))
+                );
+                formattedResource = 'Environments: ' + environmentNames.join( ', \n');
+            } else if (kubernetesPolicyContext.clusters) { // Alternatively if this policy gets applied straight on some clusters
+                const clusterNames : string [] = [];
+                Object.values(kubernetesPolicyContext.clusters).forEach(
+                    cluster => clusterNames.push(getTargetName(cluster.id, targetMap))
+                );
+                formattedResource = 'Clusters: ' + clusterNames.join( ', \n');
+            }
+
+            if (kubernetesPolicyContext.clusterUsers) {
+                const clusterUsersNames : string [] = [];
+                Object.values(kubernetesPolicyContext.clusterUsers).forEach(
+                    clusterUser => clusterUsersNames.push(clusterUser.name)
+                );
+                formattedTargetUsers = 'Cluster Users: ' + clusterUsersNames.join( ', \n');
+            }
+        } else if (p.type == PolicyType.TargetConnect) {
+            const targetAccessContext = p.context as TargetConnectContext;
+            // If this policy gets applied on some environments
+            if (targetAccessContext.environments && Object.keys(targetAccessContext.environments).length > 0) {
+                const environmentsResourceStrings: string [] = [];
+                Object.values(targetAccessContext.environments).forEach(env => {
+                    environmentsResourceStrings.push(getEnvironmentName(env.id, environmentMap));
+                });
+                formattedResource = 'Environments: ' + environmentsResourceStrings.join( ', \n');
+            } else if (targetAccessContext.targets && Object.keys(targetAccessContext.targets).length > 0) { // Alternatively if this policy gets applied straight on some targets
+                const targetResourceStrings: string [] = [];
+                Object.values(targetAccessContext.targets).forEach(target => {
+                    targetResourceStrings.push(getTargetName(target.id, targetMap));
+                });
+                formattedResource = 'Targets: ' + targetResourceStrings.join( ', \n');
+            }
+
+            if (targetAccessContext.targetUsers && Object.keys(targetAccessContext.targetUsers).length > 0) {
+                const targetUsersStrings: string [] = [];
+                Object.values(targetAccessContext.targetUsers).forEach(tu => {
+                    targetUsersStrings.push(tu.userName);
+                });
+                formattedTargetUsers = 'Unix Users: ' + targetUsersStrings.join( ', \n');
+            }
+
+        }
+
+        const row = [
+            p.name,
+            p.type,
+            formattedSubjects || 'N/A',
+            formattedResource || 'N/A',
+            formattedTargetUsers || 'N/A'
+        ];
+        table.push(row);
+    });
+
+    return table.toString();
+}
+
+function getApiKeyName(apiKeyId: string, apiKeyMap: {[id: string]: ApiKeyDetails}) : string {
+    return apiKeyMap[apiKeyId]
+        ? apiKeyMap[apiKeyId].name
+        : 'API KEY DELETED';
+}
+
+function getUserName(userId: string, userMap: {[id: string]: UserSummary}) : string {
+    return userMap[userId]
+        ? userMap[userId].fullName
+        : 'USER DELETED';
+}
+
+function getEnvironmentName(envId: string, environmentMap: {[id: string]: EnvironmentDetails}) : string {
+    return environmentMap[envId]
+        ? environmentMap[envId].name
+        : 'ENVIRONMENT DELETED';
+}
+
+function getTargetName(targetId: string, targetMap: {[id: string]: string}) : string {
+    return targetMap[targetId]
+        ? targetMap[targetId]
+        : 'TARGET DELETED';
+}
+
+function getGroupName(groupId: string, groupMap: {[id: string]: GroupSummary}) : string {
+    return groupMap[groupId]
+        ? groupMap[groupId].name
+        : 'GROUP DELETED';
+}
+
 // Figure out target id based on target name and target type.
 // Also preforms error checking on target type and target string passed in
 export async function disambiguateTarget(
@@ -223,7 +390,7 @@ export async function disambiguateTarget(
     let zippedTargets = concat(await ssmTargets, await dynamicConfigs);
 
     // Filter out Error and Terminated SSM targets
-    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== SsmTargetStatus.Error && t.status !== SsmTargetStatus.Terminated));
+    zippedTargets = filter(zippedTargets, t => t.type !== TargetType.SSM || (t.status !== TargetStatus.Error && t.status !== TargetStatus.Terminated));
 
     if(!! targetTypeString) {
         const targetType = parseTargetType(targetTypeString);

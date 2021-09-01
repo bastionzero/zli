@@ -1,12 +1,12 @@
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { cleanExit } from './clean-exit.handler';
-import * as types from '../../src/types';
-import { EnvironmentDetails } from '../../src/http.service/http.service.types';
-import { PolicyQueryService } from '../../src/http.service/http.service';
+import * as types from '../types';
+import { EnvironmentDetails } from '../http.service/http.service.types';
+import { PolicyQueryService } from '../http.service/http.service';
 
 
-export async function describeHandler(
+export async function describeClusterHandler(
     clusterName: string,
     configService: ConfigService,
     logger: Logger,
@@ -51,7 +51,7 @@ export async function describeHandler(
 
     // Build our validUsers string
     let validUserString = '';
-    for (const validUser of clusterSummary.validUsers) {
+    for (const validUser of clusterSummary.targetUsers) {
         validUserString += validUser + ',';
     }
     validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,

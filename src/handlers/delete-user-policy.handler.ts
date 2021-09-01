@@ -1,11 +1,11 @@
+import { PolicyType } from '../http.service/http.service.types';
 import { ConfigService } from '../config.service/config.service';
 import { PolicyService,KubeService } from '../http.service/http.service';
 import { Logger } from '../logger.service/logger';
 import { ClusterSummary } from '../types';
 import { cleanExit } from './clean-exit.handler';
 
-
-export async function removeUserHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function deleteUserFromPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
     const userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
@@ -23,6 +23,22 @@ export async function removeUserHandler(userEmail: string, policyName: string, c
     // Loop till we find the one we are looking for
     for (const policy of policies) {
         if (policy.name == policyName) {
+            if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
+                logger.error(`Deleting user from policy ${policyName} failed. Support for deleting users from ${policy.type} policies will be added soon.`);
+                await cleanExit(1, logger);
+            }
+
+            // If this user exists already
+            let userExists : boolean = false;
+            policy.subjects.forEach(subject => {
+                if(subject.id == userInfo.id)
+                    userExists = true;
+            });
+            if(!userExists) {
+                logger.error(`No user ${userEmail} exists for policy: ${policyName}`);
+                await cleanExit(1, logger);
+            }
+
             // TODO: This can be done better then looping
             // Then remove the user from the policy
             const newSubjects = [];
@@ -34,9 +50,9 @@ export async function removeUserHandler(userEmail: string, policyName: string, c
             policy.subjects = newSubjects;
 
             // And finally update the policy
-            await policyService.UpdateKubePolicy(policy);
+            await policyService.EditPolicy(policy);
 
-            logger.info(`Removed ${userEmail} from ${policyName} policy!`);
+            logger.info(`Deleted ${userEmail} from ${policyName} policy!`);
             await cleanExit(0, logger);
         }
     }

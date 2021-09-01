@@ -26,7 +26,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await dynamicConfigService.ListDynamicAccessConfigs();
             const results = response.map<TargetSummary>((config, _index, _array) => {
-                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined};
+                return {type: TargetType.DYNAMIC, id: config.id, name: config.name, environmentId: config.environmentId, agentVersion: 'N/A', status: undefined, targetUsers: undefined};
             });
 
             res(results);
@@ -44,7 +44,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
         {
             const response = await ssmTargetService.ListSsmTargets(true);
             const results = response.map<TargetSummary>((ssm, _index, _array) => {
-                return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status};
+                return {type: TargetType.SSM, id: ssm.id, name: ssm.name, environmentId: ssm.environmentId, agentVersion: ssm.agentVersion, status: ssm.status, targetUsers: undefined};
             });
 
             res(results);
@@ -53,12 +53,13 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             return res([]);
         }
     });
-    
+
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
             result.map<ClusterSummary>((cluster, _index, _array) => {
-                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, validUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate};
-            }));
+                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate};
+            })
+        );
 
     const envs = envService.ListEnvironments();
 

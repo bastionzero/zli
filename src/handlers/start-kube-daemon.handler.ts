@@ -44,7 +44,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
     const configPath = configService.configPath();
 
     // See if the user passed in a custom port
-    var daemonPort = kubeConfig['localPort'].toString();
+    let daemonPort = kubeConfig['localPort'].toString();
     if (argv.customPort != -1) {
         daemonPort = argv.customPort.toString();
     }

@@ -1,4 +1,4 @@
-import { IdP, SsmTargetStatus, TargetSummary, ClusterSummary, TargetType } from './types';
+import { ClusterSummary, IdP, TargetStatus, TargetSummary, TargetType } from './types';
 import {
     disambiguateTarget,
     isGuid,
@@ -7,7 +7,7 @@ import {
 import { ConfigService } from './config.service/config.service';
 import { MixpanelService } from './mixpanel.service/mixpanel.service';
 import { checkVersionMiddleware } from './middlewares/check-version-middleware';
-import { EnvironmentDetails } from './http.service/http.service.types';
+import { EnvironmentDetails, PolicyType } from './http.service/http.service.types';
 import { Logger } from './logger.service/logger';
 import { LoggerConfigService } from './logger-config.service/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
@@ -25,23 +25,28 @@ import { logoutHandler } from './handlers/logout.handler';
 import { startKubeDaemonHandler } from './handlers/start-kube-daemon.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
 import { listConnectionsHandler } from './handlers/list-connections.handler';
+import { listUsersHandler } from './handlers/list-users.handler';
 import { attachHandler } from './handlers/attach.handler';
 import { closeConnectionHandler } from './handlers/close-connection.handler';
 import { generateKubeconfigHandler } from './handlers/generate-kubeconfig.handler';
-import { addRoleHandler } from './handlers/add-role.handler';
-import { removeRoleHandler } from './handlers/remove-role.handler';
-import { addUserHandler } from './handlers/add-user.handler';
-import { removeUserHandler } from './handlers/remove-user.handler';
+import { addTargetUserHandler } from './handlers/add-target-user.handler';
+import { deleteTargetUserHandler } from './handlers/delete-target-user.handler';
+import { addUserToPolicyHandler } from './handlers/add-user-policy.handler';
+import { deleteUserFromPolicyHandler } from './handlers/delete-user-policy.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect.handler';
 import { kubeStatusHandler } from './handlers/status.handler';
-import { describeHandler } from './handlers/describe.handler';
 import { bctlHandler } from './handlers/bctl.handler';
-import { listClustersHandler } from './handlers/list-clusters.handler'
+import { listPoliciesHandler } from './handlers/list-policies.handler';
+import { listTargetUsersHandler } from './handlers/list-target-users.handler';
+import { fetchGroupsHandler } from './handlers/fetch-groups.handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
 import yargs from 'yargs';
+import { describeClusterHandler } from './handlers/describe-cluster.handler';
+import { deleteGroupFromPolicyHandler } from './handlers/delete-group-policy.handler';
+import { addGroupToPolicyHandler } from './handlers/add-group-policy.handler';
 
 export class CliDriver
 {
@@ -58,15 +63,90 @@ export class CliDriver
     private envs: Promise<EnvironmentDetails[]>;
 
     // use the following to shortcut middleware according to command
-    private oauthCommands: string[] = ['ssh-proxy-config', 'connect', 'tunnel', 'addrole', 'adduser', 'removerole', 'removeuser', 'describe-cluster', 'disconnect', 'attach-to-connection', 'close', 'list-targets', 'lt', 'list-clusters', 'lk', 'list-connections', 'lc', 'copy', 'ssh-proxy', 'autodiscovery-script', 'generate']
+    private oauthCommands: string[] = [
+        'ssh-proxy-config',
+        'connect',
+        'tunnel',
+        'user',
+        'targetUser',
+        'describe-cluster',
+        'disconnect',
+        'attach-to-connection',
+        'close',
+        'list-targets',
+        'lt',
+        'list-clusters',
+        'lk',
+        'list-connections',
+        'lc',
+        'copy',
+        'ssh-proxy',
+        'autodiscovery-script',
+        'generate',
+        'policy',
+        'group'
+    ];
 
-    private mixpanelCommands: string[] = ['ssh-proxy-config', 'connect', 'tunnel', 'addrole', 'adduser', 'removerole', 'removeuser', 'describe-cluster', 'disconnect', 'attach-to-connection', 'close', 'list-targets', 'lt', 'list-clusters', 'lk', 'list-connections', 'lc', 'copy', 'ssh-proxy', 'autodiscovery-script', 'generate']
+    private mixpanelCommands: string[] = [
+        'ssh-proxy-config',
+        'connect',
+        'tunnel',
+        'user',
+        'targetUser',
+        'describe-cluster',
+        'disconnect',
+        'attach-to-connection',
+        'close',
+        'list-targets',
+        'lt',
+        'list-clusters',
+        'lk',
+        'list-connections',
+        'lc',
+        'copy',
+        'ssh-proxy',
+        'autodiscovery-script',
+        'generate',
+        'policy',
+        'group'
+    ];
 
-    private fetchCommands: string[] = ['connect', 'tunnel', 'addrole', 'adduser', 'removerole', 'removeuser', 'describe-cluster', 'disconnect', 'attach-to-connection', 'close', 'list-targets', 'lt', 'list-clusters', 'lk', 'list-connections', 'lc', 'copy', 'ssh-proxy', 'autodiscovery-script', 'generate']
+    private fetchCommands: string[] = [
+        'connect',
+        'tunnel',
+        'user',
+        'targetUser',
+        'describe-cluster',
+        'disconnect',
+        'attach-to-connection',
+        'close',
+        'list-targets',
+        'lt',
+        'list-clusters',
+        'lk',
+        'list-connections',
+        'lc',
+        'copy',
+        'ssh-proxy',
+        'autodiscovery-script',
+        'generate',
+        'policy',
+        'group'
+    ];
+
+    private adminOnlyCommands: string[] = [
+        'group',
+        'user',
+        'targetUser',
+        'policy'
+    ];
 
     // available options for TargetType autogenerated from enum
     private targetTypeChoices: string[] = Object.keys(TargetType).map(tt => tt.toLowerCase());
-    private ssmTargetStatusChoices: string[] = Object.keys(SsmTargetStatus).map(s => s.toLowerCase());
+    private targetStatusChoices: string[] = Object.keys(TargetStatus).map(s => s.toLowerCase());
+
+    // available options for PolicyType autogenerated from enum
+    private policyTypeChoices: string[] = Object.keys(PolicyType).map(s => s.toLowerCase());
 
     // Mapping from env vars to options if they exist
     private envMap: Dictionary<string> = {
@@ -97,6 +177,12 @@ export class CliDriver
                 if(!includes(this.oauthCommands, argv._[0]))
                     return;
                 await oAuthMiddleware(this.configService, this.logger);
+            })
+            .middleware(async (argv) => {
+                if(includes(this.adminOnlyCommands, argv._[0]) && !this.configService.me().isAdmin){
+                    this.logger.error(`This is an admin restricted command. Please login as an admin to perform it.`);
+                    await cleanExit(1, this.logger);
+                }
             })
             .middleware(async (argv) => {
                 if(!includes(this.mixpanelCommands, argv._[0]))
@@ -192,75 +278,32 @@ export class CliDriver
                 }
             )
             .command(
-                'addrole <clusterUserName> <policyName>',
-                'Add a ClusterUser to a Cluster Policy',
+                ['policy [type]'],
+                false, // This removes the command from the help text
                 (yargs) => {
                     return yargs
-                        .positional('clusterUserName', {
-                            type: 'string',
-                        })
-                        .positional('policyName', {
-                            type: 'string',
-                        })
-                        .option('force', {
-                            type: 'boolean',
-                            alias: 'f'
-                        })
-                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster policy');
+                        .option(
+                            'type',
+                            {
+                                type: 'string',
+                                choices: this.policyTypeChoices,
+                                alias: 't',
+                                demandOption: false
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('policy --json', 'List all policies, output as json, pipeable');
                 },
                 async (argv) => {
-                    await addRoleHandler(argv.clusterUserName, argv.policyName, argv.force, this.clusterTargets, this.configService, this.logger);
-                }
-            )
-            .command(
-                'removerole <clusterUserName> <policyName>',
-                'Remove a ClusterUser from Cluster Policy',
-                (yargs) => {
-                    return yargs
-                        .positional('clusterUserName', {
-                            type: 'string',
-                        })
-                        .positional('policyName', {
-                            type: 'string',
-                        })
-                        .example('addrole admin test-cluster', 'Adds the admin RBAC Role to the test-cluster policy');
-                },
-                async (argv) => {
-                    await removeRoleHandler(argv.clusterUserName, argv.policyName, this.clusterTargets, this.configService, this.logger);
-                }
-            )
-            .command(
-                'adduser <idpEmail> <policyName>',
-                'Add a IDP User to a Cluster Policy',
-                (yargs) => {
-                    return yargs
-                        .positional('idpEmail', {
-                            type: 'string',
-                        })
-                        .positional('policyName', {
-                            type: 'string',
-                        })
-                        .example('adduser test@test.com test-cluster', 'Adds the test@test.com IDP user test-cluster policy');
-                },
-                async (argv) => {
-                    await addUserHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
-                }
-            )
-            .command(
-                'removeuser <idpEmail> <policyName>',
-                'Remove a IDP User to a Cluster Policy',
-                (yargs) => {
-                    return yargs
-                        .positional('idpEmail', {
-                            type: 'string',
-                        })
-                        .positional('policyName', {
-                            type: 'string',
-                        })
-                        .example('removeuser test@test.com test-cluster', 'Removes the test@test.com IDP user test-cluster policy');
-                },
-                async (argv) => {
-                    await removeUserHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
+                    await listPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
                 }
             )
             .command(
@@ -274,7 +317,7 @@ export class CliDriver
                         .example('status test-cluster', '');
                 },
                 async (argv) => {
-                    await describeHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs);
+                    await describeClusterHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs);
                 }
             )
             .command(
@@ -369,7 +412,7 @@ export class CliDriver
                             {
                                 type: 'string',
                                 array: true,
-                                choices: this.ssmTargetStatusChoices,
+                                choices: this.targetStatusChoices,
                                 alias: 'u'
                             }
                         )
@@ -405,62 +448,7 @@ export class CliDriver
                         .example('lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
                 },
                 async (argv) => {
-                    await listTargetsHandler(this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.envs);
-                }
-            )
-            .command(
-                ['list-clusters', 'lk'],
-                'List all clusters (filters available)',
-                (yargs) => {
-                    return yargs
-                        .option(
-                            'status',
-                            {
-                                type: 'string',
-                                array: true,
-                                choices: this.ssmTargetStatusChoices,
-                                alias: 'u'
-                            }
-                        )
-                        .option(
-                            'name',
-                            {
-                                type: 'string',
-                                demandOption: false,
-                                alias: 'n'
-                            }
-                        )
-                        .option(
-                            'detail',
-                            {
-                                type: 'boolean',
-                                default: false,
-                                demandOption: false,
-                                alias: 'd'
-                            }
-                        )
-                        .option(
-                            'showId',
-                            {
-                                type: 'boolean',
-                                default: false,
-                                demandOption: false,
-                                alias: 'i'
-                            }
-                        )
-                        .option(
-                            'json',
-                            {
-                                type: 'boolean',
-                                default: false,
-                                demandOption: false,
-                                alias: 'j',
-                            }
-                        )
-                        .example('lc -i', 'List all clusters and show unique ids');
-                },
-                async (argv) => {
-                    await listClustersHandler(this.logger, argv, this.clusterTargets);
+                    await listTargetsHandler(this.configService,this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.clusterTargets, this.envs);
                 }
             )
             .command(
@@ -481,6 +469,198 @@ export class CliDriver
                 },
                 async (argv) => {
                     await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
+                }
+            )
+            .command(
+                ['user [policyName] [idpEmail]'],
+                false, // This removes the command from the help text
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'add',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'a',
+                                implies: ['idpEmail', 'policyName']
+                            }
+                        )
+                        .option(
+                            'delete',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'd',
+                                implies: ['idpEmail', 'policyName']
+                            }
+                        )
+                        .conflicts('add', 'delete')
+                        .positional('idpEmail',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .positional('policyName',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('user --json', 'List all users, output as json, pipeable')
+                        .example('user --add test@test.com test-cluster', 'Adds the test@test.com IDP user to test-cluster policy')
+                        .example('user -d test@test.com test-cluster', 'Removes the test@test.com IDP user from test-cluster policy');
+                },
+                async (argv) => {
+                    if (!! argv.add) {
+                        await addUserToPolicyHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
+                    } else if (!! argv.delete) {
+                        await deleteUserFromPolicyHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
+                    } else if (!(!!argv.add && !!argv.delete)) {
+                        await listUsersHandler(argv, this.configService, this.logger);
+                    } else {
+                        this.logger.error(`Invalid flags combination. Please see help.`);
+                        await cleanExit(1, this.logger);
+                    }
+                }
+            )
+            .command(
+                ['group [policyName] [groupName]'],
+                false, // This removes the command from the help text
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'add',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'a',
+                                implies: ['groupName', 'policyName']
+                            }
+                        )
+                        .option(
+                            'delete',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'd',
+                                implies: ['groupName', 'policyName']
+                            }
+                        )
+                        .conflicts('add', 'delete')
+                        .positional('groupName',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .positional('policyName',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('group --json', 'List all groups, output as json, pipeable')
+                        .example('group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
+                        .example('group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
+                },
+                async (argv) => {
+                    if (!! argv.add) {
+                        await addGroupToPolicyHandler(argv.groupName, argv.policyName, this.configService, this.logger);
+                    } else if (!! argv.delete) {
+                        await deleteGroupFromPolicyHandler(argv.groupName, argv.policyName, this.configService, this.logger);
+                    } else if (!(!!argv.add && !!argv.delete)) {
+                        await fetchGroupsHandler(argv, this.configService, this.logger);
+                    } else {
+                        this.logger.error(`Invalid flags combination. Please see help.`);
+                        await cleanExit(1, this.logger);
+                    }
+                }
+            )
+            .command(
+                ['targetUser <policyName> [user]'],
+                false, // This removes the command from the help text
+                (yargs) => {
+                    return yargs
+                        .option(
+                            'add',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'a',
+                                implies: ['user', 'policyName']
+                            }
+                        )
+                        .option(
+                            'delete',
+                            {
+                                type: 'boolean',
+                                demandOption: false,
+                                alias: 'd',
+                                implies: ['user', 'policyName']
+                            }
+                        )
+                        .conflicts('add', 'delete')
+                        .positional('user',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: false,
+                            }
+                        )
+                        .positional('policyName',
+                            {
+                                type: 'string',
+                                default: null,
+                                demandOption: true,
+                            }
+                        )
+                        .option(
+                            'json',
+                            {
+                                type: 'boolean',
+                                default: false,
+                                demandOption: false,
+                                alias: 'j',
+                            }
+                        )
+                        .example('targetUser --json', 'List all target users, output as json, pipeable')
+                        .example('targetUser --add cool-policy centos', 'Adds the centos user to cool-policy')
+                        .example('targetUser -d test-cluster admin', 'Removes the admin RBAC Role to the test-cluster policy');
+                },
+                async (argv) => {
+                    if (!! argv.add) {
+                        await addTargetUserHandler(argv.user, argv.policyName, this.configService, this.logger);
+                    } else if (!! argv.delete) {
+                        await deleteTargetUserHandler(argv.user, argv.policyName, this.configService, this.logger);
+                    } else if (!(!!argv.add && !!argv.delete)) {
+                        await listTargetUsersHandler(this.configService, this.logger, argv, argv.policyName);
+                    } else {
+                        this.logger.error(`Invalid flags combination. Please see help.`);
+                        await cleanExit(1, this.logger);
+                    }
                 }
             )
             .command(

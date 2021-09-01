@@ -18,7 +18,7 @@ export enum IdP {
     Microsoft = 'Microsoft'
 }
 
-export enum SsmTargetStatus {
+export enum TargetStatus {
     NotActivated = 'NotActivated',
     Offline = 'Offline',
     Online = 'Online',
@@ -41,7 +41,8 @@ export interface TargetSummary
     environmentId: string;
     type: TargetType;
     agentVersion: string;
-    status: SsmTargetStatus;
+    status: TargetStatus;
+    targetUsers: string[];
 }
 
 export interface ClusterSummary
@@ -50,7 +51,7 @@ export interface ClusterSummary
     name: string;
     status: KubeClusterStatus;
     environmentId: string;
-    validUsers: string[];
+    targetUsers: string[];
     lastAgentUpdate: Date;
     agentVersion: string;
 }

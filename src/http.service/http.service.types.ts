@@ -1,5 +1,4 @@
-import { ReadStream } from 'fs';
-import { SessionState, SsmTargetStatus, KubeClusterStatus, TargetType } from '../types';
+import { SessionState, TargetStatus, KubeClusterStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {
     displayName?: string;
@@ -80,7 +79,7 @@ export interface ListSsmTargetsRequest
 export interface SsmTargetSummary {
     id: string;
     name: string;
-    status: SsmTargetStatus;
+    status: TargetStatus;
     environmentId?: string;
     // ID of the agent (hash of public key)
     // Used as the targetId in keysplitting messages
@@ -102,6 +101,14 @@ export interface ClusterSummary {
     validUsers: string[];
     agentVersion: string;
     lastAgentUpdate: Date;
+}
+
+export interface ClusterSummary {
+    id: string;
+    clusterName: string;
+    status: KubeClusterStatus;
+    environmentId?: string;
+    validRoles: string[];
 }
 
 export interface EnvironmentDetails {
@@ -175,6 +182,7 @@ export interface UserSummary
     email: string;
     isAdmin: boolean;
     timeCreated: Date;
+    lastLogin: Date;
 }
 
 export interface DynamicAccessConfigSummary
@@ -256,28 +264,42 @@ export interface GetAllPoliciesForClusterIdResponse {
     policies: PolicySummary[]
 }
 
-interface PolicySummary {
-    name: string;
-    id: string;
+export type PolicyContext = TargetConnectContext | KubernetesPolicyContext;
+
+export interface KubernetesPolicyContext {
+    clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
+    environments: { [key: string]: PolicyEnvironment }
+    clusters: { [key: string] : Cluster}
 }
 
-export interface KubernetesPolicySummary {
+export interface Cluster {
+    id: string
+}
+
+export interface TargetConnectContext {
+    targets: object;
+    environments: object;
+    targetUsers: object;
+    verbs: object;
+}
+
+export interface TargetUser {
+    userName: string;
+}
+
+export interface PolicySummary {
     id: string;
     name: string;
     metadata: PolicyMetadata
     type: PolicyType
     subjects: Subject[]
     groups: Group[]
-    context: KubernetesPolicyContext
+    context: PolicyContext
 }
 
-interface Group {
+export interface Group {
     id: string;
-}
-
-interface KubernetesPolicyContext {
-    clusterUsers: { [key: string]: KubernetesPolicyClusterUsers }
-    environments: { [key: string]: PolicyEnvironment }
+    name: string;
 }
 
 export interface KubernetesPolicyClusterUsers {
@@ -290,7 +312,7 @@ interface PolicyEnvironment {
 
 export interface Subject {
     id: string;
-    subjectType: SubjectType;
+    type: SubjectType;
 }
 
 interface PolicyMetadata {
@@ -302,14 +324,14 @@ export enum SubjectType {
     ApiKey = 'ApiKey'
 }
 
-enum PolicyType {
+export enum PolicyType {
     TargetConnect = 'TargetConnect',
     OrganizationControls = 'OrganizationControls',
     SessionRecording = 'SessionRecording',
     KubernetesProxy = 'KubernetesProxy'
 }
 
-export interface UpdateKubePolicyRequest {
+export interface EditPolicyRequest {
     id: string;
     name: string;
     type: string;
@@ -326,4 +348,24 @@ export interface GetUserInfoResponse {
 
 export interface GetUserInfoRequest{
     email: string;
+}
+
+export interface ApiKeyDetails {
+    id: string;
+    name: string;
+    timeCreated: Date;
+}
+
+export interface GroupSummary {
+    idPGroupId: string;
+    name: string;
+}
+
+export interface IdentityProviderGroupsMetadataResponse {
+    customerId: string;
+    creationDate: Date;
+    lastUpdateDate: Date;
+    adminEmail: string;
+    userReadonlyScope: boolean;
+    groupReadonlyScope: boolean;
 }

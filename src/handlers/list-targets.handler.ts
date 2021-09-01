@@ -5,20 +5,43 @@ import {
     parseTargetStatus
 } from '../utils';
 import { Logger } from '../logger.service/logger';
-import { EnvironmentDetails } from '../http.service/http.service.types';
+import { EnvironmentDetails, TargetUser, VerbType } from '../http.service/http.service.types';
 import { cleanExit } from './clean-exit.handler';
-import { SsmTargetStatus, TargetSummary, TargetType } from '../types';
-import { map, includes, uniq } from 'lodash';
+import { ClusterSummary, TargetStatus, TargetSummary, TargetType } from '../types';
+import { includes, map, uniq } from 'lodash';
+import { PolicyQueryService } from '../http.service/http.service';
+import { ConfigService } from '../config.service/config.service';
 
 
 export async function listTargetsHandler(
+    configService: ConfigService,
     logger: Logger,
     argv: any,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
+    clusters: Promise<ClusterSummary[]>,
     envsPassed: Promise<EnvironmentDetails[]>) {
-    // await and concatenate
+
+    const clusterTargets = (await clusters).map<TargetSummary>((cluster, _index, _array) => {
+        return {
+            type: TargetType.CLUSTER,
+            id: cluster.id,
+            name: cluster.name,
+            status: parseTargetStatus(cluster.status.toString()),
+            environmentId: cluster.environmentId,
+            targetUsers: cluster.targetUsers,
+            agentVersion: cluster.agentVersion
+        };
+    });
+    // await, add target users info and concatenate
     let allTargets = [...await ssmTargets, ...await dynamicConfigs];
+    const policyQueryService = new PolicyQueryService(configService, logger);
+    // TODO : This should be checked with DAT
+    for (const t of allTargets) {
+        const users = (await policyQueryService.ListTargetOSUsers(t.id, t.type, {type: VerbType.Shell}, undefined)).allowedTargetUsers;
+        t.targetUsers = map(users, (u : TargetUser) => u.userName);
+    }
+    allTargets = allTargets.concat(clusterTargets);
     const envs = await envsPassed;
 
     // find all envIds with substring search
@@ -48,7 +71,7 @@ export async function listTargetsHandler(
             await cleanExit(1, logger);
         }
 
-        let targetStatusFilter: SsmTargetStatus[] = map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
+        let targetStatusFilter: TargetStatus[] = map(statusArray, (s: string) => parseTargetStatus(s)).filter(s => s); // filters out undefined
         targetStatusFilter = uniq(targetStatusFilter);
 
         if(targetStatusFilter.length < 1) {
@@ -56,7 +79,7 @@ export async function listTargetsHandler(
             await cleanExit(1, logger);
         }
 
-        allTargets = allTargets.filter(t => t.type != TargetType.SSM || includes(targetStatusFilter, t.status));
+        allTargets = allTargets.filter(t => (t.type != TargetType.SSM && t.type != TargetType.CLUSTER) || includes(targetStatusFilter, t.status));
     }
 
     if(!! argv.json) {

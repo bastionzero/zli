@@ -25,7 +25,7 @@ export async function connectHandler(
     }
 
     const policyQueryService = new PolicyQueryService(configService, logger);
-    const response = await policyQueryService.ListTargetUsers(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
+    const response = await policyQueryService.ListTargetOSUsers(parsedTarget.id, parsedTarget.type, {type: VerbType.Shell}, undefined);
 
     if(! response.allowed)
     {

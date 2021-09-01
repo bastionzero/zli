@@ -40,7 +40,6 @@ export async function generateKubeconfigHandler(
                     }
                     logger.debug('Generated and saved key file');
                 });
-
                 await fs.writeFile(pathToCert, keys.certificate, function (err: any) {
                     if (err) {
                         logger.error('Error writing cert to file!');
@@ -56,7 +55,7 @@ export async function generateKubeconfigHandler(
 
                 // Find an open port, define it here as if the config has already been created, this codeblock will never be executed
                 const findPort = require('find-open-port');
-                const localPort = new Promise<number>(async (resolve, reject) => {
+                const localPort = new Promise<number>(async (resolve, _) => {
                     findPort().then((port: any) => {
                         resolve(port);
                     });
@@ -83,7 +82,7 @@ export async function generateKubeconfigHandler(
     }
 
     // See if the user passed in a custom port
-    var daemonPort = kubeConfig['localPort'].toString();
+    let daemonPort = kubeConfig['localPort'].toString();
     if (argv.customPort != -1) {
         daemonPort = argv.customPort.toString();
     }
