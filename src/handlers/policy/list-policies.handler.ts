@@ -1,11 +1,11 @@
-import { ApiKeyService, GroupsService, PolicyService, UserService } from '../http.service/http.service';
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
-import { cleanExit } from './clean-exit.handler';
-import { getTableOfPolicies, parsePolicyType } from '../utils';
-import { UserSummary, ApiKeyDetails, EnvironmentDetails, GroupSummary } from '../http.service/http.service.types';
+import { ApiKeyService, GroupsService, PolicyService, UserService } from '../../http.service/http.service';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { cleanExit } from '../clean-exit.handler';
+import { getTableOfPolicies, parsePolicyType } from '../../utils';
+import { UserSummary, ApiKeyDetails, EnvironmentDetails, GroupSummary } from '../../http.service/http.service.types';
 import _ from 'lodash';
-import { ClusterSummary, TargetSummary } from '../types';
+import { ClusterSummary, TargetSummary } from '../../types';
 
 export async function listPoliciesHandler(
     argv: any,

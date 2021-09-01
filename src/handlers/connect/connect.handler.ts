@@ -1,13 +1,13 @@
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
-import { ConnectionService, PolicyQueryService, SessionService } from '../http.service/http.service';
-import { VerbType } from '../http.service/http.service.types';
-import { ParsedTargetString } from '../types';
-import { MixpanelService } from '../mixpanel.service/mixpanel.service';
-import { cleanExit } from './clean-exit.handler';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { ConnectionService, PolicyQueryService, SessionService } from '../../http.service/http.service';
+import { VerbType } from '../../http.service/http.service.types';
+import { ParsedTargetString } from '../../types';
+import { MixpanelService } from '../../mixpanel.service/mixpanel.service';
+import { cleanExit } from '../clean-exit.handler';
 
-import { targetStringExample } from '../utils';
-import { createAndRunShell, getCliSpace } from '../../src/shell-utils';
+import { targetStringExample } from '../../utils';
+import { createAndRunShell, getCliSpace } from '../../shell-utils';
 import { includes } from 'lodash';
 
 

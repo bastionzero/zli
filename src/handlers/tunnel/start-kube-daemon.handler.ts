@@ -1,13 +1,10 @@
 import path from 'path';
-import utils from 'util';
-import fs from 'fs';
-import { killDaemon } from '../../src/kube.service/kube.service';
-import { ConfigService } from '../config.service/config.service';
-import { PolicyQueryService } from '../http.service/http.service';
-import { Logger } from '../logger.service/logger';
-import { ClusterSummary, KubeClusterStatus } from '../types';
-import { cleanExit } from './clean-exit.handler';
-import { LoggerConfigService } from '../logger-config.service/logger-config.service';
+import { killDaemon } from '../../kube.service/kube.service';
+import { ConfigService } from '../../config.service/config.service';
+import { PolicyQueryService } from '../../http.service/http.service';
+import { Logger } from '../../logger.service/logger';
+import { ClusterSummary, KubeClusterStatus } from '../../types';
+import { cleanExit } from '../clean-exit.handler';
 const { spawn } = require('child_process');
 
 export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {

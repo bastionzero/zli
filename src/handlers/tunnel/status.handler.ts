@@ -1,6 +1,6 @@
-import { Logger } from '../logger.service/logger';
-import { ConfigService } from '../config.service/config.service';
-import { cleanExit } from './clean-exit.handler';
+import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../config.service/config.service';
+import { cleanExit } from '../clean-exit.handler';
 
 export async function kubeStatusHandler(
     configService: ConfigService,

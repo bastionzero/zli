@@ -1,4 +1,4 @@
-import { ClusterSummary, IdP, TargetStatus, TargetSummary, TargetType } from './types';
+import { ClusterSummary, TargetStatus, TargetSummary, TargetType } from './types';
 import {
     disambiguateTarget,
     isGuid,
@@ -17,12 +17,12 @@ import { cleanExit } from './handlers/clean-exit.handler';
 import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy.handler';
-import { loginHandler } from './handlers/login.handler';
-import { connectHandler } from './handlers/connect.handler';
+import { loginHandler } from './handlers/login/login.handler';
+import { connectHandler } from './handlers/connect/connect.handler';
 import { listTargetsHandler } from './handlers/list-targets.handler';
 import { configHandler } from './handlers/config.handler';
 import { logoutHandler } from './handlers/logout.handler';
-import { startKubeDaemonHandler } from './handlers/start-kube-daemon.handler';
+import { startKubeDaemonHandler } from './handlers/tunnel/start-kube-daemon.handler';
 import { autoDiscoveryScriptHandler } from './handlers/autodiscovery-script-handler';
 import { listConnectionsHandler } from './handlers/list-connections.handler';
 import { listUsersHandler } from './handlers/list-users.handler';
@@ -35,9 +35,9 @@ import { addUserToPolicyHandler } from './handlers/add-user-policy.handler';
 import { deleteUserFromPolicyHandler } from './handlers/delete-user-policy.handler';
 import { generateKubeYamlHandler } from './handlers/generate-kube-yaml.handler';
 import { disconnectHandler } from './handlers/disconnect.handler';
-import { kubeStatusHandler } from './handlers/status.handler';
+import { kubeStatusHandler } from './handlers/tunnel/status.handler';
 import { bctlHandler } from './handlers/bctl.handler';
-import { listPoliciesHandler } from './handlers/list-policies.handler';
+import { listPoliciesHandler } from './handlers/policy/list-policies.handler';
 import { listTargetUsersHandler } from './handlers/list-target-users.handler';
 import { fetchGroupsHandler } from './handlers/fetch-groups.handler';
 
@@ -47,6 +47,9 @@ import yargs from 'yargs';
 import { describeClusterHandler } from './handlers/describe-cluster.handler';
 import { deleteGroupFromPolicyHandler } from './handlers/delete-group-policy.handler';
 import { addGroupToPolicyHandler } from './handlers/add-group-policy.handler';
+import { loginCmdBuilder } from './handlers/login/login.command-builder';
+import { connectCmdBuilder } from './handlers/connect/connect.command-builder';
+import { tunnelCmdBuilder } from './handlers/tunnel/tunnel.command-builder';
 
 export class CliDriver
 {
@@ -205,21 +208,7 @@ export class CliDriver
                 'login <provider>',
                 'Login through a specific provider',
                 (yargs) => {
-                    return yargs
-                        .positional('provider', {
-                            type: 'string',
-                            choices: [IdP.Google, IdP.Microsoft]
-                        })
-                        .option(
-                            'mfa',
-                            {
-                                type: 'string',
-                                demandOption: false,
-                                alias: 'm'
-                            }
-                        )
-                        .example('$0 login Google', 'Login with Google')
-                        .example('$0 login Microsoft --mfa 123456', 'Login with Microsoft and enter MFA');
+                    return loginCmdBuilder(yargs);
                 },
                 async (argv) => {
                     await loginHandler(this.configService, this.logger, argv, this.keySplittingService);
@@ -229,21 +218,7 @@ export class CliDriver
                 'connect <targetString>',
                 'Connect to a target',
                 (yargs) => {
-                    return yargs
-                        .positional('targetString', {
-                            type: 'string',
-                        })
-                        .option(
-                            'targetType',
-                            {
-                                type: 'string',
-                                choices: this.targetTypeChoices,
-                                demandOption: false,
-                                alias: 't'
-                            },
-                        )
-                        .example('$0 connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
-                        .example('$0 connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config');
+                    return connectCmdBuilder(yargs, this.targetTypeChoices);
                 },
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
@@ -255,18 +230,7 @@ export class CliDriver
                 'tunnel [tunnelString]',
                 'Tunnel to a cluster',
                 (yargs) => {
-                    return yargs
-                        .positional('tunnelString', {
-                            type: 'string',
-                            default: null,
-                            demandOption: false,
-                        }).option('customPort', {
-                            type: 'number',
-                            default: -1,
-                            demandOption: false
-                        })
-                        .example('$0 tunnel admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role')
-                        .example('$0 tunnel', 'Get info on currently active tunnel');
+                    return tunnelCmdBuilder(yargs);
                 },
                 async (argv) => {
                     if (argv.tunnelString) {
