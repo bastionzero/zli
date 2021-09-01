@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	action = "kube/log"
+	action = "kube/log/start"
 )
 
 type LogsAction struct {
@@ -78,7 +78,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	for {
 		select {
 		case <-request.Context().Done():
-			log.Println("Logs request %v was requested to get cancelled", r.requestId)
+			log.Printf("Logs request %v was requested to get cancelled", r.requestId)
 
 			// Build the action payload
 			payload := kubelogs.KubeLogsActionPayload{

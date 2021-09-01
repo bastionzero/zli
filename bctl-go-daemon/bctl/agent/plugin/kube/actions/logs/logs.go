@@ -29,7 +29,7 @@ type LogAction struct {
 }
 
 const (
-	LogData = "kube/log"
+	LogData = "kube/log/stdout"
 )
 
 func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
@@ -157,7 +157,6 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	}()
 
 	// We also need to listen if we get a cancel log request
-
 	return action, []byte{}, nil
 }
 

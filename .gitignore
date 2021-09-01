@@ -339,6 +339,6 @@ ASALocalRun/
 # Local History for Visual Studio
 .localhistory/
 
-# Our build agent 
+# Our built agent 
 bctl-go-daemon/bctl/daemon/daemon
 bctl-go-daemon/bctl/agent/agent

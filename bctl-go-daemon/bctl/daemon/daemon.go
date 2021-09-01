@@ -69,7 +69,7 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 				return "StdinDaemonToBastion", nil
 			case "kube/exec/resize":
 				return "ResizeTerminalDaemonToBastion", nil
-			case "kube/log":
+			case "kube/log/start":
 				return "RequestLogDaemonToBastion", nil
 			}
 		} else {
