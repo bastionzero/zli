@@ -168,7 +168,7 @@ func aliveCheck() ([]byte, error) {
 		users = append(users, key)
 	}
 
-	alive := AliveCheckToBastionFromClusterMessage{
+	alive := AliveCheckClusterToBastionMessage{
 		Alive:        true,
 		ClusterUsers: users,
 	}
