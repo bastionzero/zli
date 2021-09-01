@@ -10,19 +10,16 @@ export async function listTargetUsersHandler(configService: ConfigService, logge
     const policyService = new PolicyService(configService, logger);
     const policies = await policyService.ListAllPolicies();
     const targetUsers : string[] = [];
-    for (const policy of policies) {
-        if (policy.name == policyName) {
-            if (policy.type == PolicyType.KubernetesProxy) {
-                const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
-                Object.values(kubernetesPolicyContext.clusterUsers).forEach(
-                    clusterUser => targetUsers.push(clusterUser.name)
-                );
-            } else if (policy.type == PolicyType.TargetConnect) {
-                const targetAccessContext = policy.context as TargetConnectContext;
-                Object.values(targetAccessContext.targetUsers).forEach(
-                    targetUser => targetUsers.push(targetUser.userName));
-            }
-        }
+    const policy = policies.find(p => p.name == policyName);
+    if (policy.type == PolicyType.KubernetesProxy) {
+        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
+        Object.values(kubernetesPolicyContext.clusterUsers).forEach(
+            clusterUser => targetUsers.push(clusterUser.name)
+        );
+    } else if (policy.type == PolicyType.TargetConnect) {
+        const targetAccessContext = policy.context as TargetConnectContext;
+        Object.values(targetAccessContext.targetUsers).forEach(
+            targetUser => targetUsers.push(targetUser.userName));
     }
 
     if(!! argv.json) {

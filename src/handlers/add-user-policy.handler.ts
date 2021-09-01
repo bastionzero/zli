@@ -27,7 +27,7 @@ export async function addUserToPolicyHandler(userEmail: string, policyName: stri
 
         if (policy.name == policyName) {
             if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
-                logger.error(`Adding user to policy ${policyName} failed. Support for adding users to ${policy.type} policies will be added soon.`);
+                logger.error(`Adding user to policy ${policyName} failed. Adding users to ${policy.type} policies is not currently supported.`);
                 await cleanExit(1, logger);
             }
             // Then add the user to the policy

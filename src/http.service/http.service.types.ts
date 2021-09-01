@@ -1,4 +1,3 @@
-import { ReadStream } from 'fs';
 import { SessionState, TargetStatus, KubeClusterStatus, TargetType } from '../types';
 
 export interface CreateSessionRequest {

@@ -10,60 +10,60 @@ export async function addTargetUserHandler(targetUserName: string, policyName: s
     const policies = await policyService.ListAllPolicies();
 
     // Loop till we find the one we are looking for
-    for (const policy of policies) {
-        if (policy.name == policyName) {
-            switch (policy.type) {
-            case PolicyType.KubernetesProxy:
-                // Then add the role to the policy
-                const clusterUserToAdd: KubernetesPolicyClusterUsers = {
-                    name: targetUserName
-                };
-                const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
+    const policy = policies.find(p => p.name == policyName);
 
-                // If this cluster role exists already
-                if (kubernetesPolicyContext.clusterUsers[targetUserName] !== undefined) {
-                    logger.error(`Role ${targetUserName} exists already for policy: ${policyName}`);
-                    await cleanExit(1, logger);
-                }
-                kubernetesPolicyContext.clusterUsers[targetUserName] = clusterUserToAdd;
-
-                // And finally update the policy
-                policy.context = kubernetesPolicyContext;
-                break;
-            case PolicyType.TargetConnect:
-                // Then add the role to the policy
-                const targetUserToAdd: TargetUser = {
-                    userName: targetUserName
-                };
-                const targetConnectPolicyContext = policy.context as TargetConnectContext;
-                const targetUsers = targetConnectPolicyContext.targetUsers as {[targetUser: string]: TargetUser};
-
-                // If this target user exists already
-                if (targetUsers[targetUserName] !== undefined) {
-                    logger.error(`Target user ${targetUserName} exists already for policy: ${policyName}`);
-                    await cleanExit(1, logger);
-                }
-                targetUsers[targetUserName] = targetUserToAdd;
-                targetConnectPolicyContext.targetUsers = targetUsers;
-
-                // And finally update the policy
-                policy.context = targetConnectPolicyContext;
-                break;
-            default:
-                logger.error(`Adding target user to policy ${policyName} failed. Support for adding target users to ${policy.type} policies will be added soon.`);
-                await cleanExit(1, logger);
-                break;
-            }
-
-            await policyService.EditPolicy(policy);
-
-            logger.info(`Added ${targetUserName} to ${policyName} policy!`);
-            await cleanExit(0, logger);
-        }
+    if (!policy) {
+        // Log an error
+        logger.error(`Unable to find policy with name: ${policyName}`);
+        await cleanExit(1, logger);
     }
 
-    // Log an error
-    logger.error(`Unable to find the policy: ${policyName}`);
-    await cleanExit(1, logger);
+    switch (policy.type) {
+    case PolicyType.KubernetesProxy:
+        // Then add the role to the policy
+        const clusterUserToAdd: KubernetesPolicyClusterUsers = {
+            name: targetUserName
+        };
+        const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
+
+        // If this cluster role exists already
+        if (kubernetesPolicyContext.clusterUsers[targetUserName] !== undefined) {
+            logger.error(`Role ${targetUserName} exists already for policy: ${policyName}`);
+            await cleanExit(1, logger);
+        }
+        kubernetesPolicyContext.clusterUsers[targetUserName] = clusterUserToAdd;
+
+        // And finally update the policy
+        policy.context = kubernetesPolicyContext;
+        break;
+    case PolicyType.TargetConnect:
+        // Then add the role to the policy
+        const targetUserToAdd: TargetUser = {
+            userName: targetUserName
+        };
+        const targetConnectPolicyContext = policy.context as TargetConnectContext;
+        const targetUsers = targetConnectPolicyContext.targetUsers as {[targetUser: string]: TargetUser};
+
+        // If this target user exists already
+        if (targetUsers[targetUserName] !== undefined) {
+            logger.error(`Target user ${targetUserName} exists already for policy: ${policyName}`);
+            await cleanExit(1, logger);
+        }
+        targetUsers[targetUserName] = targetUserToAdd;
+        targetConnectPolicyContext.targetUsers = targetUsers;
+
+        // And finally update the policy
+        policy.context = targetConnectPolicyContext;
+        break;
+    default:
+        logger.error(`Adding target user to policy ${policyName} failed. Adding target users to ${policy.type} policies is not currently supported.`);
+        await cleanExit(1, logger);
+        break;
+    }
+
+    await policyService.EditPolicy(policy);
+
+    logger.info(`Added ${targetUserName} to ${policyName} policy!`);
+    await cleanExit(0, logger);
 }
 

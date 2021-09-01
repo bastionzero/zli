@@ -53,7 +53,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             return res([]);
         }
     });
-    
+
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
             result.map<ClusterSummary>((cluster, _index, _array) => {
