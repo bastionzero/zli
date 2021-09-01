@@ -5,6 +5,7 @@ import { ConfigService } from '../config.service/config.service';
 
 const path = require('path');
 const fs = require('fs');
+const pem = require('pem');
 
 export async function generateKubeconfigHandler(
     argv: any,
@@ -20,7 +21,6 @@ export async function generateKubeconfigHandler(
         // Create and save key/cert
         const createCertPromise = new Promise<void>(async (resolve, reject) => {
             // Define pem here as if the config has already been created, this codeblock will never be executed
-            const pem = require('pem');
             pem.createCertificate({ days: 999, selfSigned: true }, async function (err: any, keys: any) {
                 if (err) {
                     throw err;
