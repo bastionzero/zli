@@ -65,7 +65,7 @@ func NewControlChannel(serviceUrl string,
 
 	log.Printf("\nserviceURL: %v, \nhubEndpoint: %v, \nparams: %v, \nheaders: %v", serviceUrl, hubEndpoint, params, headers)
 
-	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, config.Data.PrivateKey)
+	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, true)
 	if err != nil {
 		return &ControlChannel{}, err
 	}

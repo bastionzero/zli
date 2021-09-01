@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 
 	ed "crypto/ed25519"
@@ -64,11 +65,11 @@ type Websocket struct {
 	autoReconnect bool
 
 	// Flag to indicate if we should solve the challenge first before connecting
-	privateKey string
+	getChallenge bool
 }
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
-func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool, privateKey string) (*Websocket, error) {
+func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool, getChallenge bool) (*Websocket, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := Websocket{
@@ -82,7 +83,7 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 
 		autoReconnect: autoReconnect,
 
-		privateKey: privateKey,
+		getChallenge: getChallenge,
 	}
 
 	// Connect to the websocket, catch any errors
@@ -220,9 +221,12 @@ func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[s
 	connected := false
 	for connected == false {
 
-		if w.privateKey != "" {
+		if w.getChallenge {
+			// First get the config from the vault
+			config, _ := vault.LoadVault()
+
 			// If we have a private key, we must solve the challenge
-			solvedChallenge, err := getAndSolveChallenge(params["org_id"], params["cluster_name"], serviceUrl, w.privateKey)
+			solvedChallenge, err := getAndSolveChallenge(params["org_id"], params["cluster_name"], serviceUrl, config.Data.PrivateKey)
 			if err != nil {
 				log.Printf("Error un-marshalling negotiate response: %s", err)
 				connected = false
