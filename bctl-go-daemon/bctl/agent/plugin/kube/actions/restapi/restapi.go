@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
 type RestApiAction struct {
@@ -15,22 +17,35 @@ type RestApiAction struct {
 	kubeHost            string
 	impersonateGroup    string
 	role                string
+	closed              bool
+	logger              *lggr.Logger
 }
 
-func NewRestApiAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string) (*RestApiAction, error) {
+func NewRestApiAction(logger *lggr.Logger, serviceAccountToken string, kubeHost string, impersonateGroup string, role string) (*RestApiAction, error) {
 	return &RestApiAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
 		impersonateGroup:    impersonateGroup,
 		role:                role,
+		logger:              logger,
+		closed:              false,
 	}, nil
 }
 
+func (r *RestApiAction) Closed() bool {
+	return r.closed
+}
+
 func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
+	defer func() {
+		r.closed = true
+	}()
+
 	var apiRequest KubeRestApiActionPayload
 	if err := json.Unmarshal(actionPayload, &apiRequest); err != nil {
-		log.Printf("Error: %v", err.Error())
-		return action, []byte{}, fmt.Errorf("Malformed Keysplitting Action payload %v", actionPayload)
+		rerr := fmt.Errorf("malformed Keysplitting Action payload %v", actionPayload)
+		r.logger.Error(rerr)
+		return action, []byte{}, rerr
 	}
 
 	// Perform the api request
@@ -58,9 +73,10 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	res, err := httpClient.Do(req)
-	// TODO: Check for error here
 	if err != nil {
-		return action, []byte{}, fmt.Errorf("Bad Response to Api request")
+		rerr := fmt.Errorf("bad response to API request: %s", err)
+		r.logger.Error(rerr)
+		return action, []byte{}, rerr
 	}
 	defer res.Body.Close()
 

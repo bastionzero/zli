@@ -166,9 +166,8 @@ func (w *Websocket) Receive() error {
 
 			// push to channel
 			if wrappedMessage.Type != signalRTypeNumber {
-				msg := fmt.Sprintf("Ignoring SignalR message with type # %v", wrappedMessage.Type)
-				w.logger.Info(msg)
-
+				msg := fmt.Sprintf("Ignoring SignalR message with type %v", wrappedMessage.Type)
+				w.logger.Debug(msg)
 			} else if len(wrappedMessage.Arguments) != 0 {
 				if wrappedMessage.Target == "CloseConnection" {
 					return errors.New("closing message received; websocket closed")
@@ -193,7 +192,7 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	// Select target
 	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
 	if err != nil {
-		return fmt.Errorf("error in selecting SignalR Endpoint target name: %v", err.Error())
+		return fmt.Errorf("error in selecting SignalR Endpoint target name: %s", err)
 	}
 
 	msg := fmt.Sprintf("Sending %s message to the Bastion", target)

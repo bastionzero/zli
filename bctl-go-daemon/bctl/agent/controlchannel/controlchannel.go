@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"sync"
@@ -14,6 +14,8 @@ import (
 	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
+	"golang.org/x/crypto/sha3"
 
 	ed "crypto/ed25519"
 
@@ -23,13 +25,15 @@ import (
 )
 
 const (
-	hubEndpoint      = "/api/v1/hub/kube-control"
-	registerEndpoint = "/api/v1/kube/register-agent"
-	autoReconnect    = true
+	hubEndpoint       = "/api/v1/hub/kube-control"
+	registerEndpoint  = "/api/v1/kube/register-agent"
+	challengeEndpoint = "/api/v1/kube/get-challenge"
+	autoReconnect     = true
 )
 
 type ControlChannel struct {
 	websocket *ws.Websocket
+	logger    *lggr.Logger
 
 	// These are all the types of channels we have available
 	NewDatachannelChan chan NewDatachannelMessage
@@ -46,9 +50,19 @@ func NewControlChannel(serviceUrl string,
 	agentVersion string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
 
+	logger := lggr.NewLogger(lggr.Controlchannel, lggr.Debug)
+	subLogger := logger.GetWebsocketSubLogger()
+
 	// Populate keys if they haven't been generated already
-	config, err := newAgent(serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)
+	config, err := newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)
 	if err != nil {
+		logger.Error(err)
+		return &ControlChannel{}, err
+	}
+
+	solvedChallenge, err := getAndSolveChallenge(orgId, clusterName, serviceUrl, config.Data.PrivateKey)
+	if err != nil {
+		logger.Error(err)
 		return &ControlChannel{}, err
 	}
 
@@ -56,16 +70,21 @@ func NewControlChannel(serviceUrl string,
 	headers := make(map[string]string)
 
 	// Make and add our params
-	params := make(map[string]string)
-	params["public_key"] = config.Data.PublicKey
-	params["org_id"] = orgId
-	params["cluster_name"] = clusterName
-	params["environment_id"] = environmentId
-	params["agent_version"] = agentVersion
+	params := map[string]string{
+		"solved_challange": solvedChallenge,
+		"public_key":       config.Data.PublicKey,
+		"agent_version":    agentVersion,
 
-	log.Printf("\nserviceURL: %v, \nhubEndpoint: %v, \nparams: %v, \nheaders: %v", serviceUrl, hubEndpoint, params, headers)
+		// Why do we need these?  Can we remove them?
+		"org_id":         orgId,
+		"cluster_name":   clusterName,
+		"environment_id": environmentId,
+	}
 
-	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, true)
+	msg := fmt.Sprintf("{serviceURL: %v, hubEndpoint: %v, params: %v, headers: %v}", serviceUrl, hubEndpoint, params, headers)
+	logger.Info(msg)
+
+	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, true)
 	if err != nil {
 		return &ControlChannel{}, err
 	}
@@ -73,6 +92,7 @@ func NewControlChannel(serviceUrl string,
 	control := ControlChannel{
 		websocket:          wsClient,
 		NewDatachannelChan: make(chan NewDatachannelMessage),
+		logger:             logger,
 	}
 
 	// Set up our handler to deal with incoming messages
@@ -80,29 +100,12 @@ func NewControlChannel(serviceUrl string,
 		for {
 			select {
 			case <-control.websocket.DoneChannel:
-				log.Println("Websocket has been closed, closing datachannel")
+				control.logger.Info("Websocket has been closed, closing controlchannel")
 				return
 			case agentMessage := <-control.websocket.InputChannel:
-				switch wsmsg.MessageType(agentMessage.MessageType) {
-				case wsmsg.NewDatachannel:
-					var dataMessage NewDatachannelMessage
-					if err := json.Unmarshal(agentMessage.MessagePayload, &dataMessage); err != nil {
-						log.Printf("Could not unmarshal new datachannel request: %v", err.Error())
-						return
-					} else {
-						control.NewDatachannelChan <- dataMessage
-					}
-				case wsmsg.HealthCheck:
-					if msg, err := aliveCheck(); err != nil {
-						log.Printf(err.Error())
-						return
-					} else {
-						control.websocket.OutputChannel <- wsmsg.AgentMessage{
-							MessageType:    string(wsmsg.HealthCheck),
-							SchemaVersion:  wsmsg.SchemaVersion,
-							MessagePayload: msg,
-						}
-					}
+				if err := control.Receive(agentMessage); err != nil {
+					control.logger.Error(err)
+					return
 				}
 			}
 		}
@@ -110,8 +113,81 @@ func NewControlChannel(serviceUrl string,
 	return &control, nil
 }
 
-func aliveCheck() ([]byte, error) {
+func (c *ControlChannel) Receive(agentMessage wsmsg.AgentMessage) error {
+	switch wsmsg.MessageType(agentMessage.MessageType) {
+	case wsmsg.NewDatachannel:
+		var dataMessage NewDatachannelMessage
+		if err := json.Unmarshal(agentMessage.MessagePayload, &dataMessage); err != nil {
+			return fmt.Errorf("error unmarshalling new controlchannel request: %v", err.Error())
+		} else {
+			c.NewDatachannelChan <- dataMessage
+		}
+	case wsmsg.HealthCheck:
+		if msg, err := healthCheck(); err != nil {
+			return err
+		} else {
+			c.websocket.OutputChannel <- wsmsg.AgentMessage{
+				MessageType:    string(wsmsg.HealthCheck),
+				SchemaVersion:  wsmsg.SchemaVersion,
+				MessagePayload: msg,
+			}
+		}
+	}
+	return nil
+}
+
+func getAndSolveChallenge(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
+	// Get Challenge
+	challengeRequest := GetChallengeMessage{
+		OrgId:       orgId,
+		ClusterName: clusterName,
+	}
+
+	challengeJson, err := json.Marshal(challengeRequest)
+	if err != nil {
+		return "", errors.New("error marshalling register data")
+	}
+
+	// Make our POST request
+	response, err := http.Post(
+		"https://"+serviceUrl+challengeEndpoint,
+		"application/json",
+		bytes.NewBuffer(challengeJson))
+	if err != nil || response.StatusCode != http.StatusOK {
+		rerr := fmt.Errorf("error making post request to challenge agent. Error: %v. Response: %v", err, response)
+		return "", rerr
+	}
+	defer response.Body.Close()
+
+	// Extract the challenge
+	responseDecoded := GetChallengeResponse{}
+	json.NewDecoder(response.Body).Decode(&responseDecoded)
+
+	// Solve Challenge
+	return SignChallenge(privateKey, responseDecoded.Challenge)
+}
+
+// TODO: make a bzerolib signing function
+func SignChallenge(privateKey string, challenge string) (string, error) {
+	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
+	if len(keyBytes) != 64 {
+		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
+	}
+	privkey := ed.PrivateKey(keyBytes)
+
+	hashBits := sha3.Sum256([]byte(challenge))
+
+	sig := ed.Sign(privkey, hashBits[:])
+
+	// Convert the signature to base64 string
+	sigBase64 := base64.StdEncoding.EncodeToString(sig)
+
+	return sigBase64, nil
+}
+
+func healthCheck() ([]byte, error) {
 	// Also let bastion know a list of valid cluster roles
+	// TODO: break out extracting the list of valid cluster roles
 	// Create our api object
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -177,12 +253,12 @@ func aliveCheck() ([]byte, error) {
 	return aliveBytes, nil
 }
 
-func newAgent(serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string) (*vault.Vault, error) {
+func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string) (*vault.Vault, error) {
 	config, _ := vault.LoadVault()
 
 	// Check if vault is empty, if so generate a private, public key pair
 	if config.IsEmpty() {
-		log.Println("Creating new agent secret")
+		logger.Info("Creating new agent secret")
 
 		if publicKey, privateKey, err := ed.GenerateKey(nil); err != nil {
 			return nil, fmt.Errorf("error generating key pair: %v", err.Error())
@@ -194,11 +270,11 @@ func newAgent(serviceUrl string, activationToken string, agentVersion string, or
 				PrivateKey: privkeyString,
 			}
 			if err := config.Save(); err != nil {
-				return nil, fmt.Errorf("error saving vault: %v", err.Error())
+				return nil, fmt.Errorf("error saving vault: %s", err)
 			}
 
 			// Register with Bastion
-			log.Println("Registering agent with Bastionn")
+			logger.Info("Registering agent with Bastion")
 			register := RegisterAgentMessage{
 				PublicKey:      pubkeyString,
 				ActivationCode: activationToken,
@@ -210,21 +286,21 @@ func newAgent(serviceUrl string, activationToken string, agentVersion string, or
 
 			registerJson, err := json.Marshal(register)
 			if err != nil {
-				log.Printf("Error marshalling register data")
-				return nil, err
+				msg := fmt.Errorf("error marshalling registration data: %s", err)
+				return nil, msg
 			}
 
 			// Make our POST request
 			response, err := http.Post("https://"+serviceUrl+registerEndpoint, "application/json",
 				bytes.NewBuffer(registerJson))
 			if err != nil || response.StatusCode != http.StatusOK {
-				log.Printf("Error making post request to register agent. Error: %s. Response: %s", err, response)
-				return nil, err
+				rerr := fmt.Errorf("error making post request to register agent. Error: %s. Response: %v", err, response)
+				return nil, rerr
 			}
 		}
 	} else {
 		// If the vault isn't empty, don't do anything
-		log.Printf("Found Previous config data: %+v", config.Data)
+		logger.Info("Found Previous config data")
 	}
 	return config, nil
 }
