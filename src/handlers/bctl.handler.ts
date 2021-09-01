@@ -4,6 +4,8 @@ import { cleanExit } from './clean-exit.handler';
 
 const { v4: uuidv4 } = require('uuid');
 const spawn = require('child_process').spawn;
+const { promisify } = require('util');
+const exec = promisify(require('child_process').exec)
 
 
 export async function bctlHandler(configService: ConfigService, logger: Logger) {
@@ -41,10 +43,6 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
 
         if (code != 0) {
             // Check to ensure they are using the right context
-            // Imported here since the code should usually be 0 
-            const { promisify } = require('util');
-            const exec = promisify(require('child_process').exec)
-
             const currentContext = await exec('kubectl config current-context ');
 
             if (currentContext != 'bctl-server') {

@@ -20,7 +20,6 @@ export async function generateKubeconfigHandler(
 
         // Create and save key/cert
         const createCertPromise = new Promise<void>(async (resolve, reject) => {
-            // Define pem here as if the config has already been created, this codeblock will never be executed
             pem.createCertificate({ days: 999, selfSigned: true }, async function (err: any, keys: any) {
                 if (err) {
                     throw err;
