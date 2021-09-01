@@ -37,7 +37,7 @@ func NewDataChannel(role string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
 	autoReconnect bool) (*DataChannel, error) {
 
-	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
 		return &DataChannel{}, err // TODO: how tf are we going to report these?
 	}

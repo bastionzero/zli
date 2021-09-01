@@ -3,7 +3,6 @@ package controlchannel
 import (
 	"bytes"
 	"context"
-	ed "crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,17 +15,17 @@ import (
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
 
-	"golang.org/x/crypto/sha3"
+	ed "crypto/ed25519"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
 const (
-	hubEndpoint       = "/api/v1/hub/kube-control"
-	registerEndpoint  = "/api/v1/kube/register-agent"
-	challangeEndpoint = "/api/v1/kube/get-challenge"
-	autoReconnect     = true
+	hubEndpoint      = "/api/v1/hub/kube-control"
+	registerEndpoint = "/api/v1/kube/register-agent"
+	autoReconnect    = true
 )
 
 type ControlChannel struct {
@@ -53,17 +52,11 @@ func NewControlChannel(serviceUrl string,
 		return &ControlChannel{}, err
 	}
 
-	solvedChallange, err := getAndSolveChallange(orgId, clusterName, serviceUrl, config.Data.PrivateKey)
-	if err != nil {
-		return &ControlChannel{}, err
-	}
-
 	// Create our headers and params, headers are empty
 	headers := make(map[string]string)
 
 	// Make and add our params
 	params := make(map[string]string)
-	params["solved_challange"] = solvedChallange
 	params["public_key"] = config.Data.PublicKey
 	params["org_id"] = orgId
 	params["cluster_name"] = clusterName
@@ -72,7 +65,7 @@ func NewControlChannel(serviceUrl string,
 
 	log.Printf("\nserviceURL: %v, \nhubEndpoint: %v, \nparams: %v, \nheaders: %v", serviceUrl, hubEndpoint, params, headers)
 
-	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
+	wsClient, err := ws.NewWebsocket(serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, true)
 	if err != nil {
 		return &ControlChannel{}, err
 	}
@@ -115,53 +108,6 @@ func NewControlChannel(serviceUrl string,
 		}
 	}()
 	return &control, nil
-}
-
-func getAndSolveChallange(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
-	// Get Challange
-	challangeRequest := GetChallangeMessage{
-		OrgId:       orgId,
-		ClusterName: clusterName,
-	}
-
-	challangeJson, err := json.Marshal(challangeRequest)
-	if err != nil {
-		log.Printf("Error marshalling register data")
-		return "", err
-	}
-
-	// Make our POST request
-	response, err := http.Post("https://"+serviceUrl+challangeEndpoint, "application/json",
-		bytes.NewBuffer(challangeJson))
-	if err != nil || response.StatusCode != http.StatusOK {
-		log.Printf("Error making post request to challange agent. Error: %s. Response: %s", err, response)
-		return "", err
-	}
-	defer response.Body.Close()
-
-	// Extract the challange
-	responseDecoded := GetChallangeResponse{}
-	json.NewDecoder(response.Body).Decode(&responseDecoded)
-
-	// Solve Chalange
-	return SignChallange(privateKey, responseDecoded.Challange)
-}
-
-func SignChallange(privateKey string, challange string) (string, error) {
-	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
-	if len(keyBytes) != 64 {
-		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
-	}
-	privkey := ed.PrivateKey(keyBytes)
-
-	hashBits := sha3.Sum256([]byte(challange))
-
-	sig := ed.Sign(privkey, hashBits[:])
-
-	// Convert the signature to base64 string
-	sigBase64 := base64.StdEncoding.EncodeToString(sig)
-
-	return sigBase64, nil
 }
 
 func aliveCheck() ([]byte, error) {

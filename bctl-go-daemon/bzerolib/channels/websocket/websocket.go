@@ -3,6 +3,7 @@ package websocket
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,14 +15,20 @@ import (
 	"sync"
 	"time"
 
+	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 
+	ed "crypto/ed25519"
+
 	"github.com/gorilla/websocket"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
 	sleepIntervalInSeconds = 5
 	connectionTimeout      = 30 // just a reminder for now
+
+	challengeEndpoint = "/api/v1/kube/get-challenge"
 
 	// SignalR
 	signalRMessageTerminatorByte = 0x1E
@@ -56,10 +63,13 @@ type Websocket struct {
 
 	// Flag to indicate if we should automatically try to reconnect
 	autoReconnect bool
+
+	// Flag to indicate if we should solve the challenge first before connecting
+	getChallenge bool
 }
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
-func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool) (*Websocket, error) {
+func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]string, headers map[string]string, targetSelectHandler func(msg wsmsg.AgentMessage) (string, error), autoReconnect bool, getChallenge bool) (*Websocket, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := Websocket{
@@ -72,6 +82,8 @@ func NewWebsocket(serviceUrl string, hubEndpoint string, params map[string]strin
 		targetSelectHandler: targetSelectHandler,
 
 		autoReconnect: autoReconnect,
+
+		getChallenge: getChallenge,
 	}
 
 	// Connect to the websocket, catch any errors
@@ -205,87 +217,24 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	return nil
 }
 
-// func (ws *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[string]string, params map[string]string) error {
-// 	for ws.IsReady == false {
-
-// 		// First negotiate in order to get a url to connect to
-// 		httpClient := &http.Client{}
-// 		negotiateUrl := "https://" + serviceUrl + hubEndpoint + "/negotiate"
-// 		req, _ := http.NewRequest("POST", negotiateUrl, nil)
-
-// 		// Add the expected headers
-// 		for name, values := range headers {
-// 			// Loop over all values for the name.
-// 			req.Header.Set(name, values)
-// 		}
-
-// 		// Set any query params
-// 		q := req.URL.Query()
-// 		for key, values := range params {
-// 			q.Add(key, values)
-// 		}
-
-// 		// Add our clientProtocol param
-// 		q.Add("clientProtocol", "1.5")
-// 		req.URL.RawQuery = q.Encode()
-
-// 		// Make the request and wait for the body to close
-// 		log.Printf("Starting negotiation with URL %s", negotiateUrl)
-// 		res, _ := httpClient.Do(req)
-// 		defer res.Body.Close()
-
-// 		// Extract out the connection token
-// 		bodyBytes, _ := ioutil.ReadAll(res.Body)
-// 		var negotiateResp wsmsg.SignalRNegotiateResponse
-// 		err := json.Unmarshal(bodyBytes, &negotiateResp)
-// 		if err != nil {
-// 			// TODO: Add error handling around this, we should at least retry and then bubble up the error to the user
-// 			// TODO: Add status ok check
-// 			return fmt.Errorf("Error un-marshalling negotiate response: %v", negotiateResp)
-// 		}
-
-// 		// Add the connection id to the list of params
-// 		params["id"] = negotiateResp.ConnectionId
-// 		params["clientProtocol"] = "1.5"
-// 		params["transport"] = "WebSockets"
-
-// 		// Make an interrupt channel
-// 		// TODO: Think this can be removed
-// 		interrupt := make(chan os.Signal, 1)
-// 		signal.Notify(interrupt, os.Interrupt)
-
-// 		// Build our url, add our params as well
-// 		websocketUrl := url.URL{Scheme: "wss", Host: serviceUrl, Path: hubEndpoint}
-// 		q = websocketUrl.Query()
-// 		for key, value := range params {
-// 			q.Set(key, value)
-// 		}
-// 		websocketUrl.RawQuery = q.Encode()
-
-// 		log.Printf("Negotiation finished, received %d. Connecting to %s", res.StatusCode, websocketUrl.String())
-
-// 		ws.Client, _, err = websocket.DefaultDialer.Dial(websocketUrl.String(), http.Header{"Authorization": []string{headers["Authorization"]}})
-
-// 		// Define our protocol and version
-// 		// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
-// 		if err := ws.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), 0x1E)); err != nil {
-// 			log.Println("Error when trying to agree on version for SignalR!")
-// 			ws.Client.Close()
-// 		} else {
-// 			ws.IsReady = true
-// 			return nil
-// 		}
-
-// 		// Sleep in between
-// 		log.Printf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds)
-// 		time.Sleep(time.Second * sleepIntervalInSeconds)
-// 	}
-// 	return nil
-// }
-
 func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[string]string, params map[string]string) {
 	connected := false
 	for connected == false {
+
+		if w.getChallenge {
+			// First get the config from the vault
+			config, _ := vault.LoadVault()
+
+			// If we have a private key, we must solve the challenge
+			solvedChallenge, err := getAndSolveChallenge(params["org_id"], params["cluster_name"], serviceUrl, config.Data.PrivateKey)
+			if err != nil {
+				log.Printf("Error un-marshalling negotiate response: %s", err)
+				connected = false
+			}
+
+			// Add the solved challenge to the params
+			params["solved_challenge"] = solvedChallenge
+		}
 
 		// First negotiate in order to get a url to connect to
 		httpClient := &http.Client{}
@@ -367,4 +316,51 @@ func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[s
 		log.Printf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds)
 		time.Sleep(time.Second * sleepIntervalInSeconds)
 	}
+}
+
+func getAndSolveChallenge(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
+	// Get Challange
+	challangeRequest := GetChallengeMessage{
+		OrgId:       orgId,
+		ClusterName: clusterName,
+	}
+
+	challangeJson, err := json.Marshal(challangeRequest)
+	if err != nil {
+		log.Printf("Error marshalling register data")
+		return "", err
+	}
+
+	// Make our POST request
+	response, err := http.Post("https://"+serviceUrl+challengeEndpoint, "application/json",
+		bytes.NewBuffer(challangeJson))
+	if err != nil || response.StatusCode != http.StatusOK {
+		log.Printf("Error making post request to challange agent. Error: %s. Response: %s", err, response)
+		return "", err
+	}
+	defer response.Body.Close()
+
+	// Extract the challange
+	responseDecoded := GetChallengeResponse{}
+	json.NewDecoder(response.Body).Decode(&responseDecoded)
+
+	// Solve Challenge
+	return SignChallenge(privateKey, responseDecoded.Challenge)
+}
+
+func SignChallenge(privateKey string, challange string) (string, error) {
+	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
+	if len(keyBytes) != 64 {
+		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
+	}
+	privkey := ed.PrivateKey(keyBytes)
+
+	hashBits := sha3.Sum256([]byte(challange))
+
+	sig := ed.Sign(privkey, hashBits[:])
+
+	// Convert the signature to base64 string
+	sigBase64 := base64.StdEncoding.EncodeToString(sig)
+
+	return sigBase64, nil
 }
