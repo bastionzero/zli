@@ -3,10 +3,9 @@ import util from 'util';
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 
-const pem = require('pem');
 const path = require('path');
 const fs = require('fs');
-
+const pem = require('pem');
 
 export async function generateKubeconfigHandler(
     argv: any,
@@ -21,6 +20,7 @@ export async function generateKubeconfigHandler(
 
         // Create and save key/cert
         const createCertPromise = new Promise<void>(async (resolve, reject) => {
+            // Define pem here as if the config has already been created, this codeblock will never be executed
             pem.createCertificate({ days: 999, selfSigned: true }, async function (err: any, keys: any) {
                 if (err) {
                     throw err;
@@ -38,7 +38,7 @@ export async function generateKubeconfigHandler(
                         reject();
                         return;
                     }
-                    logger.info('Generated and saved key file');
+                    logger.debug('Generated and saved key file');
                 });
 
                 await fs.writeFile(pathToCert, keys.certificate, function (err: any) {
@@ -47,12 +47,20 @@ export async function generateKubeconfigHandler(
                         reject();
                         return;
                     }
-                    logger.info('Generated and saved cert file');
+                    logger.debug('Generated and saved cert file');
                 });
 
                 // Generate a token that can be used for auth
                 const randtoken = require('rand-token');
                 const token = randtoken.generate(128) + '++++';
+
+                // Find an open port, define it here as if the config has already been created, this codeblock will never be executed
+                const findPort = require('find-open-port');
+                const localPort = new Promise<number>(async (resolve, reject) => {
+                    findPort().then((port: any) => {
+                        resolve(port);
+                    });
+                });
 
                 // Now save the path in the configService
                 kubeConfig = {
@@ -60,7 +68,7 @@ export async function generateKubeconfigHandler(
                     certPath: pathToCert,
                     token: token,
                     localHost: 'localhost',
-                    localPort: 1234,
+                    localPort: await localPort,
                     localPid: null,
                     assumeRole: null,
                     assumeCluster: null
@@ -86,7 +94,6 @@ apiVersion: v1
 clusters:
 - cluster:
     server: https://${kubeConfig['localHost']}:${daemonPort}
-    # certificate-authority: ${kubeConfig['certPath']}
     insecure-skip-tls-verify: true
   name: bctl-server
 contexts:

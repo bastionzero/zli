@@ -61,6 +61,7 @@
     "conf": "^7.1.2",
     "crypto-js": "^4.0.0",
     "figlet": "^1.5.0",
+    "find-open-port": "^2.0.3",
     "form-data": "^3.0.0",
     "got": "^11.8.0",
     "is-running": "^2.1.0",
