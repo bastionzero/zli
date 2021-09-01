@@ -55,7 +55,7 @@ export async function generateKubeconfigHandler(
 
                 // Find an open port, define it here as if the config has already been created, this codeblock will never be executed
                 const findPort = require('find-open-port');
-                const localPort = new Promise<number>(async (resolve, reject) => {
+                const localPort = new Promise<number>(async (resolve, _) => {
                     findPort().then((port: any) => {
                         resolve(port);
                     });
