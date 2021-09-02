@@ -574,7 +574,7 @@ export class KubeService extends HttpService
     }
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {
-        return this.Post('list', {});
+        return this.Get('list', {});
     }
 }
 
