@@ -25,29 +25,30 @@ type Logger struct {
 	logger zerolog.Logger
 }
 
-const (
-	// TODO: Detect os and switch
-	logFileName = "bctl-agent.log"
-)
-
-func NewLogger(debugLevel DebugLevel, filePath string) (*Logger, error) {
+func NewLogger(debugLevel DebugLevel, logFilePath string, stdout bool) (*Logger, error) {
 	// Let's us display stack info on errors
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	zerolog.SetGlobalLevel(debugLevel)
 
 	// If the log file doesn't exist, create it, or append to the file
-	logFile, err := os.OpenFile(filePath+"/"+logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("error: %s", err)
 		return &Logger{}, err
 	}
 
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-	multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
+	if stdout {
+		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
+		multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
 
-	return &Logger{
-		logger: zerolog.New(multi).With().Logger(),
-	}, nil
+		return &Logger{
+			logger: zerolog.New(multi).With().Logger(),
+		}, nil
+	} else {
+		return &Logger{
+			logger: zerolog.New(logFile).With().Logger(),
+		}, nil
+	}
 }
 
 func (l *Logger) AddAgentVersion(version string) {

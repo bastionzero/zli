@@ -23,7 +23,7 @@ const (
 
 	// Disable auto-reconnect
 	autoReconnect = false
-	logPath       = "/var/log/cwc"
+	logFilePath   = "/var/log/cwc/bctl-agent.log"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 	version := getAgentVersion()
 
 	// setup our loggers
-	logger, err := lggr.NewLogger(lggr.Debug, logPath)
+	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, false)
 	if err != nil {
 		return
 	}
@@ -167,7 +167,7 @@ func parseFlags() error {
 		missing = append(missing, "activationToken")
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("Missing flags! Missing: %v", missing)
+		return fmt.Errorf("missing flags: %v", missing)
 	} else {
 		return nil
 	}
