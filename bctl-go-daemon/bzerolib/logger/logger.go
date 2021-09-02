@@ -10,17 +10,6 @@ import (
 	"github.com/rs/zerolog/pkgerrors"
 )
 
-// Keep track of the different parts of our agent we can log
-type Component string
-
-const (
-	Websocket      Component = "websocket"
-	Datachannel    Component = "datachannel"
-	Controlchannel Component = "controlchannel"
-	Plugin         Component = "plugin"
-	Action         Component = "action"
-)
-
 // This is here for translation, so that the rest of the program doesn't need to care or know
 // about zerolog
 type DebugLevel = zerolog.Level
@@ -38,38 +27,64 @@ type Logger struct {
 
 const (
 	// TODO: Detect os and switch
-	logFilePath = "/var/log/cwc/bctl-agent.log"
+	logFileName = "bctl-agent.log"
 )
 
-func NewLogger(component Component, debugLevel DebugLevel) *Logger {
+func NewLogger(debugLevel DebugLevel, filePath string) (*Logger, error) {
 	// Let's us display stack info on errors
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	zerolog.SetGlobalLevel(debugLevel)
 
 	// If the log file doesn't exist, create it, or append to the file
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(filePath+"/"+logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal()
+		log.Printf("error: %s", err)
+		return &Logger{}, err
 	}
 
+	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
+	multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
+
 	return &Logger{
-		logger: zerolog.New(logFile).With().Str(string(component), uuid.New().String()).Logger(),
+		logger: zerolog.New(multi).With().Logger(),
+	}, nil
+}
+
+func (l *Logger) AddAgentVersion(version string) {
+	l.logger = l.logger.With().Str("agentVersion", version).Logger()
+}
+
+func (l *Logger) AddDaemonVersion(version string) {
+	l.logger = l.logger.With().Str("daemonVersion", version).Logger()
+}
+
+// TODO: instead of assigning random uuid, the control channel and data channel should both use
+// their respective connectionIds
+func (l *Logger) GetControlchannelLogger() *Logger {
+	return &Logger{
+		logger: l.logger.With().Str("controlchannel", uuid.New().String()).Logger(),
 	}
 }
 
-func (l *Logger) GetWebsocketSubLogger() *Logger {
+func (l *Logger) GetDatachannelLogger() *Logger {
+	return &Logger{
+		logger: l.logger.With().Str("datachannel", uuid.New().String()).Logger(),
+	}
+}
+
+func (l *Logger) GetWebsocketLogger() *Logger {
 	return &Logger{
 		logger: l.logger.With().Str("websocket", uuid.New().String()).Logger(),
 	}
 }
 
-func (l *Logger) GetPluginSubLogger(pluginName plgn.PluginName) *Logger {
+func (l *Logger) GetPluginLogger(pluginName plgn.PluginName) *Logger {
 	return &Logger{
 		logger: l.logger.With().Str("plugin", string(pluginName)).Logger(),
 	}
 }
 
-func (l *Logger) GetActionSubLogger(actionName string) *Logger {
+func (l *Logger) GetActionLogger(actionName string) *Logger {
 	return &Logger{
 		logger: l.logger.With().
 			Str("action", actionName).

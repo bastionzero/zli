@@ -24,7 +24,7 @@ const (
 )
 
 const (
-	escChar = "^[" // ESC char
+	EscChar = "^[" // ESC char
 )
 
 type ExecAction struct {
@@ -153,7 +153,7 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			Tty:               true, // TODO: We dont always want tty
 		})
 
-		stdoutWriter.Write([]byte(escChar))
+		stdoutWriter.Write([]byte(EscChar))
 		if err != nil {
 			rerr := fmt.Errorf("error in SPDY stream: %s", err)
 			e.logger.Error(rerr)

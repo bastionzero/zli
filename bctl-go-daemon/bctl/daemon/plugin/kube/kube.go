@@ -3,6 +3,7 @@ package kube
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
 	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 
@@ -58,9 +60,16 @@ type KubeDaemonPlugin struct {
 	actions map[string]IKubeDaemonAction
 
 	mapLock sync.RWMutex
+	logger  *lggr.Logger
 }
 
-func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string, doneChannel chan string) (*KubeDaemonPlugin, error) {
+func NewKubeDaemonPlugin(logger *lggr.Logger,
+	localhostToken string,
+	daemonPort string,
+	certPath string,
+	keyPath string,
+	doneChannel chan string) (*KubeDaemonPlugin, error) {
+
 	plugin := KubeDaemonPlugin{
 		localhostToken:        localhostToken,
 		daemonPort:            daemonPort,
@@ -72,10 +81,11 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 		ExitMessage:           "",
 		actions:               make(map[string]IKubeDaemonAction),
 		mapLock:               sync.RWMutex{},
+		logger:                logger,
 	}
 
-	// Make our cancel context
-	ctx, _ := context.WithCancel(context.Background())
+	// get this from parent
+	ctx := context.TODO()
 
 	go func() {
 		for {
@@ -105,6 +115,7 @@ func NewKubeDaemonPlugin(localhostToken string, daemonPort string, certPath stri
 			plugin.rootCallback(w, r)
 		})
 
+		// TODO: Figure out what to do with this
 		log.Fatal(http.ListenAndServeTLS(":"+plugin.daemonPort, plugin.certPath, plugin.keyPath, nil))
 	}()
 
@@ -116,7 +127,9 @@ func (k *KubeDaemonPlugin) handleStreamMessage(smessage smsg.StreamMessage) erro
 		act.PushStreamResponse(smessage)
 		return nil
 	} else {
-		return fmt.Errorf("unknown Request ID")
+		rerr := fmt.Errorf("unknown request ID: %v", smessage.RequestId)
+		k.logger.Error(rerr)
+		return rerr
 	}
 }
 
@@ -134,7 +147,9 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 		// Get just the request ID so we can associate it with the previously started action object
 		var d JustRequestId
 		if err := json.Unmarshal(actionPayload, &d); err != nil {
-			return "", []byte{}, fmt.Errorf("could not unmarshal json: %v", err.Error())
+			rerr := fmt.Errorf("could not unmarshal json: %s", err)
+			k.logger.Error(rerr)
+			return "", []byte{}, rerr
 		} else {
 			if act, ok := k.actions[d.RequestId]; ok {
 				wrappedAction := plgn.ActionWrapper{
@@ -143,16 +158,19 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 				}
 				act.PushKSResponse(wrappedAction)
 			} else {
-				log.Printf("%+v", k.actions)
-				return "", []byte{}, fmt.Errorf("unknown Request ID")
+				rerr := fmt.Errorf("unknown request ID: %v", d.RequestId)
+				k.logger.Error(rerr)
+				return "", []byte{}, rerr
 			}
 		}
 	}
 
-	log.Printf("Waiting for input...")
+	k.logger.Info("Waiting for input...")
 	select {
 	case actionMessage := <-k.RequestChannel:
-		log.Printf("Received input from action: %v", actionMessage.Action)
+		msg := fmt.Sprintf("Received input from action: %v", actionMessage.Action)
+		k.logger.Info(msg)
+
 		actionPayloadBytes, _ := json.Marshal(actionMessage.ActionPayload)
 		return actionMessage.Action, actionPayloadBytes, nil
 		// case <-time.After(time.Second * 10): // a better solution is to have a cancel channel
@@ -165,12 +183,15 @@ func generateRequestId() string {
 }
 
 func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Handling %s - %s\n", r.URL.Path, r.Method)
+	msg := fmt.Sprintf("Handling %s - %s\n", r.URL.Path, r.Method)
+	k.logger.Info(msg)
 
 	if k.ExitMessage != "" {
 		// Return the exit message to the user
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Daemon connection has been closed by Bastion. Message: " + k.ExitMessage))
+		msg := fmt.Sprintf("Daemon connection has been closed by Bastion. Message: " + k.ExitMessage)
+		k.logger.Info(msg)
+		w.Write([]byte(msg))
 		return
 	}
 
@@ -188,6 +209,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	tokensSplit := strings.Split(tokenToValidate, securityToken)
 	if tokensSplit[0] != k.localhostToken {
 		w.WriteHeader(http.StatusInternalServerError)
+		k.logger.Error(errors.New("http internal server error"))
 		return
 	}
 
@@ -207,31 +229,40 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	requestId := generateRequestId()
 
 	if strings.Contains(r.URL.Path, "exec") {
-		execAction, _ := exec.NewExecAction(requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
+		subLogger := k.logger.GetActionLogger(string(Exec))
+		subLogger.AddRequestId(requestId)
+
+		execAction, _ := exec.NewExecAction(subLogger, requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
 
 		k.updateActionsMap(execAction, requestId)
 
-		log.Printf("Created Exec action with requestId %v", requestId)
+		k.logger.Info(fmt.Sprintf("Created Exec action with requestId %v", requestId))
 		if err := execAction.InputMessageHandler(w, r); err != nil {
-			log.Printf("Error handling Exec call: %s", err.Error())
+			k.logger.Error(fmt.Errorf("error handling Exec call: %s", err))
 		}
 	} else if strings.Contains(r.URL.Path, "log") { // TODO : maybe ends with?
-		logAction, _ := logaction.NewLogAction(requestId, logId, k.RequestChannel)
+		subLogger := k.logger.GetActionLogger(string(Log))
+		subLogger.AddRequestId(requestId)
+
+		logAction, _ := logaction.NewLogAction(subLogger, requestId, logId, k.RequestChannel)
 
 		k.updateActionsMap(logAction, requestId)
 
-		log.Printf("Created Log action with requestId %v", requestId)
+		k.logger.Info(fmt.Sprintf("Created Log action with requestId %v", requestId))
 		if err := logAction.InputMessageHandler(w, r); err != nil {
-			log.Printf("Error handling Logs call: %s", err.Error())
+			k.logger.Error(fmt.Errorf("error handling Logs call: %s", err))
 		}
 	} else {
-		restAction, _ := rest.NewRestApiAction(requestId, logId, k.RequestChannel, commandBeingRun)
+		subLogger := k.logger.GetActionLogger(string(RestApi))
+		subLogger.AddRequestId(requestId)
+
+		restAction, _ := rest.NewRestApiAction(subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
 
 		k.updateActionsMap(restAction, requestId)
 
-		log.Printf("Created Rest API action with requestId %v", requestId)
+		k.logger.Info(fmt.Sprintf("Created Rest API action with requestId %v", requestId))
 		if err := restAction.InputMessageHandler(w, r); err != nil {
-			log.Printf("Error handling REST API call: %s", err.Error())
+			k.logger.Error(fmt.Errorf("error handling REST API call: %s", err))
 		}
 	}
 }

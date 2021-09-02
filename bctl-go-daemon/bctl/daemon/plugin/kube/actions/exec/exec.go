@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -20,9 +21,16 @@ type ExecAction struct {
 	ksResponseChannel chan plgn.ActionWrapper
 	RequestChannel    chan plgn.ActionWrapper
 	streamChannel     chan smsg.StreamMessage
+	logger            *lggr.Logger
 }
 
-func NewExecAction(requestId string, logId string, ch chan plgn.ActionWrapper, streamResponseChannel chan smsg.StreamMessage, commandBeingRun string) (*ExecAction, error) {
+func NewExecAction(logger *lggr.Logger,
+	requestId string,
+	logId string,
+	ch chan plgn.ActionWrapper,
+	streamResponseChannel chan smsg.StreamMessage,
+	commandBeingRun string) (*ExecAction, error) {
+
 	return &ExecAction{
 		requestId:         requestId,
 		logId:             logId,
@@ -30,12 +38,14 @@ func NewExecAction(requestId string, logId string, ch chan plgn.ActionWrapper, s
 		RequestChannel:    ch,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
 		streamChannel:     make(chan smsg.StreamMessage, 100),
+		logger:            logger,
 	}, nil
 }
 
 func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
 	spdy, err := NewSPDYService(writer, request)
 	if err != nil {
+		r.logger.Error(err)
 		return err
 	}
 
@@ -57,7 +67,8 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
 
 				// Check for agent-initiated end e.g. user typing 'exit'
-				if string(contentBytes) == kubeexec.EndTimes {
+				if string(contentBytes) == kubeexec.EscChar {
+					r.logger.Info("stream ended")
 					spdy.conn.Close()
 					cancel()
 				}
@@ -119,7 +130,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 					if err == io.EOF {
 						cancel()
 					} else {
-						log.Printf("Error decoding resize message: %s", err.Error())
+						r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
 					}
 				} else {
 					// Emit this as a new resize event

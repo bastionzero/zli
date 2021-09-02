@@ -108,7 +108,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 	} else {
 		rid = justrid.RequestId
 
-		subLogger := k.logger.GetActionSubLogger(action)
+		subLogger := k.logger.GetActionLogger(action)
 		subLogger.AddRequestId(rid)
 	}
 
@@ -123,7 +123,7 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		}
 		return action, payload, err
 	} else {
-		subLogger := k.logger.GetActionSubLogger(action)
+		subLogger := k.logger.GetActionLogger(action)
 		subLogger.AddRequestId(rid)
 		// Create an action object if we don't already have one for the incoming request id
 		var a IKubeAction

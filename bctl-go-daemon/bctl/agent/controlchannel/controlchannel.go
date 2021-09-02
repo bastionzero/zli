@@ -42,7 +42,8 @@ type ControlChannel struct {
 }
 
 // Constructor to create a new Control Websocket Client
-func NewControlChannel(serviceUrl string,
+func NewControlChannel(logger *lggr.Logger,
+	serviceUrl string,
 	activationToken string,
 	orgId string,
 	clusterName string,
@@ -50,8 +51,7 @@ func NewControlChannel(serviceUrl string,
 	agentVersion string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
 
-	logger := lggr.NewLogger(lggr.Controlchannel, lggr.Debug)
-	subLogger := logger.GetWebsocketSubLogger()
+	subLogger := logger.GetWebsocketLogger()
 
 	// Populate keys if they haven't been generated already
 	config, err := newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)

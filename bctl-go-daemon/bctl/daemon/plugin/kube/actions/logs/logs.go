@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	kubelogs "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/logs"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -27,15 +27,17 @@ type LogsAction struct {
 	RequestChannel        chan plgn.ActionWrapper
 	writer                http.ResponseWriter
 	streamResponseChannel chan smsg.StreamMessage
+	logger                *lggr.Logger
 }
 
-func NewLogAction(requestId string, logId string, ch chan plgn.ActionWrapper) (*LogsAction, error) {
+func NewLogAction(logger *lggr.Logger, requestId string, logId string, ch chan plgn.ActionWrapper) (*LogsAction, error) {
 	return &LogsAction{
 		requestId:             requestId,
 		logId:                 logId,
 		RequestChannel:        ch,
 		ksResponseChannel:     make(chan plgn.ActionWrapper, 100),
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
+		logger:                logger,
 	}, nil
 }
 
@@ -54,7 +56,9 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	// Now extract the body
 	bodyInBytes, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		return fmt.Errorf("Error building body")
+		rerr := fmt.Errorf("error building body: %s", err)
+		r.logger.Error(rerr)
+		return rerr
 	}
 
 	// Build the action payload
@@ -79,7 +83,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	for {
 		select {
 		case <-request.Context().Done():
-			log.Printf("Logs request %v was requested to get cancelled", r.requestId)
+			r.logger.Info(fmt.Sprintf("Logs request %v was requested to get cancelled", r.requestId))
 
 			// Build the action payload
 			payload := kubelogs.KubeLogsActionPayload{
@@ -111,7 +115,8 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			src := bytes.NewReader(contentBytes)
 			_, err = io.Copy(writer, src)
 			if err != nil {
-				log.Printf("Error streaming the log to kubectl: %v", err)
+				rerr := fmt.Errorf("error streaming the log to kubectl: %s", err)
+				r.logger.Error(rerr)
 				break
 			}
 			// This is required, don't touch - not sure why
@@ -121,8 +126,6 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 			}
 		}
 	}
-
-	return nil
 }
 
 func (r *LogsAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {

@@ -31,7 +31,8 @@ type DataChannel struct {
 	role string
 }
 
-func NewDataChannel(role string,
+func NewDataChannel(logger *lggr.Logger,
+	role string,
 	serviceUrl string,
 	hubEndpoint string,
 	params map[string]string,
@@ -39,8 +40,7 @@ func NewDataChannel(role string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
 	autoReconnect bool) (*DataChannel, error) {
 
-	logger := lggr.NewLogger(lggr.Datachannel, lggr.Debug)
-	subLogger := logger.GetWebsocketSubLogger()
+	subLogger := logger.GetWebsocketLogger()
 
 	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
@@ -177,7 +177,7 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 			}
 		}()
 
-		subLogger := d.logger.GetPluginSubLogger(plugin)
+		subLogger := d.logger.GetPluginLogger(plugin)
 		d.plugin = kube.NewPlugin(subLogger, ch, d.role)
 		d.logger.Info("Plugin started!")
 		return nil
