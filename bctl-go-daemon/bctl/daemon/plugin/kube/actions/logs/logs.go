@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	actionStart = "kube/log/start"
-	actionStop  = "kube/log/stop"
+	startLogs = "kube/log/start"
+	stopLogs  = "kube/log/stop"
 )
 
 type LogsAction struct {
@@ -70,7 +70,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 	payloadBytes, _ := json.Marshal(payload)
 	r.RequestChannel <- plgn.ActionWrapper{
-		Action:        actionStart,
+		Action:        startLogs,
 		ActionPayload: payloadBytes,
 	}
 
@@ -94,7 +94,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 			payloadBytes, _ := json.Marshal(payload)
 			r.RequestChannel <- plgn.ActionWrapper{
-				Action:        actionStop,
+				Action:        stopLogs,
 				ActionPayload: payloadBytes,
 			}
 
