@@ -16,8 +16,8 @@ import (
 )
 
 type IDataChannel interface {
-	SendAgentMessage(messageType wsmsg.MessageType, messagePayload interface{}) error
-	InputMessageHandler(agentMessage wsmsg.AgentMessage) error
+	Send(messageType wsmsg.MessageType, messagePayload interface{}) error
+	Receive(agentMessage wsmsg.AgentMessage) error
 	StartKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) error
 }
 
@@ -75,7 +75,7 @@ func NewDataChannel(logger *lggr.Logger,
 			case agentMessage := <-ret.websocket.InputChannel:
 				// Handle each message in its own thread
 				go func() {
-					if err := ret.InputMessageHandler(agentMessage); err != nil {
+					if err := ret.Receive(agentMessage); err != nil {
 						ret.logger.Error(err)
 					}
 				}()
@@ -107,7 +107,12 @@ func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort st
 }
 
 // Wraps and sends the payload
-func (d *DataChannel) SendAgentMessage(messageType wsmsg.MessageType, messagePayload interface{}) error {
+func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interface{}) error {
+	// Stop any further messages from being sent once context is cancelled
+	if d.ctx.Err() == context.Canceled {
+		return nil
+	}
+
 	messageBytes, _ := json.Marshal(messagePayload)
 	agentMessage := wsmsg.AgentMessage{
 		MessageType:    string(messageType),
@@ -133,11 +138,11 @@ func (d *DataChannel) SendSyn() { // TODO: have this return an error
 		d.logger.Error(rerr)
 		return
 	} else {
-		d.SendAgentMessage(wsmsg.Keysplitting, synMessage)
+		d.Send(wsmsg.Keysplitting, synMessage)
 	}
 }
 
-func (d *DataChannel) InputMessageHandler(agentMessage wsmsg.AgentMessage) error {
+func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 	msg := fmt.Sprintf("Datachannel received %v message", wsmsg.MessageType(agentMessage.MessageType))
 	d.logger.Info(msg)
 
@@ -208,7 +213,7 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 			d.logger.Error(rerr)
 			return rerr
 		} else {
-			d.SendAgentMessage(wsmsg.Keysplitting, respKSMessage)
+			d.Send(wsmsg.Keysplitting, respKSMessage)
 			return nil
 		}
 	} else {

@@ -42,11 +42,11 @@ func NewLogger(debugLevel DebugLevel, filePath string) (*Logger, error) {
 		return &Logger{}, err
 	}
 
-	// consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-	// multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
+	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
+	multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
 
 	return &Logger{
-		logger: zerolog.New(logFile).With().Logger(),
+		logger: zerolog.New(multi).With().Logger(),
 	}, nil
 }
 

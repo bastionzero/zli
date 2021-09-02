@@ -90,6 +90,11 @@ func NewDataChannel(logger *lggr.Logger,
 
 // Wraps and sends the payload
 func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interface{}) error {
+	// Stop any further messages from being sent once context is cancelled
+	if d.ctx.Err() == context.Canceled {
+		return nil
+	}
+
 	messageBytes, _ := json.Marshal(messagePayload)
 	agentMessage := wsmsg.AgentMessage{
 		MessageType:    string(messageType),

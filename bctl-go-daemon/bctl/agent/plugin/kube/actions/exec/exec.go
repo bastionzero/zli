@@ -140,13 +140,23 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
 	if err != nil {
-		return string(StartExec), []byte{}, fmt.Errorf("error creating Spdy executor: %v", err.Error())
+		return string(StartExec), []byte{}, fmt.Errorf("error creating Spdy executor: %s", err)
 	}
 
 	stderrWriter := stdout.NewStdWriter(smsg.StdErr, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
 	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
 	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, e.execStdinChannel)
 	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId, e.execResizeChannel)
+
+	go func() {
+		// This function listens for a closed datachannel.  If the datachannel is closed, it doesn't necessarily mean
+		// that the exec was properly closed, and because the below exec.Stream only returns when it's done, there's
+		// no way to interrupt it or pass in ctx. Therefore, we need to close the stream in order to pass an io.EOF message
+		// to exec which will close the exec.Stream and that will close the go routine.
+		// https://github.com/kubernetes/client-go/issues/554
+		<-e.ctx.Done()
+		stdinReader.Close()
+	}()
 
 	go func() {
 		err := exec.Stream(remotecommand.StreamOptions{

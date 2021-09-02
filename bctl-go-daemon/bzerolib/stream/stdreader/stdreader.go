@@ -28,13 +28,16 @@ func NewStdReader(streamType smsg.StreamType, requestId string, stdinChannel cha
 	return stdin
 }
 
+func (r *StdReader) Close() {
+	r.Read(EndStreamBytes)
+}
+
 func (r *StdReader) Read(p []byte) (int, error) {
 	// Listen for data on our stdinChannel
-	if bytes.Compare(p, EndStreamBytes) == 0 {
+	if bytes.Equal(p, EndStreamBytes) {
 		return 1, io.EOF
 	}
-	var stdin []byte
-	stdin = <-r.stdinChannel
+	stdin := <-r.stdinChannel
 	n := copy(p, stdin)
 	return n, nil
 }
