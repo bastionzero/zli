@@ -65,6 +65,8 @@ type Websocket struct {
 	// Flag to indicate if we should automatically try to reconnect
 	autoReconnect bool
 
+	getChallenge bool
+
 	// Connection variables
 	serviceUrl  string
 	hubEndpoint string
@@ -224,14 +226,13 @@ func (w *Websocket) Connect() {
 			config, _ := vault.LoadVault()
 
 			// If we have a private key, we must solve the challenge
-			solvedChallenge, err := getAndSolveChallenge(params["org_id"], params["cluster_name"], serviceUrl, config.Data.PrivateKey)
+			solvedChallenge, err := getAndSolveChallenge(w.params["org_id"], w.params["cluster_name"], w.serviceUrl, config.Data.PrivateKey)
 			if err != nil {
 				log.Printf("Error un-marshalling negotiate response: %s", err)
-				connected = false
 			}
 
 			// Add the solved challenge to the params
-			params["solved_challenge"] = solvedChallenge
+			w.params["solved_challenge"] = solvedChallenge
 		}
 
 		// First negotiate in order to get a url to connect to
