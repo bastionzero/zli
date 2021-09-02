@@ -1,7 +1,6 @@
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { cleanExit } from './clean-exit.handler';
-import { clean } from 'semver';
 
 export async function kubeStatusHandler(
     configService: ConfigService,

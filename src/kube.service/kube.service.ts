@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import { ConfigService } from '../../src/config.service/config.service';
 
 export async function killDaemon(configService: ConfigService) {
-    let kubeConfig = configService.getKubeConfig();
+    const kubeConfig = configService.getKubeConfig();
 
     // then kill the daemon
     if (kubeConfig['localPid'] != null) {
