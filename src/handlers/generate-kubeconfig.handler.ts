@@ -93,13 +93,13 @@ clusters:
 - cluster:
     server: https://${kubeConfig['localHost']}:${daemonPort}
     insecure-skip-tls-verify: true
-  name: bctl-server
+  name: bctl-agent
 contexts:
 - context:
-    cluster: bctl-server
+    cluster: bctl-agent
     user: ${configService.me()['email']}
-  name: bctl-server
-current-context: bctl-server
+  name: bctl-agent
+current-context: bctl-agent
 preferences: {}
 users:
   - name: ${configService.me()['email']}
