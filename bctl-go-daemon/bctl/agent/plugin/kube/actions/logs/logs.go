@@ -152,6 +152,10 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 		for {
 			select {
 			case <-l.ctx.Done():
+				stream.Close()
+				return
+			case <-l.doneChannel:
+				stream.Close()
 				return
 			default:
 				buf := make([]byte, 2000)
@@ -184,18 +188,18 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 	}()
 
 	// Subscribe to our done channel
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-l.doneChannel:
-				stream.Close()
-				cancel()
-				return
-			}
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case <-ctx.Done():
+	// 			return
+	// 		case <-l.doneChannel:
+	// 			stream.Close()
+	// 			cancel()
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 	// We also need to listen if we get a cancel log request
 	return action, []byte{}, nil

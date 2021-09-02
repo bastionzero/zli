@@ -258,8 +258,9 @@ func (w *Websocket) Connect() {
 
 		if res.StatusCode == 401 {
 			// This means we have an auth issue, do not attempt to keep trying to reconnect
-			log.Printf("Auth error when trying to connect. Not attempting to reconnect. Shutting down")
-			panic("401 response on /negotiate endpoint")
+			rerr := fmt.Errorf("Auth error when trying to connect. Not attempting to reconnect. Shutting down")
+			w.logger.Error(rerr)
+			return
 		}
 
 		// Extract out the connection token
