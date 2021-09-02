@@ -1,6 +1,7 @@
 import { Logger } from '../logger.service/logger';
 import { ConfigService } from '../config.service/config.service';
 import { cleanExit } from './clean-exit.handler';
+import { clean } from 'semver';
 
 export async function kubeStatusHandler(
     configService: ConfigService,
@@ -17,6 +18,8 @@ export async function kubeStatusHandler(
             logger.error('The Kube Daemon has quit unexpectedly.');
             kubeConfig['localPid'] = null;
             configService.setKubeConfig(kubeConfig);
+            await cleanExit(0, logger);
+            return;
         }
 
         // Pull the info from the config and show it to the user
