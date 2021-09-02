@@ -1,11 +1,11 @@
 import { ConfigService } from '../../src/config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
+import util from 'util';
+import { spawn, exec } from 'child_process';
 
 const { v4: uuidv4 } = require('uuid');
-const spawn = require('child_process').spawn;
-const { promisify } = require('util');
-const exec = promisify(require('child_process').exec)
+const execPromise = util.promisify(exec)
 
 
 export async function bctlHandler(configService: ConfigService, logger: Logger) {
@@ -43,9 +43,9 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
 
         if (code != 0) {
             // Check to ensure they are using the right context
-            const currentContext = await exec('kubectl config current-context ');
+            const currentContext = await execPromise('kubectl config current-context ');
 
-            if (currentContext != 'bctl-server') {
+            if (currentContext.stdout != 'bctl-server') {
                 logger.warn('Make sure you using the correct kube config!');
             }
         }
