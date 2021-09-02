@@ -61,9 +61,11 @@ type KubeDaemonPlugin struct {
 
 	mapLock sync.RWMutex
 	logger  *lggr.Logger
+	ctx     context.Context
 }
 
-func NewKubeDaemonPlugin(logger *lggr.Logger,
+func NewKubeDaemonPlugin(ctx context.Context,
+	logger *lggr.Logger,
 	localhostToken string,
 	daemonPort string,
 	certPath string,
@@ -82,10 +84,8 @@ func NewKubeDaemonPlugin(logger *lggr.Logger,
 		actions:               make(map[string]IKubeDaemonAction),
 		mapLock:               sync.RWMutex{},
 		logger:                logger,
+		ctx:                   ctx,
 	}
-
-	// get this from parent
-	ctx := context.TODO()
 
 	go func() {
 		for {
@@ -167,6 +167,8 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 
 	k.logger.Info("Waiting for input...")
 	select {
+	case <-k.ctx.Done():
+		return "", []byte{}, nil
 	case actionMessage := <-k.RequestChannel:
 		msg := fmt.Sprintf("Received input from action: %v", actionMessage.Action)
 		k.logger.Info(msg)
@@ -232,7 +234,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		subLogger := k.logger.GetActionLogger(string(Exec))
 		subLogger.AddRequestId(requestId)
 
-		execAction, _ := exec.NewExecAction(subLogger, requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
+		execAction, _ := exec.NewExecAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, k.streamResponseChannel, commandBeingRun)
 
 		k.updateActionsMap(execAction, requestId)
 
@@ -244,7 +246,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		subLogger := k.logger.GetActionLogger(string(Log))
 		subLogger.AddRequestId(requestId)
 
-		logAction, _ := logaction.NewLogAction(subLogger, requestId, logId, k.RequestChannel)
+		logAction, _ := logaction.NewLogAction(k.ctx, subLogger, requestId, logId, k.RequestChannel)
 
 		k.updateActionsMap(logAction, requestId)
 
@@ -256,7 +258,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		subLogger := k.logger.GetActionLogger(string(RestApi))
 		subLogger.AddRequestId(requestId)
 
-		restAction, _ := rest.NewRestApiAction(subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
+		restAction, _ := rest.NewRestApiAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
 
 		k.updateActionsMap(restAction, requestId)
 

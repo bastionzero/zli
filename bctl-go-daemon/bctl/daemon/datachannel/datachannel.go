@@ -1,6 +1,7 @@
 package datachannel
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -23,6 +24,7 @@ type IDataChannel interface {
 type DataChannel struct {
 	websocket    *ws.Websocket
 	logger       *lggr.Logger
+	ctx          context.Context
 	plugin       plgn.IPlugin
 	keysplitting ks.IKeysplitting
 
@@ -46,16 +48,22 @@ func NewDataChannel(logger *lggr.Logger,
 	subLogger := logger.GetWebsocketLogger()
 	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
+		logger.Error(err)
 		return &DataChannel{}, err // TODO: how tf are we going to report these?
 	}
 
 	keysplitter, err := ks.NewKeysplitting("", configPath)
 	if err != nil {
+		logger.Error(err)
 		return &DataChannel{}, err
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
 	ret := &DataChannel{
 		websocket:    wsClient,
 		logger:       logger,
+		ctx:          ctx,
 		keysplitting: keysplitter,
 		doneChannel:  make(chan string),
 	}
@@ -74,6 +82,7 @@ func NewDataChannel(logger *lggr.Logger,
 			case <-ret.websocket.DoneChannel:
 				// The websocket has been closed
 				ret.logger.Info("Websocket has been closed, closing datachannel")
+				cancel()
 
 				// Send a message to our done channel to the kubectl can get the message
 				ret.doneChannel <- "true"
@@ -87,7 +96,7 @@ func NewDataChannel(logger *lggr.Logger,
 
 func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort string, certPath string, keyPath string) error {
 	subLogger := d.logger.GetPluginLogger(plgn.KubeDaemon)
-	if plugin, err := kube.NewKubeDaemonPlugin(subLogger, localhostToken, daemonPort, certPath, keyPath, d.doneChannel); err != nil {
+	if plugin, err := kube.NewKubeDaemonPlugin(d.ctx, subLogger, localhostToken, daemonPort, certPath, keyPath, d.doneChannel); err != nil {
 		rerr := fmt.Errorf("could not start kube daemon plugin: %s", err)
 		d.logger.Error(rerr)
 		return rerr

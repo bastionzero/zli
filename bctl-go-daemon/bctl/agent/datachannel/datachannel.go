@@ -1,6 +1,7 @@
 package datachannel
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -23,6 +24,7 @@ type IDataChannel interface {
 type DataChannel struct {
 	websocket *ws.Websocket
 	logger    *lggr.Logger
+	ctx       context.Context
 
 	plugin       plgn.IPlugin
 	keysplitting ks.IKeysplitting
@@ -39,23 +41,28 @@ func NewDataChannel(logger *lggr.Logger,
 	headers map[string]string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
 	autoReconnect bool) (*DataChannel, error) {
-
 	subLogger := logger.GetWebsocketLogger()
 
 	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
-		return &DataChannel{}, err // TODO: how tf are we going to report these?
+		logger.Error(err)
+		return &DataChannel{}, err // TODO: how tf are we going to report these? control channel, bro
 	}
 
 	keysplitter, err := ks.NewKeysplitting()
 	if err != nil {
+		logger.Error(err)
 		return &DataChannel{}, err
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
 	ret := &DataChannel{
 		websocket:    wsClient,
 		keysplitting: keysplitter,
 		role:         role,
 		logger:       logger, // TODO: get debug level from flag
+		ctx:          ctx,
 	}
 
 	// Subscribe to our input channel
@@ -72,6 +79,7 @@ func NewDataChannel(logger *lggr.Logger,
 			case <-ret.websocket.DoneChannel:
 				// The websocket has been closed
 				ret.logger.Info("Websocket has been closed, closing datachannel")
+				cancel()
 				return
 			}
 		}
@@ -171,6 +179,8 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 		go func() {
 			for {
 				select {
+				case <-d.ctx.Done():
+					return
 				case streamMessage := <-ch:
 					d.Send(wsmsg.Stream, streamMessage)
 				}
@@ -178,7 +188,7 @@ func (d *DataChannel) startPlugin(plugin plgn.PluginName) error {
 		}()
 
 		subLogger := d.logger.GetPluginLogger(plugin)
-		d.plugin = kube.NewPlugin(subLogger, ch, d.role)
+		d.plugin = kube.NewPlugin(d.ctx, subLogger, ch, d.role)
 		d.logger.Info("Plugin started!")
 		return nil
 	default:

@@ -303,7 +303,7 @@ func (w *Websocket) Connect() {
 		} else {
 			// Define our protocol and version
 			// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
-			if err := w.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), 0x1E)); err != nil {
+			if err := w.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), signalRMessageTerminatorByte)); err != nil {
 				w.logger.Info("Error when trying to agree on version for SignalR!")
 				w.Client.Close()
 			} else {

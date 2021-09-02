@@ -25,11 +25,12 @@ type CloseMessage struct {
 	Message string `json:"message"`
 }
 
-// Hub name aka "Target" from "SignalRWrapper".  These are like API
-// endpoint that the message will hit
-type Hub string
+// Message definitions for challenge request/response
+type GetChallengeMessage struct {
+	OrgId       string `json:"orgId"`
+	ClusterName string `json:"clusterName"`
+}
 
-const (
-	RequestBastionToAgent  Hub = "RequestBastionToAgent"
-	ResponseAgentToBastion Hub = "ResponseAgentToBastion"
-)
+type GetChallengeResponse struct {
+	Challenge string `json:"challenge"`
+}

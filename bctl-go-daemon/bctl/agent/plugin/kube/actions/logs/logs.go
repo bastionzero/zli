@@ -28,6 +28,7 @@ type LogAction struct {
 	closed              bool
 	doneChannel         chan bool
 	logger              *lggr.Logger
+	ctx                 context.Context
 }
 
 type LogSubAction string
@@ -38,7 +39,7 @@ const (
 	LogStop  LogSubAction = "kube/log/stop"
 )
 
-func NewLogAction(logger *lggr.Logger, serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
+func NewLogAction(ctx context.Context, logger *lggr.Logger, serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
 	return &LogAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
@@ -48,6 +49,7 @@ func NewLogAction(logger *lggr.Logger, serviceAccountToken string, kubeHost stri
 		doneChannel:         make(chan bool),
 		closed:              false,
 		logger:              logger,
+		ctx:                 ctx,
 	}, nil
 }
 
@@ -102,9 +104,6 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 	followFlag, _ := strconv.ParseBool(queryParams.Get("follow"))
 	containerName := queryParams.Get("container")
 
-	// TODO: get this from parent
-	ctx := context.TODO()
-
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
 	podLogOptions := v1.PodLogOptions{
@@ -141,7 +140,7 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 		Pods(namespace).
 		GetLogs(podName, &podLogOptions)
 
-	stream, err := podLogRequest.Stream(ctx)
+	stream, err := podLogRequest.Stream(l.ctx)
 	if err != nil {
 		l.logger.Error(err)
 		return action, []byte{}, err
@@ -152,7 +151,7 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 		defer stream.Close()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-l.ctx.Done():
 				return
 			default:
 				buf := make([]byte, 2000)

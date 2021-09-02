@@ -22,9 +22,11 @@ type ExecAction struct {
 	RequestChannel    chan plgn.ActionWrapper
 	streamChannel     chan smsg.StreamMessage
 	logger            *lggr.Logger
+	ctx               context.Context
 }
 
-func NewExecAction(logger *lggr.Logger,
+func NewExecAction(ctx context.Context,
+	logger *lggr.Logger,
 	requestId string,
 	logId string,
 	ch chan plgn.ActionWrapper,
@@ -39,6 +41,7 @@ func NewExecAction(logger *lggr.Logger,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
 		streamChannel:     make(chan smsg.StreamMessage, 100),
 		logger:            logger,
+		ctx:               ctx,
 	}, nil
 }
 
@@ -53,16 +56,13 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
 	r.RequestChannel <- wrapStartPayload(r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
 
-	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
-
 	// Set up a go function for stdout
 	go func() {
 		streamQueue := make(map[int]smsg.StreamMessage)
 		seqNumber := 0
 		for {
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				return
 			case streamMessage := <-r.streamChannel:
 				contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
@@ -71,7 +71,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				if string(contentBytes) == kubeexec.EscChar {
 					r.logger.Info("stream ended")
 					spdy.conn.Close()
-					cancel()
+					return
 				}
 
 				// Check sequence number is correct, if not store it for later
@@ -101,15 +101,14 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		buf := make([]byte, 16)
 		for {
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				return
 			default:
 				n, err := spdy.stdinStream.Read(buf)
-				// Handle error
 				if err == io.EOF {
-					// TODO: This means to close the stream
-					cancel()
+					return
 				}
+
 				// Send message to agent
 				r.RequestChannel <- wrapStdinPayload(r.requestId, r.logId, buf[:n])
 			}
@@ -121,7 +120,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				return
 			default:
 				decoder := json.NewDecoder(spdy.resizeStream)
@@ -129,7 +128,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				size := TerminalSize{}
 				if err := decoder.Decode(&size); err != nil {
 					if err == io.EOF {
-						cancel()
+						return
 					} else {
 						r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
 					}

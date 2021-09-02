@@ -2,6 +2,7 @@ package logs
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -28,9 +29,15 @@ type LogsAction struct {
 	writer                http.ResponseWriter
 	streamResponseChannel chan smsg.StreamMessage
 	logger                *lggr.Logger
+	ctx                   context.Context
 }
 
-func NewLogAction(logger *lggr.Logger, requestId string, logId string, ch chan plgn.ActionWrapper) (*LogsAction, error) {
+func NewLogAction(ctx context.Context,
+	logger *lggr.Logger,
+	requestId string,
+	logId string,
+	ch chan plgn.ActionWrapper) (*LogsAction, error) {
+
 	return &LogsAction{
 		requestId:             requestId,
 		logId:                 logId,
@@ -38,6 +45,7 @@ func NewLogAction(logger *lggr.Logger, requestId string, logId string, ch chan p
 		ksResponseChannel:     make(chan plgn.ActionWrapper, 100),
 		streamResponseChannel: make(chan smsg.StreamMessage, 100),
 		logger:                logger,
+		ctx:                   ctx,
 	}, nil
 }
 
@@ -82,6 +90,8 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	// Keep this as a non-go function so we hold onto the http request
 	for {
 		select {
+		case <-r.ctx.Done():
+			return nil
 		case <-request.Context().Done():
 			r.logger.Info(fmt.Sprintf("Logs request %v was requested to get cancelled", r.requestId))
 

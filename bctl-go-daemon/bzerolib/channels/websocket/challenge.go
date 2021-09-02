@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"net/http"
 
+	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	"golang.org/x/crypto/sha3"
 )
 
 func newChallenge(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
 	// Get challenge
-	challengeRequest := GetChallengeMessage{
+	challengeRequest := wsmsg.GetChallengeMessage{
 		OrgId:       orgId,
 		ClusterName: clusterName,
 	}
@@ -32,14 +33,14 @@ func newChallenge(orgId string, clusterName string, serviceUrl string, privateKe
 	defer response.Body.Close()
 
 	// Extract the challenge
-	responseDecoded := GetChallengeResponse{}
+	responseDecoded := wsmsg.GetChallengeResponse{}
 	json.NewDecoder(response.Body).Decode(&responseDecoded)
 
 	// Solve Challenge
-	return SignChallenge(privateKey, responseDecoded.Challenge)
+	return signChallenge(privateKey, responseDecoded.Challenge)
 }
 
-func SignChallenge(privateKey string, challenge string) (string, error) {
+func signChallenge(privateKey string, challenge string) (string, error) {
 	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
 	if len(keyBytes) != 64 {
 		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))

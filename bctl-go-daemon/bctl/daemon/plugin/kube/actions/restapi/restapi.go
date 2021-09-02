@@ -1,6 +1,7 @@
 package restapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,12 +22,13 @@ type RestApiAction struct {
 	logId             string
 	ksResponseChannel chan plgn.ActionWrapper
 	RequestChannel    chan plgn.ActionWrapper
-	writer            http.ResponseWriter
 	commandBeingRun   string
 	logger            *lggr.Logger
+	ctx               context.Context
 }
 
-func NewRestApiAction(logger *lggr.Logger,
+func NewRestApiAction(ctx context.Context,
+	logger *lggr.Logger,
 	requestId string,
 	logId string,
 	ch chan plgn.ActionWrapper,
@@ -39,13 +41,11 @@ func NewRestApiAction(logger *lggr.Logger,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
 		commandBeingRun:   commandBeingRun,
 		logger:            logger,
+		ctx:               ctx,
 	}, nil
 }
 
 func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	// Set this so that we know how to write the response when we get it later
-	r.writer = writer
-
 	// First extract the headers out of the request
 	headers := make(map[string]string)
 	for name, values := range request.Header {
@@ -80,6 +80,8 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 	}
 
 	select {
+	case <-r.ctx.Done():
+		return nil
 	case rsp := <-r.ksResponseChannel:
 		var apiResponse kuberest.KubeRestApiActionResponsePayload
 		if err := json.Unmarshal(rsp.ActionPayload, &apiResponse); err != nil {
@@ -90,14 +92,14 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 
 		for name, value := range apiResponse.Headers {
 			if name != "Content-Length" {
-				r.writer.Header().Set(name, value)
+				writer.Header().Set(name, value)
 			}
 		}
 
 		// output, _ := base64.StdEncoding.DecodeString(string(apiResponse.Content))
-		r.writer.Write(apiResponse.Content)
+		writer.Write(apiResponse.Content)
 		if apiResponse.StatusCode != 200 {
-			r.writer.WriteHeader(http.StatusInternalServerError)
+			writer.WriteHeader(http.StatusInternalServerError)
 
 			// log.Printf("ApiResponse Content: %v vs the base64 content: %v", string(apiResponse.Content), string(output))
 			rerr := fmt.Errorf("request failed with status code %v: %v", apiResponse.StatusCode, string(apiResponse.Content))

@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -35,6 +36,7 @@ type ExecAction struct {
 	logId               string
 	closed              bool
 	logger              *lggr.Logger
+	ctx                 context.Context
 
 	// output channel to send all of our stream messages directly to datachannel
 	streamOutputChannel chan smsg.StreamMessage
@@ -44,7 +46,8 @@ type ExecAction struct {
 	execResizeChannel chan KubeExecResizeActionPayload
 }
 
-func NewExecAction(logger *lggr.Logger,
+func NewExecAction(ctx context.Context,
+	logger *lggr.Logger,
 	serviceAccountToken string,
 	kubeHost string,
 	impersonateGroup string,
@@ -61,6 +64,7 @@ func NewExecAction(logger *lggr.Logger,
 		execStdinChannel:    make(chan []byte, 10),
 		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
 		logger:              logger,
+		ctx:                 ctx,
 	}, nil
 }
 

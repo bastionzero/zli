@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -47,9 +48,10 @@ type KubePlugin struct {
 	actions             map[string]IKubeAction
 	actionsMapLock      sync.RWMutex
 	logger              *lggr.Logger
+	ctx                 context.Context
 }
 
-func NewPlugin(logger *lggr.Logger, ch chan smsg.StreamMessage, role string) plgn.IPlugin {
+func NewPlugin(ctx context.Context, logger *lggr.Logger, ch chan smsg.StreamMessage, role string) plgn.IPlugin {
 	// First load in our Kube variables
 	config, err := kuberest.InClusterConfig()
 	if err != nil {
@@ -68,6 +70,7 @@ func NewPlugin(logger *lggr.Logger, ch chan smsg.StreamMessage, role string) plg
 		kubeHost:            kubeHost,
 		actions:             make(map[string]IKubeAction),
 		logger:              logger,
+		ctx:                 ctx,
 	}
 }
 
@@ -132,10 +135,10 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		case RestApi:
 			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
 		case Exec:
-			a, err = exec.NewExecAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
 		case Log:
-			a, err = logaction.NewLogAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+			a, err = logaction.NewLogAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
 		}
 		if err != nil {
