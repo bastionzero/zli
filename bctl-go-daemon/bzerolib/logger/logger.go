@@ -92,6 +92,14 @@ func (l *Logger) GetActionLogger(actionName string) *Logger {
 	}
 }
 
+func (l *Logger) GetComponentLogger(component string) *Logger {
+	return &Logger{
+		logger: l.logger.With().
+			Str("component", component).
+			Logger(),
+	}
+}
+
 func (l *Logger) AddRequestId(rid string) {
 	l.logger = l.logger.With().Str("requestId", rid).Logger()
 }

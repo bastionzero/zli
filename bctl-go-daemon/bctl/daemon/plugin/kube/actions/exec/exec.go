@@ -43,7 +43,8 @@ func NewExecAction(logger *lggr.Logger,
 }
 
 func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	spdy, err := NewSPDYService(writer, request)
+	subLogger := r.logger.GetComponentLogger("SPDY")
+	spdy, err := NewSPDYService(subLogger, writer, request)
 	if err != nil {
 		r.logger.Error(err)
 		return err

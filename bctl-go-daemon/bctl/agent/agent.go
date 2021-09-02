@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	cc "bastionzero.com/bctl/v1/bctl/agent/controlchannel"
@@ -28,8 +27,6 @@ const (
 )
 
 func main() {
-	parseFlags()
-
 	// Get agent version
 	version := getAgentVersion()
 
@@ -39,8 +36,14 @@ func main() {
 		return
 	}
 	logger.AddAgentVersion(version)
+
 	ccLogger := logger.GetControlchannelLogger()
 	dcLogger := logger.GetDatachannelLogger()
+
+	if err := parseFlags(); err != nil {
+		logger.Error(err)
+		os.Exit(1)
+	}
 
 	// Connect to the control channel
 	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, version, controlchannelTargetSelectHandler)
@@ -128,7 +131,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 	return "", fmt.Errorf("unable to determine SignalR endpoint")
 }
 
-func parseFlags() {
+func parseFlags() error {
 	// Our expected flags we need to start
 	flag.StringVar(&serviceUrl, "serviceUrl", "", "Service URL to use")
 	flag.StringVar(&orgId, "orgId", "", "OrgId to use")
@@ -164,8 +167,9 @@ func parseFlags() {
 		missing = append(missing, "activationToken")
 	}
 	if len(missing) > 0 {
-		log.Printf("Missing flags! Missing: %v", missing)
-		os.Exit(1)
+		return fmt.Errorf("Missing flags! Missing: %v", missing)
+	} else {
+		return nil
 	}
 }
 

@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
@@ -59,7 +59,8 @@ type SPDYService struct {
 	stderrStream io.WriteCloser
 	writeStatus  func(status *StatusError) error
 	resizeStream io.ReadCloser
-	tty          bool
+	// tty          bool
+	logger *lggr.Logger
 }
 
 type Options struct {
@@ -80,11 +81,11 @@ type StatusError struct {
 	ErrStatus metav1.Status
 }
 
-func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYService, error) {
+func NewSPDYService(logger *lggr.Logger, writer http.ResponseWriter, request *http.Request) (*SPDYService, error) {
 	// Extract the options of the exec
 	options := extractExecOptions(request)
 
-	log.Printf("Starting Exec for command: %s\n", options.Command)
+	logger.Info(fmt.Sprintf("Starting Exec for command: %s\n", options.Command))
 
 	// Initiate a handshake and upgrade the request
 	supportedProtocols := []string{"v4.channel.k8s.io", "v3.channel.k8s.io", "v2.channel.k8s.io", "channel.k8s.io"}
@@ -92,7 +93,7 @@ func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYSer
 	if err != nil {
 		return &SPDYService{}, fmt.Errorf("could not complete http stream handshake: %v", err.Error())
 	}
-	log.Printf("Using protocol: %s\n", protocol)
+	logger.Info(fmt.Sprintf("Using protocol: %s\n", protocol))
 
 	// Now make our stream channel
 	streamCh := make(chan streamAndReply)
@@ -106,7 +107,7 @@ func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYSer
 		// occurred during upgrading. All we can do is return here at this point
 		// if we weren't successful in upgrading.
 		// TODO: Return a better error
-		log.Println("unable to upgrade request")
+		logger.Error(fmt.Errorf("unable to upgrade request"))
 		return &SPDYService{}, fmt.Errorf("unable to upgrade request")
 	}
 
@@ -114,7 +115,8 @@ func NewSPDYService(writer http.ResponseWriter, request *http.Request) (*SPDYSer
 	conn.SetIdleTimeout(time.Minute)
 
 	service := &SPDYService{
-		conn: conn,
+		conn:   conn,
+		logger: logger,
 	}
 
 	// Wait for our streams to come in
@@ -148,7 +150,7 @@ WaitForStreams:
 		case stream := <-streams:
 			// Extract the stream type from the header
 			streamType := stream.Headers().Get(StreamType)
-			log.Println("Saw stream type: " + streamType)
+			s.logger.Info(fmt.Sprintf("Saw stream type: " + streamType))
 
 			// Save the stream
 			switch streamType {
@@ -229,7 +231,6 @@ func extractExecOptions(r *http.Request) Options {
 		expectedStreams++
 	}
 
-	log.Printf("Expected streams: %d\n", expectedStreams)
 	return Options{
 		Stdin:           stdin,
 		Stdout:          stdout,

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
@@ -66,7 +65,7 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	req.Header.Set("Impersonate-Group", r.impersonateGroup)
 
 	// Make the request and wait for the body to close
-	log.Printf("Making request for %s", kubeApiUrl)
+	r.logger.Info(fmt.Sprintf("Making request for %s", kubeApiUrl))
 
 	// TODO: Figure out a way around this
 	// CA certs can be found here /var/run/secrets/kubernetes.io/serviceaccount/ca.crt

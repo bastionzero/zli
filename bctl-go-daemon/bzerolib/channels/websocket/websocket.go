@@ -3,12 +3,10 @@ package websocket
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,10 +18,7 @@ import (
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 
-	ed "crypto/ed25519"
-
 	"github.com/gorilla/websocket"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -226,9 +221,9 @@ func (w *Websocket) Connect() {
 			config, _ := vault.LoadVault()
 
 			// If we have a private key, we must solve the challenge
-			solvedChallenge, err := getAndSolveChallenge(w.params["org_id"], w.params["cluster_name"], w.serviceUrl, config.Data.PrivateKey)
+			solvedChallenge, err := newChallenge(w.params["org_id"], w.params["cluster_name"], w.serviceUrl, config.Data.PrivateKey)
 			if err != nil {
-				log.Printf("Error un-marshalling negotiate response: %s", err)
+				w.logger.Error(fmt.Errorf("error in getting challenge: %s", err))
 			}
 
 			// Add the solved challenge to the params
@@ -321,51 +316,4 @@ func (w *Websocket) Connect() {
 		w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
 		time.Sleep(time.Second * sleepIntervalInSeconds)
 	}
-}
-
-func getAndSolveChallenge(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
-	// Get Challange
-	challangeRequest := GetChallengeMessage{
-		OrgId:       orgId,
-		ClusterName: clusterName,
-	}
-
-	challangeJson, err := json.Marshal(challangeRequest)
-	if err != nil {
-		log.Printf("Error marshalling register data")
-		return "", err
-	}
-
-	// Make our POST request
-	response, err := http.Post("https://"+serviceUrl+challengeEndpoint, "application/json",
-		bytes.NewBuffer(challangeJson))
-	if err != nil || response.StatusCode != http.StatusOK {
-		log.Printf("Error making post request to challange agent. Error: %s. Response: %s", err, response)
-		return "", err
-	}
-	defer response.Body.Close()
-
-	// Extract the challange
-	responseDecoded := GetChallengeResponse{}
-	json.NewDecoder(response.Body).Decode(&responseDecoded)
-
-	// Solve Challenge
-	return SignChallenge(privateKey, responseDecoded.Challenge)
-}
-
-func SignChallenge(privateKey string, challange string) (string, error) {
-	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
-	if len(keyBytes) != 64 {
-		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
-	}
-	privkey := ed.PrivateKey(keyBytes)
-
-	hashBits := sha3.Sum256([]byte(challange))
-
-	sig := ed.Sign(privkey, hashBits[:])
-
-	// Convert the signature to base64 string
-	sigBase64 := base64.StdEncoding.EncodeToString(sig)
-
-	return sigBase64, nil
 }
