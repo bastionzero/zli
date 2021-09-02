@@ -216,8 +216,8 @@ export class CliDriver
                                 alias: 'm'
                             }
                         )
-                        .example('login Google', 'Login with Google')
-                        .example('login Microsoft --mfa 123456', 'Login with Microsoft and enter MFA');
+                        .example('$0 login Google', 'Login with Google')
+                        .example('$0 login Microsoft --mfa 123456', 'Login with Microsoft and enter MFA');
                 },
                 async (argv) => {
                     await loginHandler(this.configService, this.logger, argv, this.keySplittingService);
@@ -240,8 +240,8 @@ export class CliDriver
                                 alias: 't'
                             },
                         )
-                        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
-                        .example('connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config');
+                        .example('$0 connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
+                        .example('$0 connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config');
                 },
                 async (argv) => {
                     const parsedTarget = await disambiguateTarget(argv.targetType, argv.targetString, this.logger, this.dynamicConfigs, this.ssmTargets, this.envs);
@@ -263,7 +263,7 @@ export class CliDriver
                             default: -1,
                             demandOption: false
                         })
-                        .example('proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
+                        .example('$0 proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
                 },
                 async (argv) => {
                     if (argv.tunnelString) {
@@ -300,7 +300,7 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('policy --json', 'List all policies, output as json, pipeable');
+                        .example('$0 policy --json', 'List all policies, output as json, pipeable');
                 },
                 async (argv) => {
                     await listPoliciesHandler(argv, this.configService, this.logger, this.ssmTargets, this.dynamicConfigs, this.clusterTargets, this.envs);
@@ -314,7 +314,7 @@ export class CliDriver
                         .positional('clusterName', {
                             type: 'string',
                         })
-                        .example('status test-cluster', '');
+                        .example('$0 status test-cluster', '');
                 },
                 async (argv) => {
                     await describeClusterHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs);
@@ -325,7 +325,7 @@ export class CliDriver
                 'Disconnect a Zli Daemon',
                 (yargs) => {
                     return yargs
-                        .example('disconnect', 'Disconnect a local Zli Daemon');
+                        .example('$0 disconnect', 'Disconnect a local Zli Daemon');
                 },
                 async (_) => {
                     await disconnectHandler(this.configService, this.logger);
@@ -339,7 +339,7 @@ export class CliDriver
                         .positional('connectionId', {
                             type: 'string',
                         })
-                        .example('attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id');
+                        .example('$0 attach d5b264c7-534c-4184-a4e4-3703489cb917', 'attach example, unique connection id');
                 },
                 async (argv) => {
                     if (!isGuid(argv.connectionId)){
@@ -366,8 +366,8 @@ export class CliDriver
                                 alias: 'a'
                             }
                         )
-                        .example('close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id')
-                        .example('close all', 'close all connections in cli-space');
+                        .example('$0 close d5b264c7-534c-4184-a4e4-3703489cb917', 'close example, unique connection id')
+                        .example('$0 close all', 'close all connections in cli-space');
                 },
                 async (argv) => {
                     if (! argv.all && ! isGuid(argv.connectionId)){
@@ -443,9 +443,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('lt -t ssm', 'List all SSM targets only')
-                        .example('lt -i', 'List all targets and show unique ids')
-                        .example('lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
+                        .example('$0 lt -t ssm', 'List all SSM targets only')
+                        .example('$0 lt -i', 'List all targets and show unique ids')
+                        .example('$0 lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
                 },
                 async (argv) => {
                     await listTargetsHandler(this.configService,this.logger, argv, this.dynamicConfigs, this.ssmTargets, this.clusterTargets, this.envs);
@@ -465,7 +465,7 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('lc --json', 'List all open zli connections, output as json, pipeable');
+                        .example('$0 lc --json', 'List all open zli connections, output as json, pipeable');
                 },
                 async (argv) => {
                     await listConnectionsHandler(argv, this.configService, this.logger, this.ssmTargets);
@@ -518,9 +518,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('user --json', 'List all users, output as json, pipeable')
-                        .example('user --add test@test.com test-cluster', 'Adds the test@test.com IDP user to test-cluster policy')
-                        .example('user -d test@test.com test-cluster', 'Removes the test@test.com IDP user from test-cluster policy');
+                        .example('$0 user --json', 'List all users, output as json, pipeable')
+                        .example('$0 user --add test@test.com test-cluster', 'Adds the test@test.com IDP user to test-cluster policy')
+                        .example('$0 user -d test@test.com test-cluster', 'Removes the test@test.com IDP user from test-cluster policy');
                 },
                 async (argv) => {
                     if (!! argv.add) {
@@ -582,9 +582,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('group --json', 'List all groups, output as json, pipeable')
-                        .example('group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
-                        .example('group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
+                        .example('$0 group --json', 'List all groups, output as json, pipeable')
+                        .example('$0 group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
+                        .example('$0 group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
                 },
                 async (argv) => {
                     if (!! argv.add) {
@@ -646,9 +646,9 @@ export class CliDriver
                                 alias: 'j',
                             }
                         )
-                        .example('targetUser --json', 'List all target users, output as json, pipeable')
-                        .example('targetUser --add cool-policy centos', 'Adds the centos user to cool-policy')
-                        .example('targetUser -d test-cluster admin', 'Removes the admin RBAC Role to the test-cluster policy');
+                        .example('$0 targetUser --json', 'List all target users, output as json, pipeable')
+                        .example('$0 targetUser --add cool-policy centos', 'Adds the centos user to cool-policy')
+                        .example('$0 targetUser -d test-cluster admin', 'Removes the admin RBAC Role to the test-cluster policy');
                 },
                 async (argv) => {
                     if (!! argv.add) {
@@ -764,7 +764,7 @@ export class CliDriver
                                 alias: 'o'
                             }
                         )
-                        .example('autodiscovery-script centos sample-target-name Default', '');
+                        .example('$0 autodiscovery-script centos sample-target-name Default', '');
                 },
                 async (argv) => {
                     await autoDiscoveryScriptHandler(argv, this.logger, this.configService, this.envs);
@@ -804,9 +804,9 @@ export class CliDriver
                             type: 'string',
                             default: null
                         })
-                        .example('generate kubeYaml testcluster', '')
-                        .example('generate kubeConfig', '')
-                        .example('generate kubeYaml --labels testkey:testvalue', '');
+                        .example('$0 generate kubeYaml testcluster', '')
+                        .example('$0 generate kubeConfig', '')
+                        .example('$0 generate kubeYaml --labels testkey:testvalue', '');
                 },
                 async (argv) => {
                     if (argv.typeOfConfig == 'kubeConfig') {
@@ -824,8 +824,15 @@ export class CliDriver
                     await logoutHandler(this.configService, this.logger);
                 }
             )
-            .command('$0', 'Kubectl wrapper catch all', () => {}, async (_) => {
-                await bctlHandler(this.configService, this.logger);
+            .command('$0', 'Kubectl wrapper catch all', () => { }, async (_) => {
+                // Check to see what type of cli we are trying to proxy
+                var command = process.argv[2];
+                if (command == 'kube') {
+                    await bctlHandler(this.configService, this.logger);
+                } else {
+                    this.logger.error(`Unknown command passed ${command}`);
+                    await cleanExit(1, this.logger);
+                }
             })
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})

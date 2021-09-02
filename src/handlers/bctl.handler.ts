@@ -1,9 +1,11 @@
 import { ConfigService } from '../../src/config.service/config.service';
 import { Logger } from '../../src/logger.service/logger';
 import { cleanExit } from './clean-exit.handler';
+import util from 'util';
+import { spawn, exec } from 'child_process';
 
 const { v4: uuidv4 } = require('uuid');
-const spawn = require('child_process').spawn;
+const execPromise = util.promisify(exec)
 
 
 export async function bctlHandler(configService: ConfigService, logger: Logger) {
@@ -24,7 +26,7 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     const logId = uuidv4();
 
     // Now build our token
-    const kubeArgsRaw = process.argv.splice(2);
+    const kubeArgsRaw = process.argv.splice(3);
     const kubeArgsString = kubeArgsRaw.join(' ');
     const formattedToken = `${token}zli ${kubeArgsString}++++${logId}`;
 
@@ -34,5 +36,18 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     // Then add the extract the args
     kubeArgs = kubeArgs.concat(kubeArgsRaw);
 
-    spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
+    const kubeCommandProcess = spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
+
+    kubeCommandProcess.on('close', async (code: number) => {
+        logger.debug(`Kube command process exited with code ${code}`);
+
+        if (code != 0) {
+            // Check to ensure they are using the right context
+            const currentContext = await execPromise('kubectl config current-context ');
+
+            if (currentContext.stdout != 'bctl-server') {
+                logger.warn('Make sure you using the correct kube config!');
+            }
+        }
+    });
 }
