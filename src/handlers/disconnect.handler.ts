@@ -9,17 +9,10 @@ export async function disconnectHandler(
     configService: ConfigService,
     logger: Logger
 ) {
-    // First get the pid from the config service
-    const kubeConfig = configService.getKubeConfig();
-
-    // then kill the daemon
-    if (kubeConfig['localPid'] != null) {
-        killDaemon(configService);
-
+    if (await killDaemon(configService)) {
         logger.info('Killed local Kube daemon');
     } else {
         logger.warn('No Kube daemon running');
     }
-
     await cleanExit(0, logger);
 }

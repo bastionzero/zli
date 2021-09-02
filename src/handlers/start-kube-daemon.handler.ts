@@ -1,4 +1,5 @@
 import path from 'path';
+import { loggers } from 'winston';
 import { killDaemon } from '../../src/kube.service/kube.service';
 import { ConfigService } from '../config.service/config.service';
 import { PolicyQueryService } from '../http.service/http.service';
@@ -74,7 +75,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         finalDaemonPath = 'go';
         args = ['run', 'daemon.go'].concat(args);
     } else {
-        finalDaemonPath = await copyExecutableToTempDir();
+        finalDaemonPath = await copyExecutableToTempDir(logger);
     }
 
     try {
@@ -141,7 +142,7 @@ async function getClusterInfoFromName(clusterTargets: ClusterSummary[], clusterN
     await cleanExit(1, logger);
 }
 
-async function copyExecutableToTempDir(): Promise<string> {
+async function copyExecutableToTempDir(logger: Logger): Promise<string> {
     // Helper function to copy the Daemon executable to a temp dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342
     const chmod = utils.promisify(fs.chmod);
@@ -160,11 +161,28 @@ async function copyExecutableToTempDir(): Promise<string> {
 
     }
 
-    // We have to go up 1 more directory bc when we compile we are inside /dist
-    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
+    var daemonExecPath = undefined;
+    var tmpobj = undefined;
+    if (process.platform === 'win32') {
+        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon.exe');
 
-    // Create our temp file
-    const tmpobj = tmp.fileSync();
+        // Create our temp file
+        tmpobj = tmp.fileSync({ postfix: '.exe' });
+    }
+    else if (process.platform === 'linux' || process.platform === 'darwin') {
+        if (process.platform === 'linux') {
+            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-linux');
+        } else {
+            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
+        }
+
+        // Create our temp file
+        tmpobj = tmp.fileSync();
+    } else {
+        logger.error(`Unsupported operating system: ${process.platform}`);
+        await cleanExit(1, logger);
+    }
+
     const finalDaemonPath = `${tmpobj.name}`;
 
     // Copy the file to the computers file system
