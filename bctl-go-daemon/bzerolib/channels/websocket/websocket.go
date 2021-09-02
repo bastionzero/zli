@@ -262,6 +262,12 @@ func (w *Websocket) Connect(serviceUrl string, hubEndpoint string, headers map[s
 		res, _ := httpClient.Do(req)
 		defer res.Body.Close()
 
+		if res.StatusCode == 401 {
+			// This means we have an auth issue, do not attempt to keep trying to reconnect
+			log.Printf("Auth error when trying to connect. Not attempting to reconnect. Shutting down")
+			panic("401 response on /negotiate endpoint")
+		}
+
 		// Extract out the connection token
 		bodyBytes, _ := ioutil.ReadAll(res.Body)
 		var m map[string]interface{}

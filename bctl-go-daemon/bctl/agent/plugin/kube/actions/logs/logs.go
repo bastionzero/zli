@@ -26,10 +26,15 @@ type LogAction struct {
 	role                string
 	streamOutputChannel chan smsg.StreamMessage
 	closed              bool
+	doneChannel         chan bool
 }
 
+type LogSubAction string
+
 const (
-	LogData = "kube/log"
+	LogData  LogSubAction = "kube/log/stdout"
+	LogStart LogSubAction = "kube/log/start"
+	LogStop  LogSubAction = "kube/log/stop"
 )
 
 func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
@@ -39,6 +44,7 @@ func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup 
 		impersonateGroup:    impersonateGroup,
 		role:                role,
 		streamOutputChannel: ch,
+		doneChannel:         make(chan bool),
 		closed:              false,
 	}, nil
 }
@@ -48,16 +54,33 @@ func (l *LogAction) Closed() bool {
 }
 
 func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	var logActionRequest KubeLogsActionPayload
-	if err := json.Unmarshal(actionPayload, &logActionRequest); err != nil {
-		log.Printf("Error: %v", err.Error())
-		return action, []byte{}, fmt.Errorf("malformed Kube Logs Action payload %v", actionPayload)
+	// TODO: Check request ID matches from startlog
+	switch LogSubAction(action) {
+
+	// Start exec message required before anything else
+	case LogStart:
+		var logActionRequest KubeLogsActionPayload
+		if err := json.Unmarshal(actionPayload, &logActionRequest); err != nil {
+			log.Printf("Error: %v", err.Error())
+			return action, []byte{}, fmt.Errorf("malformed Kube Logs Action payload %v", actionPayload)
+		}
+
+		return l.StartLog(logActionRequest, action)
+	case LogStop:
+		log.Println("Stopping log action")
+		l.doneChannel <- true
+		return string(LogStop), []byte{}, nil
+	default:
+		return "", []byte{}, fmt.Errorf("unhandled exec action: %v", action)
 	}
+}
+
+func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action string) (string, []byte, error) {
 
 	endpointWithQuery, err := url.Parse(logActionRequest.Endpoint)
 	if err != nil {
 		log.Printf("Error on url.Parse: %s", err)
-		return action, []byte{}, fmt.Errorf("error on url.Parse %v", actionPayload)
+		return action, []byte{}, fmt.Errorf("error on url.Parse %v", logActionRequest.Endpoint)
 	}
 
 	// TODO : Is this too hacky? Is there a better way to grab the namespace and podName?
@@ -142,22 +165,32 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 				// Stream the response back
 				content := base64.StdEncoding.EncodeToString(buf[:numBytes])
 				message := smsg.StreamMessage{
-					Type:           LogData,
+					Type:           string(LogData),
 					RequestId:      logActionRequest.RequestId,
 					LogId:          logActionRequest.LogId,
 					SequenceNumber: -1,
 					Content:        content,
 				}
 				l.streamOutputChannel <- message
+			}
+		}
+	}()
 
-				// responseLogClusterToBastion.Content = buf[:numBytes]
-				// wsClient.SendResponseLogClusterToBastion(responseLogClusterToBastion) // TODO: This returns err
+	// Subscribe to our done channel
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-l.doneChannel:
+				stream.Close()
+				cancel()
+				return
 			}
 		}
 	}()
 
 	// We also need to listen if we get a cancel log request
-
 	return action, []byte{}, nil
 }
 

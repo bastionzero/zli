@@ -142,7 +142,7 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			log.Println("Error with spdy stream")
 		}
 		stdoutWriter.Write([]byte(EndTimes))
-		log.Printf("SPDY STREAM ENDED")
+		log.Printf("Spdy stream has ended")
 	}()
 
 	return string(StartExec), []byte{}, nil

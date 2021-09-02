@@ -20,5 +20,5 @@ const (
 	StdOut StreamType = "kube/exec/stdout"
 	StdIn  StreamType = "kube/exec/stdin"
 
-	LogOut StreamType = "kube/log"
+	LogOut StreamType = "kube/log/stdout"
 )
