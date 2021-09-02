@@ -2,12 +2,16 @@ import { spawn } from 'child_process';
 import { ConfigService } from '../../src/config.service/config.service';
 
 export async function killDaemon(configService: ConfigService) {
-    const kubeConfig = configService.getKubeConfig();
+    var kubeConfig = configService.getKubeConfig();
 
     // then kill the daemon
     if (kubeConfig['localPid'] != null) {
         // First try to kill the process
-        spawn('pkill', ['-P', kubeConfig['localPid'].toString()]);
+        if (process.platform === "win32") {
+            spawn('taskkill', ['/F', '/T', '/PID', kubeConfig['localPid'].toString()]);
+        } else {
+            spawn('pkill', ['-P', kubeConfig['localPid'].toString()]);
+        }
 
         // Update the config
         kubeConfig['localPid'] = null;

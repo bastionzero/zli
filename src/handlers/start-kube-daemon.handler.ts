@@ -160,11 +160,20 @@ async function copyExecutableToTempDir(): Promise<string> {
 
     }
 
-    // We have to go up 1 more directory bc when we compile we are inside /dist
-    const daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
+    var daemonExecPath = undefined;
+    var tmpobj = undefined;
+    if (process.platform === "win32") {
+        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon.exe');
 
-    // Create our temp file
-    const tmpobj = tmp.fileSync();
+        // Create our temp file
+        tmpobj = tmp.fileSync({postfix: '.exe'});
+    } else {
+        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
+
+        // Create our temp file
+        tmpobj = tmp.fileSync();
+    }
+
     const finalDaemonPath = `${tmpobj.name}`;
 
     // Copy the file to the computers file system
