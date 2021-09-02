@@ -16,5 +16,9 @@ export async function killDaemon(configService: ConfigService) {
         // Update the config
         kubeConfig['localPid'] = null;
         configService.setKubeConfig(kubeConfig);
+
+        return true
+    } else {
+        return false
     }
 }
