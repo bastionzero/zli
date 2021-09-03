@@ -170,11 +170,6 @@ async function copyExecutableToTempDir(logger: Logger, configPath: string): Prom
         daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-windows');
 
         finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe')
-
-        await deleteIfExists(finalDaemonPath);
-
-        // Create our executable file
-        fs.writeFileSync(finalDaemonPath, "");
     }
     else if (process.platform === 'linux' || process.platform === 'darwin') {
         if (process.platform === 'linux') {
@@ -184,15 +179,15 @@ async function copyExecutableToTempDir(logger: Logger, configPath: string): Prom
         }
 
         finalDaemonPath = path.join(configFileDir, 'daemon')
-
-        await deleteIfExists(finalDaemonPath);
-
-        // Create our executable file
-        fs.writeFileSync(finalDaemonPath, "");
     } else {
         logger.error(`Unsupported operating system: ${process.platform}`);
         await cleanExit(1, logger);
     }
+
+    await deleteIfExists(finalDaemonPath);
+
+    // Create our executable file
+    fs.writeFileSync(finalDaemonPath, "");
 
     // Copy the file to the computers file system
     await copy(daemonExecPath, finalDaemonPath);
