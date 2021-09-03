@@ -164,7 +164,7 @@ async function copyExecutableToTempDir(logger: Logger): Promise<string> {
     var daemonExecPath = undefined;
     var tmpobj = undefined;
     if (process.platform === 'win32') {
-        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon.exe');
+        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-windows');
 
         // Create our temp file
         tmpobj = tmp.fileSync({ postfix: '.exe' });
@@ -173,7 +173,7 @@ async function copyExecutableToTempDir(logger: Logger): Promise<string> {
         if (process.platform === 'linux') {
             daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-linux');
         } else {
-            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
+            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-macos');
         }
 
         // Create our temp file
