@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	cc "bastionzero.com/bctl/v1/bctl/agent/controlchannel"
 	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
@@ -23,18 +23,32 @@ const (
 
 	// Disable auto-reconnect
 	autoReconnect = false
+	logFilePath   = "/var/log/cwc/bctl-agent.log"
 )
 
 func main() {
-	parseFlags()
-
 	// Get agent version
 	version := getAgentVersion()
 
-	// Connect to the control channel
-	control, err := cc.NewControlChannel(serviceUrl, activationToken, orgId, clusterName, environmentId, version, controlchannelTargetSelectHandler)
+	// setup our loggers
+	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, false)
 	if err != nil {
-		log.Printf("Error starting Control Channel: %v", err.Error())
+		return
+	}
+	logger.AddAgentVersion(version)
+
+	ccLogger := logger.GetControlchannelLogger()
+	dcLogger := logger.GetDatachannelLogger()
+
+	if err := parseFlags(); err != nil {
+		logger.Error(err)
+		os.Exit(1)
+	}
+
+	// Connect to the control channel
+	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, version, controlchannelTargetSelectHandler)
+	if err != nil {
+		select {} // TODO: Should we be trying again here?
 	}
 
 	// Subscribe to control channel
@@ -43,7 +57,7 @@ func main() {
 			select {
 			case message := <-control.NewDatachannelChan:
 				// We have an incoming websocket request, attempt to make a new Daemon Websocket Client for the request
-				startDatachannel(message)
+				startDatachannel(dcLogger, message)
 			}
 		}
 	}()
@@ -53,7 +67,7 @@ func main() {
 	select {}
 }
 
-func startDatachannel(message cc.NewDatachannelMessage) {
+func startDatachannel(logger *lggr.Logger, message cc.NewDatachannelMessage) {
 	// Create our headers and params, headers are empty
 	// TODO: We need to drop this session id auth header req and move to a token based system
 	headers := make(map[string]string)
@@ -66,7 +80,7 @@ func startDatachannel(message cc.NewDatachannelMessage) {
 	// Create our response channels
 	// TODO: WE NEED TO SEND AN INTERRUPT CHANNEL TO DATACHANNEL FROM CONTROL
 	// or pass a context that we can cancel from the control channel??
-	dc.NewDataChannel(message.Role, serviceUrl, hubEndpoint, params, headers, datachannelTargetSelectHandler, autoReconnect)
+	dc.NewDataChannel(logger, message.Role, serviceUrl, hubEndpoint, params, headers, datachannelTargetSelectHandler, autoReconnect)
 }
 
 func controlchannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
@@ -117,7 +131,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 	return "", fmt.Errorf("unable to determine SignalR endpoint")
 }
 
-func parseFlags() {
+func parseFlags() error {
 	// Our expected flags we need to start
 	flag.StringVar(&serviceUrl, "serviceUrl", "", "Service URL to use")
 	flag.StringVar(&orgId, "orgId", "", "OrgId to use")
@@ -153,8 +167,9 @@ func parseFlags() {
 		missing = append(missing, "activationToken")
 	}
 	if len(missing) > 0 {
-		log.Printf("Missing flags! Missing: %v", missing)
-		os.Exit(1)
+		return fmt.Errorf("missing flags: %v", missing)
+	} else {
+		return nil
 	}
 }
 

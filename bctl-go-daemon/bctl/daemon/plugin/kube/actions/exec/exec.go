@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -20,9 +21,18 @@ type ExecAction struct {
 	ksResponseChannel chan plgn.ActionWrapper
 	RequestChannel    chan plgn.ActionWrapper
 	streamChannel     chan smsg.StreamMessage
+	logger            *lggr.Logger
+	ctx               context.Context
 }
 
-func NewExecAction(requestId string, logId string, ch chan plgn.ActionWrapper, streamResponseChannel chan smsg.StreamMessage, commandBeingRun string) (*ExecAction, error) {
+func NewExecAction(ctx context.Context,
+	logger *lggr.Logger,
+	requestId string,
+	logId string,
+	ch chan plgn.ActionWrapper,
+	streamResponseChannel chan smsg.StreamMessage,
+	commandBeingRun string) (*ExecAction, error) {
+
 	return &ExecAction{
 		requestId:         requestId,
 		logId:             logId,
@@ -30,20 +40,21 @@ func NewExecAction(requestId string, logId string, ch chan plgn.ActionWrapper, s
 		RequestChannel:    ch,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
 		streamChannel:     make(chan smsg.StreamMessage, 100),
+		logger:            logger,
+		ctx:               ctx,
 	}, nil
 }
 
 func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	spdy, err := NewSPDYService(writer, request)
+	subLogger := r.logger.GetComponentLogger("SPDY")
+	spdy, err := NewSPDYService(subLogger, writer, request)
 	if err != nil {
+		r.logger.Error(err)
 		return err
 	}
 
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
 	r.RequestChannel <- wrapStartPayload(r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
-
-	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
 
 	// Set up a go function for stdout
 	go func() {
@@ -51,15 +62,16 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		seqNumber := 0
 		for {
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				return
 			case streamMessage := <-r.streamChannel:
 				contentBytes, _ := base64.StdEncoding.DecodeString(streamMessage.Content)
 
 				// Check for agent-initiated end e.g. user typing 'exit'
-				if string(contentBytes) == kubeexec.EndTimes {
+				if string(contentBytes) == kubeexec.EscChar {
+					r.logger.Info("stream ended")
 					spdy.conn.Close()
-					cancel()
+					return
 				}
 
 				// Check sequence number is correct, if not store it for later
@@ -89,15 +101,14 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		buf := make([]byte, 16)
 		for {
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				return
 			default:
 				n, err := spdy.stdinStream.Read(buf)
-				// Handle error
 				if err == io.EOF {
-					// TODO: This means to close the stream
-					cancel()
+					return
 				}
+
 				// Send message to agent
 				r.RequestChannel <- wrapStdinPayload(r.requestId, r.logId, buf[:n])
 			}
@@ -109,7 +120,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-r.ctx.Done():
 				return
 			default:
 				decoder := json.NewDecoder(spdy.resizeStream)
@@ -117,9 +128,9 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				size := TerminalSize{}
 				if err := decoder.Decode(&size); err != nil {
 					if err == io.EOF {
-						cancel()
+						return
 					} else {
-						log.Printf("Error decoding resize message: %s", err.Error())
+						r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
 					}
 				} else {
 					// Emit this as a new resize event
