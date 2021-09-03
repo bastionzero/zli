@@ -27,15 +27,13 @@ export async function generateKubeYamlHandler(
     const kubeService = new KubeService(configService, logger);
 
     // Format our labels if they exist
-    let labelsFormatted = null;
+    const labels: { [index: string ]: string } = {};
     if (argv.labels != []) {
-        const labels: { [index: string ]: string } = {};
         for (const keyValueString of argv.labels) {
             const key = keyValueString.split(':')[0];
             const value = String(keyValueString.split(':')[1]);
             labels[key] = value;
         }
-        labelsFormatted = JSON.stringify(labels);
     }
 
     // If environemtn has been passed, ensure its a valid envId
@@ -53,7 +51,7 @@ export async function generateKubeYamlHandler(
     }
 
     // Get our kubeYaml
-    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labelsFormatted, argv.namespace, argv.environmentId);
+    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labels, argv.namespace, argv.environmentId);
 
     // Show it to the user or write to file
     if (outputFileArg) {

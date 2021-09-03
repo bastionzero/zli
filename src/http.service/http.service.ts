@@ -548,7 +548,7 @@ export class KubeService extends HttpService
 
     public getKubeUnregisteredAgentYaml(
         clusterName: string,
-        labels: string,
+        labels: { [index: string ]: string },
         namespace: string,
         environmentId: string,
     ): Promise<GetKubeUnregisteredAgentYamlResponse>

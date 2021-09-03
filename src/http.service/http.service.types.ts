@@ -232,7 +232,7 @@ export interface ShellConnectionAuthDetails {
 }
 export interface GetKubeUnregisteredAgentYamlRequest {
     clusterName: string;
-    labels: string;
+    labels: { [index: string ]: string };
     namespace: string;
     environmentId: string;
 }
