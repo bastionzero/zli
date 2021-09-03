@@ -320,7 +320,7 @@ export enum PolicyType {
     TargetConnect = 'TargetConnect',
     OrganizationControls = 'OrganizationControls',
     SessionRecording = 'SessionRecording',
-    KubernetesProxy = 'KubernetesProxy'
+    KubernetesTunnel = 'KubernetesProxy'
 }
 
 export interface EditPolicyRequest {
