@@ -26,8 +26,18 @@ const (
 func main() {
 	parseFlags()
 
-	log.Printf("Opening websocket to Bastion: %s", serviceUrl)
-	startDatachannel()
+	// Setup our loggers
+	// TODO: Pass in debug level as flag
+	// TODO: Pass in stdout output as flag?
+	logger, err := lggr.NewLogger(lggr.Debug, getLogFilePath(), true)
+	if err != nil {
+		os.Exit(1)
+	}
+	logger.AddDaemonVersion(version)
+	dcLogger := logger.GetDatachannelLogger()
+
+	logger.Info(fmt.Sprintf("Opening websocket to Bastion: %s", serviceUrl))
+	startDatachannel(dcLogger)
 
 	select {} // sleep forever?
 }
