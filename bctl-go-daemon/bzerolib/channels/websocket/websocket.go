@@ -215,7 +215,7 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 
 func (w *Websocket) Connect() {
 	for !w.IsReady {
-
+		time.Sleep(time.Second * sleepIntervalInSeconds)
 		if w.getChallenge {
 			// First get the config from the vault
 			config, _ := vault.LoadVault()
@@ -224,6 +224,10 @@ func (w *Websocket) Connect() {
 			solvedChallenge, err := newChallenge(w.params["org_id"], w.params["cluster_name"], w.serviceUrl, config.Data.PrivateKey)
 			if err != nil {
 				w.logger.Error(fmt.Errorf("error in getting challenge: %s", err))
+
+				// Sleep in between
+				w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
+				continue
 			}
 
 			// Add the solved challenge to the params
@@ -261,6 +265,12 @@ func (w *Websocket) Connect() {
 			rerr := fmt.Errorf("Auth error when trying to connect. Not attempting to reconnect. Shutting down")
 			w.logger.Error(rerr)
 			return
+		} else if res.StatusCode != 200 {
+			w.logger.Error(fmt.Errorf("Bad status code received on negotiation: %s", res.StatusCode))
+
+			// Sleep in between
+			w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
+			continue
 		}
 
 		// Extract out the connection token
@@ -312,9 +322,5 @@ func (w *Websocket) Connect() {
 				break
 			}
 		}
-
-		// Sleep in between
-		w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
-		time.Sleep(time.Second * sleepIntervalInSeconds)
 	}
 }
