@@ -499,7 +499,7 @@ export class PolicyQueryService extends HttpService
             environmentId: environmentId,
         };
 
-        return this.FormPost('kube-proxy', request);
+        return this.FormPost('kube-tunnel', request);
     }
 
     public GetAllPoliciesForClusterId(
@@ -548,7 +548,7 @@ export class KubeService extends HttpService
 
     public getKubeUnregisteredAgentYaml(
         clusterName: string,
-        labels: string,
+        labels: { [index: string ]: string },
         namespace: string,
         environmentId: string,
     ): Promise<GetKubeUnregisteredAgentYamlResponse>
@@ -570,7 +570,7 @@ export class KubeService extends HttpService
             email: email,
         };
 
-        return this.FormPostWithException('get-user', request);
+        return this.Post('get-user', request);
     }
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {

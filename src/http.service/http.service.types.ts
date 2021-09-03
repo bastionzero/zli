@@ -232,7 +232,7 @@ export interface ShellConnectionAuthDetails {
 }
 export interface GetKubeUnregisteredAgentYamlRequest {
     clusterName: string;
-    labels: string;
+    labels: { [index: string ]: string };
     namespace: string;
     environmentId: string;
 }
@@ -320,7 +320,7 @@ export enum PolicyType {
     TargetConnect = 'TargetConnect',
     OrganizationControls = 'OrganizationControls',
     SessionRecording = 'SessionRecording',
-    KubernetesProxy = 'KubernetesProxy'
+    KubernetesTunnel = 'KubernetesTunnel'
 }
 
 export interface EditPolicyRequest {

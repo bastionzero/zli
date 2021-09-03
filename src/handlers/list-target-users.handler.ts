@@ -11,7 +11,7 @@ export async function listTargetUsersHandler(configService: ConfigService, logge
     const policies = await policyService.ListAllPolicies();
     const targetUsers : string[] = [];
     const policy = policies.find(p => p.name == policyName);
-    if (policy.type == PolicyType.KubernetesProxy) {
+    if (policy.type == PolicyType.KubernetesTunnel) {
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
         Object.values(kubernetesPolicyContext.clusterUsers).forEach(
             clusterUser => targetUsers.push(clusterUser.name)

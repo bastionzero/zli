@@ -25,14 +25,14 @@ export function parseTargetType(targetType: string) : TargetType
 
 export function parsePolicyType(policyType: string) : PolicyType
 {
-    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetesproxy)$/i; // case insensitive check for policyType
+    const policyTypePattern = /^(targetconnect|organizationcontrols|sessionrecording|kubernetestunnel)$/i; // case insensitive check for policyType
 
     if(! policyTypePattern.test(policyType))
         return undefined;
 
     switch (policyType.toLowerCase()) {
-    case PolicyType.KubernetesProxy.toLowerCase():
-        return PolicyType.KubernetesProxy;
+    case PolicyType.KubernetesTunnel.toLowerCase():
+        return PolicyType.KubernetesTunnel;
     case PolicyType.OrganizationControls.toLowerCase():
         return PolicyType.OrganizationControls;
     case PolicyType.SessionRecording.toLowerCase():
@@ -277,7 +277,7 @@ export function getTableOfPolicies(
         // TODO : This should get extended to support other policy types as well
         let formattedResource = '';
         let formattedTargetUsers = '';
-        if (p.type == PolicyType.KubernetesProxy) {
+        if (p.type == PolicyType.KubernetesTunnel) {
             const kubernetesPolicyContext = p.context as KubernetesPolicyContext;
             // If this policy gets applied on some environments
             if (kubernetesPolicyContext.environments) {

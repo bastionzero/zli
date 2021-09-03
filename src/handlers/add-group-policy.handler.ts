@@ -31,7 +31,7 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
         await cleanExit(1, logger);
     }
 
-    if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
+    if (policy.type !== PolicyType.KubernetesTunnel && policy.type !== PolicyType.TargetConnect){
         logger.error(`Adding group to policy ${policyName} failed. Adding groups to ${policy.type} policies is not currently supported.`);
         await cleanExit(1, logger);
     }

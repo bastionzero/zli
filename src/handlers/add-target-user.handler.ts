@@ -19,7 +19,7 @@ export async function addTargetUserHandler(targetUserName: string, policyName: s
     }
 
     switch (policy.type) {
-    case PolicyType.KubernetesProxy:
+    case PolicyType.KubernetesTunnel:
         // Then add the role to the policy
         const clusterUserToAdd: KubernetesPolicyClusterUsers = {
             name: targetUserName

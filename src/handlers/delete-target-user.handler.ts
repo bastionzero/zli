@@ -19,7 +19,7 @@ export async function deleteTargetUserHandler(targetUserName: string, policyName
     }
 
     switch (policy.type) {
-    case PolicyType.KubernetesProxy:
+    case PolicyType.KubernetesTunnel:
         // Now check if the role exists
         const kubernetesPolicyContext = policy.context as KubernetesPolicyContext;
         if (kubernetesPolicyContext.clusterUsers[targetUserName] === undefined) {
