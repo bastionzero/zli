@@ -61,7 +61,7 @@ func main() {
 	}
 
 	// Connect to the control channel
-	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, agentVersion, idpProvider, idpOrgId, namespace, controlchannelTargetSelectHandler)
+	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, agentVersion, controlchannelTargetSelectHandler)
 	if err != nil {
 		select {} // TODO: Should we be trying again here?
 	}

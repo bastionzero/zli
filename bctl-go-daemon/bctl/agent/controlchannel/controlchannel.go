@@ -41,9 +41,6 @@ func NewControlChannel(logger *lggr.Logger,
 	clusterName string,
 	environmentId string,
 	agentVersion string,
-	idpProvider string,
-	idpOrgId string,
-	namespace string,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)) (*ControlChannel, error) {
 
 	subLogger := logger.GetWebsocketLogger()
