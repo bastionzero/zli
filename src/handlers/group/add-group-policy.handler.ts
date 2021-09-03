@@ -1,8 +1,8 @@
-import { ConfigService } from '../config.service/config.service';
-import { PolicyService, GroupsService } from '../http.service/http.service';
-import { Logger } from '../logger.service/logger';
-import { Group, GroupSummary, PolicyType } from '../http.service/http.service.types';
-import { cleanExit } from './clean-exit.handler';
+import { ConfigService } from '../../config.service/config.service';
+import { PolicyService, GroupsService } from '../../http.service/http.service';
+import { Logger } from '../../logger.service/logger';
+import { Group, GroupSummary, PolicyType } from '../../http.service/http.service.types';
+import { cleanExit } from '../clean-exit.handler';
 
 export async function addGroupToPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the group

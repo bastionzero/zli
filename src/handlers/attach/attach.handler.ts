@@ -1,9 +1,9 @@
-import { ConnectionService, SessionService } from '../../src/http.service/http.service';
-import { ConfigService } from '../../src/config.service/config.service';
-import { Logger } from '../../src/logger.service/logger';
-import { ConnectionState } from '../../src/http.service/http.service.types';
-import { cleanExit } from './clean-exit.handler';
-import { createAndRunShell, getCliSpace } from '../../src/shell-utils';
+import { ConnectionService, SessionService } from '../../http.service/http.service';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { ConnectionState } from '../../http.service/http.service.types';
+import { cleanExit } from '../clean-exit.handler';
+import { createAndRunShell, getCliSpace } from '../../shell-utils';
 
 export async function attachHandler(
     configService: ConfigService,

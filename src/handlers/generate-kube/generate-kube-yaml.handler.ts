@@ -1,10 +1,10 @@
 import util from 'util';
 
-import { Logger } from '../logger.service/logger';
-import { ConfigService } from '../config.service/config.service';
-import { KubeService } from '../http.service/http.service';
-import { EnvironmentDetails } from '../http.service/http.service.types';
-import { cleanExit } from './clean-exit.handler';
+import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../config.service/config.service';
+import { KubeService } from '../../http.service/http.service';
+import { EnvironmentDetails } from '../../http.service/http.service.types';
+import { cleanExit } from '../clean-exit.handler';
 
 const fs = require('fs');
 

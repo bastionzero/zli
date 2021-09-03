@@ -1,11 +1,11 @@
-import { ConfigService } from '../../src/config.service/config.service';
-import { Logger } from '../../src/logger.service/logger';
-import { SessionService } from '../../src/http.service/http.service';
-import { ConnectionDetails, TargetSummary } from '../types';
-import { getTableOfConnections } from '../../src/utils';
-import { cleanExit } from './clean-exit.handler';
-import { ConnectionState } from '../../src/http.service/http.service.types';
-import { getCliSpace } from '../../src/shell-utils';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { SessionService } from '../../http.service/http.service';
+import { ConnectionDetails, TargetSummary } from '../../types';
+import { getTableOfConnections } from '../../utils';
+import { cleanExit } from '../clean-exit.handler';
+import { ConnectionState } from '../../http.service/http.service.types';
+import { getCliSpace } from '../../shell-utils';
 
 export async function listConnectionsHandler(
     argv: any,

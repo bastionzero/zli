@@ -1,9 +1,9 @@
-import { Logger } from '../logger.service/logger';
-import { ConfigService } from '../config.service/config.service';
-import { cleanExit } from './clean-exit.handler';
-import * as types from '../types';
-import { EnvironmentDetails } from '../http.service/http.service.types';
-import { PolicyQueryService } from '../http.service/http.service';
+import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../config.service/config.service';
+import { cleanExit } from '../clean-exit.handler';
+import * as types from '../../types';
+import { EnvironmentDetails } from '../../http.service/http.service.types';
+import { PolicyQueryService } from '../../http.service/http.service';
 
 
 export async function describeClusterHandler(

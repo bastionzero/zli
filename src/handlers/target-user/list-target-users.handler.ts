@@ -1,9 +1,9 @@
-import { Logger } from '../logger.service/logger';
-import { ConfigService } from '../config.service/config.service';
-import { PolicyService } from '../http.service/http.service';
-import { KubernetesPolicyContext, PolicyType, TargetConnectContext } from '../http.service/http.service.types';
-import { cleanExit } from './clean-exit.handler';
-import { getTableOfTargetUsers } from '../utils';
+import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../config.service/config.service';
+import { PolicyService } from '../../http.service/http.service';
+import { KubernetesPolicyContext, PolicyType, TargetConnectContext } from '../../http.service/http.service.types';
+import { cleanExit } from '../clean-exit.handler';
+import { getTableOfTargetUsers } from '../../utils';
 
 export async function listTargetUsersHandler(configService: ConfigService, logger: Logger, argv : any, policyName: string) {
 

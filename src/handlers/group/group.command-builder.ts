@@ -1,0 +1,57 @@
+import yargs from "yargs";
+
+export function groupCmdBuilder(yargs: yargs.Argv<{}>) :
+yargs.Argv<
+{add: boolean} &
+{delete: boolean} &
+{groupName: string} &
+{policyName: string} &
+{json: boolean}
+> {
+    return yargs
+        .option(
+            'add',
+            {
+                type: 'boolean',
+                demandOption: false,
+                alias: 'a',
+                implies: ['groupName', 'policyName']
+            }
+        )
+        .option(
+            'delete',
+            {
+                type: 'boolean',
+                demandOption: false,
+                alias: 'd',
+                implies: ['groupName', 'policyName']
+            }
+        )
+        .conflicts('add', 'delete')
+        .positional('groupName',
+            {
+                type: 'string',
+                default: null,
+                demandOption: false,
+            }
+        )
+        .positional('policyName',
+            {
+                type: 'string',
+                default: null,
+                demandOption: false,
+            }
+        )
+        .option(
+            'json',
+            {
+                type: 'boolean',
+                default: false,
+                demandOption: false,
+                alias: 'j',
+            }
+        )
+        .example('group --json', 'List all groups, output as json, pipeable')
+        .example('group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
+        .example('group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
+}

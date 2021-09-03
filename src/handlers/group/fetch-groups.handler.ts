@@ -1,8 +1,8 @@
-import { GroupsService } from '../http.service/http.service';
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
-import { cleanExit } from './clean-exit.handler';
-import { getTableOfGroups } from '../utils';
+import { GroupsService } from '../../http.service/http.service';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { cleanExit } from '../clean-exit.handler';
+import { getTableOfGroups } from '../../utils';
 
 export async function fetchGroupsHandler(
     argv: any,

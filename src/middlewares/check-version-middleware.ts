@@ -32,12 +32,12 @@ class CheckVersionMiddleware {
             logger.warn(`New version of ${appName} available: ${latestVersion} (current version ${currentVersion})`);
         }
 
-        if(latestVersion.major > currentVersion.major) {
-            logger.error(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`);
-            console.log(chalk.bold(downloadLinks));
+        // if(latestVersion.major > currentVersion.major) {
+        //     logger.error(`Version ${currentVersion} is no longer supported. Please download latest version of ${appName}`);
+        //     console.log(chalk.bold(downloadLinks));
 
-            await cleanExit(1, logger);
-        }
+        //     await cleanExit(1, logger);
+        // }
 
     }
 

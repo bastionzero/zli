@@ -3,14 +3,14 @@ import {
     parseTargetType,
     getTableOfTargets,
     parseTargetStatus
-} from '../utils';
-import { Logger } from '../logger.service/logger';
-import { EnvironmentDetails, TargetUser, VerbType } from '../http.service/http.service.types';
-import { cleanExit } from './clean-exit.handler';
-import { ClusterSummary, TargetStatus, TargetSummary, TargetType } from '../types';
+} from '../../utils';
+import { Logger } from '../../logger.service/logger';
+import { EnvironmentDetails, TargetUser, VerbType } from '../../http.service/http.service.types';
+import { cleanExit } from '../clean-exit.handler';
+import { ClusterSummary, TargetStatus, TargetSummary, TargetType } from '../../types';
 import { includes, map, uniq } from 'lodash';
-import { PolicyQueryService } from '../http.service/http.service';
-import { ConfigService } from '../config.service/config.service';
+import { PolicyQueryService } from '../../http.service/http.service';
+import { ConfigService } from '../../config.service/config.service';
 
 
 export async function listTargetsHandler(

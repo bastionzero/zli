@@ -1,0 +1,16 @@
+import yargs from "yargs";
+
+export function listConnectionsCmdBuilder(yargs: yargs.Argv<{}>) :
+yargs.Argv<{json: boolean}> {
+    return yargs
+        .option(
+            'json',
+            {
+                type: 'boolean',
+                default: false,
+                demandOption: false,
+                alias: 'j',
+            }
+        )
+        .example('lc --json', 'List all open zli connections, output as json, pipeable');
+}

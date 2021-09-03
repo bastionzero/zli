@@ -1,8 +1,8 @@
-import { UserService } from '../http.service/http.service';
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
-import { cleanExit } from './clean-exit.handler';
-import { getTableOfUsers } from '../utils';
+import { UserService } from '../../http.service/http.service';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { cleanExit } from '../clean-exit.handler';
+import { getTableOfUsers } from '../../utils';
 
 export async function listUsersHandler(
     argv: any,

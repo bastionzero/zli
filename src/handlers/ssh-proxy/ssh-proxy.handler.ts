@@ -1,13 +1,13 @@
-import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
-import { SsmTunnelService } from '../ssm-tunnel/ssm-tunnel.service';
-import { cleanExit } from './clean-exit.handler';
+import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
+import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../logger.service/logger';
+import { SsmTunnelService } from '../../ssm-tunnel/ssm-tunnel.service';
+import { cleanExit } from '../clean-exit.handler';
 import { Dictionary, includes } from 'lodash';
-import { PolicyQueryService } from '../http.service/http.service';
-import { ParsedTargetString } from '../types';
-import { VerbType } from '../http.service/http.service.types';
-import { targetStringExample } from '../../src/utils';
+import { PolicyQueryService } from '../../http.service/http.service';
+import { ParsedTargetString } from '../../types';
+import { VerbType } from '../../http.service/http.service.types';
+import { targetStringExample } from '../../utils';
 
 
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {

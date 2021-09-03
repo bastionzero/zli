@@ -1,9 +1,9 @@
-import { ConfigService } from '../config.service/config.service';
-import { PolicyService,KubeService } from '../http.service/http.service';
-import { Logger } from '../logger.service/logger';
-import { PolicyType, Subject, SubjectType } from '../http.service/http.service.types';
-import { ClusterSummary } from '../types';
-import { cleanExit } from './clean-exit.handler';
+import { ConfigService } from '../../config.service/config.service';
+import { PolicyService,KubeService } from '../../http.service/http.service';
+import { Logger } from '../../logger.service/logger';
+import { PolicyType, Subject, SubjectType } from '../../http.service/http.service.types';
+import { ClusterSummary } from '../../types';
+import { cleanExit } from '../clean-exit.handler';
 
 export async function addUserToPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
