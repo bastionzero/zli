@@ -15,7 +15,7 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc && cd bctl-go-daemon/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o damon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
+    "build": "tsc && cd bctl-go-daemon/bctl/daemon && GOOS=darwin GOARCH=amd64 go build -o daemon-macos && GOOS=windows GOARCH=amd64 go build -o daemon-windows && GOOS=linux GOARCH=amd64 go build -o daemon-linux",
     "package": "npm run copy-files && pkg .",
     "release": "npm run build && npm run package",
     "release-dev": "tsc && npm run package",
