@@ -1,4 +1,6 @@
 import path from 'path';
+import utils from 'util';
+import fs from 'fs';
 import { loggers } from 'winston';
 import { killDaemon } from '../../src/kube.service/kube.service';
 import { ConfigService } from '../config.service/config.service';
@@ -7,9 +9,6 @@ import { Logger } from '../logger.service/logger';
 import { ClusterSummary, KubeClusterStatus } from '../types';
 import { cleanExit } from './clean-exit.handler';
 const { spawn } = require('child_process');
-const fs = require('fs');
-const utils = require('util');
-const tmp = require('tmp');
 
 export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
     // First check that the cluster is online
@@ -75,7 +74,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         finalDaemonPath = 'go';
         args = ['run', 'daemon.go'].concat(args);
     } else {
-        finalDaemonPath = await copyExecutableToTempDir(logger);
+        finalDaemonPath = await copyExecutableToTempDir(logger, configService.configPath());
     }
 
     try {
@@ -87,7 +86,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
                 shell: true,
                 stdio: ['ignore', 'ignore', 'ignore']
             };
-
+            
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
@@ -142,9 +141,13 @@ async function getClusterInfoFromName(clusterTargets: ClusterSummary[], clusterN
     await cleanExit(1, logger);
 }
 
-async function copyExecutableToTempDir(logger: Logger): Promise<string> {
+async function copyExecutableToTempDir(logger: Logger, configPath: string): Promise<string> {
     // Helper function to copy the Daemon executable to a temp dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342
+
+    // First get the parent dir of the config path
+    const configFileDir = path.dirname(configPath)
+    
     const chmod = utils.promisify(fs.chmod);
 
     // Our copy function as we cannot use fs.copyFileSync
@@ -162,31 +165,32 @@ async function copyExecutableToTempDir(logger: Logger): Promise<string> {
     }
 
     var daemonExecPath = undefined;
-    var tmpobj = undefined;
+    var finalDaemonPath = undefined;
     if (process.platform === 'win32') {
-        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon.exe');
+        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-windows');
 
-        // Create our temp file
-        tmpobj = tmp.fileSync({ postfix: '.exe' });
+        finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe')
     }
     else if (process.platform === 'linux' || process.platform === 'darwin') {
         if (process.platform === 'linux') {
             daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-linux');
         } else {
-            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon');
+            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-macos');
         }
 
-        // Create our temp file
-        tmpobj = tmp.fileSync();
+        finalDaemonPath = path.join(configFileDir, 'daemon')
     } else {
         logger.error(`Unsupported operating system: ${process.platform}`);
         await cleanExit(1, logger);
     }
 
-    const finalDaemonPath = `${tmpobj.name}`;
+    await deleteIfExists(finalDaemonPath);
+
+    // Create our executable file
+    fs.writeFileSync(finalDaemonPath, "");
 
     // Copy the file to the computers file system
-    await copy(daemonExecPath, finalDaemonPath); // this should work
+    await copy(daemonExecPath, finalDaemonPath);
 
     // Grant execute permission
     // TODO: See if this is the right level of permission
@@ -194,4 +198,13 @@ async function copyExecutableToTempDir(logger: Logger): Promise<string> {
 
     // Return the path
     return finalDaemonPath;
+}
+
+
+async function deleteIfExists(pathToFile: string) {
+    // Check if the file exists, delete if so
+    if (fs.existsSync(pathToFile)) {
+        // Delete the file
+        fs.unlinkSync(pathToFile)
+    }
 }

@@ -1,5 +1,7 @@
 # Gitignore here for our rsync script 
 
 # Our build agent 
-bctl/daemon/daemon
+bctl/daemon/daemon-windows
+bctl/daemon/daemon-linux
+bctl/daemon/daemon-macos
 bctl/agent/agent
