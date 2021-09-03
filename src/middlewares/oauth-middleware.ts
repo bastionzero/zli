@@ -1,6 +1,6 @@
-import { OAuthService } from '../oauth.service/oauth.service';
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../../src/logger.service/logger';
+import { OAuthService } from '../services/oauth/oauth.service';
+import { ConfigService } from '../services/config/config.service';
+import { Logger } from '../services/logger/logger.service';
 
 export async function oauthMiddleware(configService: ConfigService, logger: Logger) : Promise<void> {
 

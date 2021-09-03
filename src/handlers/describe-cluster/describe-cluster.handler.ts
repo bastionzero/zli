@@ -1,22 +1,22 @@
-import { Logger } from '../../logger.service/logger';
-import { ConfigService } from '../../config.service/config.service';
+import { Logger } from '../../services/logger/logger.service';
+import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
-import * as types from '../../types';
-import { EnvironmentDetails } from '../../http.service/http.service.types';
-import { PolicyQueryService } from '../../http.service/http.service';
+import { EnvironmentDetails } from '../../services/environment/environment.types';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { ClusterSummary } from '../../services/kube/kube.types';
 
 
 export async function describeClusterHandler(
     clusterName: string,
     configService: ConfigService,
     logger: Logger,
-    clusterTargets: Promise<types.ClusterSummary[]>,
+    clusterTargets: Promise<ClusterSummary[]>,
     envs: Promise<EnvironmentDetails[]>
 ) {
     // First determine if the name passed is valid
-    let clusterSummary: types.ClusterSummary = null;
+    let clusterSummary: ClusterSummary = null;
     for (const cluster of await clusterTargets) {
-        if (cluster.name == clusterName) {
+        if (cluster.clusterName == clusterName) {
             clusterSummary = cluster;
             break;
         }

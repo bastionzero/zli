@@ -1,7 +1,8 @@
-import { ConfigService } from '../../config.service/config.service';
-import { PolicyService, GroupsService } from '../../http.service/http.service';
-import { Logger } from '../../logger.service/logger';
-import { PolicyType } from '../../http.service/http.service.types';
+import { GroupsService } from '../../services/groups/groups.service';
+import { PolicyService } from '../../services/policy/policy.service';
+import { PolicyType } from '../../services/policy/policy.types';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
 export async function deleteGroupFromPolicyHandler(groupName: string, policyName: string, configService: ConfigService, logger: Logger) {

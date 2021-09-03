@@ -1,9 +1,10 @@
 import { getCliSpace } from '../../shell-utils';
-import { ConfigService } from '../../config.service/config.service';
-import { ConnectionService, SessionService } from '../../http.service/http.service';
-import { ConnectionState } from '../../http.service/http.service.types';
-import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
+import { ConnectionService } from '../../services/connection/connection.service';
+import { ConnectionState } from '../../services/connection/connection.types';
+import { SessionService } from '../../services/session/session.service';
 
 export async function closeConnectionHandler(
     configService: ConfigService,

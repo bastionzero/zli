@@ -1,13 +1,13 @@
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { ConfigService } from '../../config.service/config.service';
-import { Logger } from '../../logger.service/logger';
-import { SsmTunnelService } from '../../ssm-tunnel/ssm-tunnel.service';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
+import { SsmTunnelService } from '../../services/ssm-tunnel/ssm-tunnel.service';
 import { cleanExit } from '../clean-exit.handler';
 import { Dictionary, includes } from 'lodash';
-import { PolicyQueryService } from '../../http.service/http.service';
-import { ParsedTargetString } from '../../types';
-import { VerbType } from '../../http.service/http.service.types';
 import { targetStringExample } from '../../utils';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { ParsedTargetString } from '../../services/common.types';
+import { VerbType } from '../../services/policy-query/policy-query.types';
 
 
 export async function sshProxyHandler(configService: ConfigService, logger: Logger, sshTunnelParameters: SshTunnelParameters, keySplittingService: KeySplittingService, envMap: Dictionary<string>) {

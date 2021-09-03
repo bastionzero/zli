@@ -1,5 +1,5 @@
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
+import { ConfigService } from '../services/config/config.service';
+import { Logger } from '../services/logger/logger.service';
 
 
 export function sshProxyConfigHandler(configService: ConfigService, logger: Logger, processName: string) {

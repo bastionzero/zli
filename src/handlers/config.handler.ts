@@ -1,6 +1,6 @@
-import { ConfigService } from '../config.service/config.service';
-import { Logger } from '../logger.service/logger';
-import { LoggerConfigService } from '../logger-config.service/logger-config.service';
+import { ConfigService } from '../services/config/config.service';
+import { Logger } from '../services/logger/logger.service';
+import { LoggerConfigService } from '../services/logger/logger-config.service';
 import { cleanExit } from './clean-exit.handler';
 
 

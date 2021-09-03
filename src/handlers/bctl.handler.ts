@@ -1,5 +1,5 @@
-import { ConfigService } from '../../src/config.service/config.service';
-import { Logger } from '../../src/logger.service/logger';
+import { ConfigService } from '../services/config/config.service';
+import { Logger } from '../services/logger/logger.service';
 import { cleanExit } from './clean-exit.handler';
 import util from 'util';
 import { spawn, exec } from 'child_process';

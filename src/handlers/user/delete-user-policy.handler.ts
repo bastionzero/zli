@@ -1,8 +1,9 @@
-import { PolicyType } from '../../http.service/http.service.types';
-import { ConfigService } from '../../config.service/config.service';
-import { PolicyService,KubeService } from '../../http.service/http.service';
-import { Logger } from '../../logger.service/logger';
-import { ClusterSummary } from '../../types';
+import { KubeService } from '../../services/kube/kube.service';
+import { ClusterSummary } from '../../services/kube/kube.types';
+import { PolicyService } from '../../services/policy/policy.service';
+import { PolicyType } from '../../services/policy/policy.types';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
 export async function deleteUserFromPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {

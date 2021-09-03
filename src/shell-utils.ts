@@ -1,13 +1,13 @@
 import { Observable } from 'rxjs';
 import { bufferTime, filter } from 'rxjs/operators';
 import termsize from 'term-size';
-import { ConfigService } from './config.service/config.service';
+import { ConfigService } from './services/config/config.service';
 import { cleanExit } from './handlers/clean-exit.handler';
-import { SessionService } from './http.service/http.service';
-import { ConnectionSummary, SessionDetails } from './http.service/http.service.types';
-import { Logger } from './logger.service/logger';
+import { Logger } from './services/logger/logger.service';
 import { ShellTerminal } from './terminal/terminal';
-import { SessionState } from './types';
+import { ConnectionSummary } from './services/connection/connection.types';
+import { SessionService } from './services/session/session.service';
+import { SessionDetails, SessionState } from './services/session/session.types';
 
 export async function createAndRunShell(
     configService: ConfigService,

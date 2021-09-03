@@ -1,4 +1,4 @@
-import { Logger } from '../logger.service/logger';
+import { Logger } from '../services/logger/logger.service';
 
 
 export async function cleanExit(exitCode: number, logger: Logger) {

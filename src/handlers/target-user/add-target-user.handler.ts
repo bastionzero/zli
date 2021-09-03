@@ -1,8 +1,10 @@
-import { ConfigService } from '../../config.service/config.service';
-import { PolicyService } from '../../http.service/http.service';
-import { Logger } from '../../logger.service/logger';
-import { KubernetesPolicyClusterUsers, KubernetesPolicyContext, PolicyType, TargetConnectContext, TargetUser } from '../../http.service/http.service.types';
+import { PolicyService } from '../../services/policy/policy.service';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
+import { PolicyType } from '../../services/policy/policy.types';
+import { TargetUser } from '../../services/common.types';
+import { KubernetesPolicyClusterUsers, KubernetesPolicyContext, TargetConnectContext } from '../../services/policy/policy.types';
 
 export async function addTargetUserHandler(targetUserName: string, policyName: string, configService: ConfigService, logger: Logger) {
     // First get the existing policy

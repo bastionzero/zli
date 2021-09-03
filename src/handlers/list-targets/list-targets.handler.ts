@@ -4,13 +4,15 @@ import {
     getTableOfTargets,
     parseTargetStatus
 } from '../../utils';
-import { Logger } from '../../logger.service/logger';
-import { EnvironmentDetails, TargetUser, VerbType } from '../../http.service/http.service.types';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-import { ClusterSummary, TargetStatus, TargetSummary, TargetType } from '../../types';
 import { includes, map, uniq } from 'lodash';
-import { PolicyQueryService } from '../../http.service/http.service';
-import { ConfigService } from '../../config.service/config.service';
+import { ConfigService } from '../../services/config/config.service';
+import { TargetSummary, TargetType, TargetUser, TargetStatus } from '../../services/common.types';
+import { EnvironmentDetails } from '../../services/environment/environment.types';
+import { ClusterSummary } from '../../services/kube/kube.types';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { VerbType } from '../../services/policy-query/policy-query.types';
 
 
 export async function listTargetsHandler(

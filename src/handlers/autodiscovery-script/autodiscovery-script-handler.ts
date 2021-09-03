@@ -1,12 +1,11 @@
 import util from 'util';
 import fs from 'fs';
 
-import { ConfigService } from '../../config.service/config.service';
-import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
-
-import { EnvironmentDetails } from '../../http.service/http.service.types';
-import { AutoDiscoveryScriptService } from '../../http.service/http.service';
+import { EnvironmentDetails } from '../../services/environment/environment.types';
+import { AutoDiscoveryScriptService } from '../../services/auto-discovery-script/auto-discovery-script.service';
 
 
 export async function autoDiscoveryScriptHandler(

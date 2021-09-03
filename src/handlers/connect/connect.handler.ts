@@ -1,14 +1,16 @@
-import { ConfigService } from '../../config.service/config.service';
-import { Logger } from '../../logger.service/logger';
-import { ConnectionService, PolicyQueryService, SessionService } from '../../http.service/http.service';
-import { VerbType } from '../../http.service/http.service.types';
-import { ParsedTargetString } from '../../types';
-import { MixpanelService } from '../../mixpanel.service/mixpanel.service';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
 import { targetStringExample } from '../../utils';
 import { createAndRunShell, getCliSpace } from '../../shell-utils';
 import { includes } from 'lodash';
+import { ParsedTargetString } from '../../services/common.types';
+import { ConnectionService } from '../../services/connection/connection.service';
+import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { VerbType } from '../../services/policy-query/policy-query.types';
+import { SessionService } from '../../services/session/session.service';
 
 
 export async function connectHandler(

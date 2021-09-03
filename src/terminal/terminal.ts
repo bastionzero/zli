@@ -3,13 +3,15 @@ import { isAgentKeysplittingReady, ShellWebsocketService } from '../../webshell-
 import { IDisposable } from '../../webshell-common-ts/utility/disposable';
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
-import { ConfigService } from '../config.service/config.service';
+import { ConfigService } from '../services/config/config.service';
 import { IShellWebsocketService, ShellEvent, ShellEventType, TerminalSize } from '../../webshell-common-ts/shell-websocket.service/shell-websocket.service.types';
-import { ZliAuthConfigService } from '../config.service/zli-auth-config.service';
-import { Logger } from '../logger.service/logger';
-import { ConnectionService, SsmTargetService } from '../http.service/http.service';
-import { TargetType } from '../types';
-import { ConnectionSummary, SsmTargetSummary } from '../http.service/http.service.types';
+import { ZliAuthConfigService } from '../services/config/zli-auth-config.service';
+import { Logger } from '../services/logger/logger.service';
+import { TargetType } from '../services/common.types';
+import { ConnectionService } from '../services/connection/connection.service';
+import { ConnectionSummary } from '../services/connection/connection.types';
+import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
+import { SsmTargetSummary } from '../services/ssm-target/ssm-target.types';
 
 export class ShellTerminal implements IDisposable
 {

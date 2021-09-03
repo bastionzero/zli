@@ -1,7 +1,8 @@
-import { KubernetesPolicyContext, PolicyType, TargetConnectContext, TargetUser } from '../../http.service/http.service.types';
-import { ConfigService } from '../../config.service/config.service';
-import { PolicyService } from '../../http.service/http.service';
-import { Logger } from '../../logger.service/logger';
+import { TargetUser } from '../../services/common.types';
+import { PolicyService } from '../../services/policy/policy.service';
+import { PolicyType, KubernetesPolicyContext, TargetConnectContext } from '../../services/policy/policy.types';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
 export async function deleteTargetUserHandler(targetUserName: string, policyName: string, configService: ConfigService, logger: Logger) {

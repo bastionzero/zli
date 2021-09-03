@@ -1,9 +1,9 @@
 import path from 'path';
-import { killDaemon } from '../../kube.service/kube.service';
-import { ConfigService } from '../../config.service/config.service';
-import { PolicyQueryService } from '../../http.service/http.service';
-import { Logger } from '../../logger.service/logger';
-import { ClusterSummary, KubeClusterStatus } from '../../types';
+import { killDaemon } from '../../services/kube/kube.service';
+import { ClusterSummary, KubeClusterStatus } from '../../services/kube/kube.types';
+import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 const { spawn } = require('child_process');
 

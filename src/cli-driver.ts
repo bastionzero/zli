@@ -1,15 +1,12 @@
-import { ClusterSummary, TargetStatus, TargetSummary, TargetType } from './types';
 import {
     disambiguateTarget,
     isGuid,
     targetStringExample
 } from './utils';
-import { ConfigService } from './config.service/config.service';
-import { MixpanelService } from './mixpanel.service/mixpanel.service';
+import { ConfigService } from './services/config/config.service';
 import { checkVersionMiddleware } from './middlewares/check-version-middleware';
-import { EnvironmentDetails, PolicyType } from './http.service/http.service.types';
-import { Logger } from './logger.service/logger';
-import { LoggerConfigService } from './logger-config.service/logger-config.service';
+import { Logger } from './services/logger/logger.service';
+import { LoggerConfigService } from './services/logger/logger-config.service';
 import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 
@@ -63,6 +60,11 @@ import { targetUserCmdBuilder } from './handlers/target-user/target-user.command
 import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-builder';
 import { autoDiscoveryScriptCommandBuilder } from './handlers/autodiscovery-script/autodiscovery-script.command-builder';
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
+import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
+import { EnvironmentDetails } from './services/environment/environment.types';
+import { ClusterSummary } from './services/kube/kube.types';
+import { MixpanelService } from './services/mixpanel/mixpanel.service';
+import { PolicyType } from './services/policy/policy.types';
 
 export class CliDriver
 {

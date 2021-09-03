@@ -1,9 +1,14 @@
-import { ConnectionDetails, ParsedTargetString, TargetStatus, TargetSummary, TargetType} from './types';
 import { max, filter, concat, map } from 'lodash';
-import { ApiKeyDetails, EnvironmentDetails, GroupSummary, KubernetesPolicyContext, PolicySummary, PolicyType, SubjectType, TargetConnectContext, UserSummary } from './http.service/http.service.types';
 import Table from 'cli-table3';
-import { Logger } from './logger.service/logger';
+import { Logger } from './services/logger/logger.service';
 import { cleanExit } from './handlers/clean-exit.handler';
+import { ApiKeyDetails } from './services/api-key/api-key.types';
+import { TargetType, TargetStatus, ParsedTargetString, TargetSummary } from './services/common.types';
+import { ConnectionDetails } from './services/connection/connection.types';
+import { EnvironmentDetails } from './services/environment/environment.types';
+import { GroupSummary } from './services/groups/groups.types';
+import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext } from './services/policy/policy.types';
+import { UserSummary } from './services/user/user.types';
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean

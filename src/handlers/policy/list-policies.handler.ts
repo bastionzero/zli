@@ -1,11 +1,18 @@
-import { ApiKeyService, GroupsService, PolicyService, UserService } from '../../http.service/http.service';
-import { ConfigService } from '../../config.service/config.service';
-import { Logger } from '../../logger.service/logger';
+import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfPolicies, parsePolicyType } from '../../utils';
-import { UserSummary, ApiKeyDetails, EnvironmentDetails, GroupSummary } from '../../http.service/http.service.types';
 import _ from 'lodash';
-import { ClusterSummary, TargetSummary } from '../../types';
+import { ApiKeyService } from '../../services/api-key/api-key.service';
+import { ApiKeyDetails } from '../../services/api-key/api-key.types';
+import { TargetSummary } from '../../services/common.types';
+import { EnvironmentDetails } from '../../services/environment/environment.types';
+import { GroupsService } from '../../services/groups/groups.service';
+import { GroupSummary } from '../../services/groups/groups.types';
+import { ClusterSummary } from '../../services/kube/kube.types';
+import { PolicyService } from '../../services/policy/policy.service';
+import { UserService } from '../../services/user/user.service';
+import { UserSummary } from '../../services/user/user.types';
 
 export async function listPoliciesHandler(
     argv: any,

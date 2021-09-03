@@ -1,5 +1,5 @@
 
-import { ConfigService } from '../config.service/config.service';
+import { ConfigService } from '../services/config/config.service';
 
 
 export async function getKubeTokenHandler(
