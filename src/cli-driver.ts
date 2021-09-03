@@ -263,7 +263,7 @@ export class CliDriver
                             default: -1,
                             demandOption: false
                         })
-                        .example('$0 proxy admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
+                        .example('$0 tunnel admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
                 },
                 async (argv) => {
                     if (argv.tunnelString) {
