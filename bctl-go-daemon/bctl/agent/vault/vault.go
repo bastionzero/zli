@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"os"
 
 	coreV1 "k8s.io/api/core/v1"
@@ -50,12 +49,15 @@ func LoadVault() (*Vault, error) {
 			return &Vault{}, fmt.Errorf("error grabbing secrets: %v", err.Error())
 		} else {
 			if data, ok := secret.Data[keyConfig]; ok {
-				secretData := DecodeToSecretConfig(data)
-				return &Vault{
-					client: secretsClient,
-					secret: secret,
-					Data:   secretData,
-				}, nil
+				if secretData, err := DecodeToSecretConfig(data); err != nil {
+					return &Vault{}, err
+				} else {
+					return &Vault{
+						client: secretsClient,
+						secret: secret,
+						Data:   secretData,
+					}, nil
+				}
 			} else {
 				return &Vault{
 					client: secretsClient,
@@ -78,7 +80,10 @@ func (v *Vault) IsEmpty() bool {
 
 func (v *Vault) Save() error {
 	// Now encode the secretConfig
-	encodedSecretConfig := EncodeToBytes(v.Data)
+	encodedSecretConfig, err := EncodeToBytes(v.Data)
+	if err != nil {
+		return err
+	}
 
 	// Now update the kube secret object
 	v.secret.Data[keyConfig] = encodedSecretConfig
@@ -91,25 +96,19 @@ func (v *Vault) Save() error {
 	}
 }
 
-func EncodeToBytes(p interface{}) []byte {
+func EncodeToBytes(p interface{}) ([]byte, error) {
 	// Ref: https://gist.github.com/SteveBate/042960baa7a4795c3565
 	// Remove secrets client
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
 	err := enc.Encode(p)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return buf.Bytes()
+	return buf.Bytes(), err
 }
 
-func DecodeToSecretConfig(s []byte) SecretData {
+func DecodeToSecretConfig(s []byte) (SecretData, error) {
 	// Ref: https://gist.github.com/SteveBate/042960baa7a4795c3565
 	p := SecretData{}
 	dec := gob.NewDecoder(bytes.NewReader(s))
 	err := dec.Decode(&p)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return p
+	return p, err
 }

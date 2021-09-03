@@ -1,14 +1,15 @@
 package exec
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 	stdin "bastionzero.com/bctl/v1/bzerolib/stream/stdreader"
 	stdout "bastionzero.com/bctl/v1/bzerolib/stream/stdwriter"
@@ -24,7 +25,7 @@ const (
 )
 
 const (
-	EndTimes = "^[" // ESC char
+	EscChar = "^[" // ESC char
 )
 
 type ExecAction struct {
@@ -34,6 +35,8 @@ type ExecAction struct {
 	role                string
 	logId               string
 	closed              bool
+	logger              *lggr.Logger
+	ctx                 context.Context
 
 	// output channel to send all of our stream messages directly to datachannel
 	streamOutputChannel chan smsg.StreamMessage
@@ -43,7 +46,14 @@ type ExecAction struct {
 	execResizeChannel chan KubeExecResizeActionPayload
 }
 
-func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*ExecAction, error) {
+func NewExecAction(ctx context.Context,
+	logger *lggr.Logger,
+	serviceAccountToken string,
+	kubeHost string,
+	impersonateGroup string,
+	role string,
+	ch chan smsg.StreamMessage) (*ExecAction, error) {
+
 	return &ExecAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
@@ -53,6 +63,8 @@ func NewExecAction(serviceAccountToken string, kubeHost string, impersonateGroup
 		streamOutputChannel: ch,
 		execStdinChannel:    make(chan []byte, 10),
 		execResizeChannel:   make(chan KubeExecResizeActionPayload, 10),
+		logger:              logger,
+		ctx:                 ctx,
 	}, nil
 }
 
@@ -68,7 +80,9 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 	case StartExec:
 		var startExecRequest KubeExecStartActionPayload
 		if err := json.Unmarshal(actionPayload, &startExecRequest); err != nil {
-			return "", []byte{}, fmt.Errorf("unable to unmarshal start message: %v", err.Error())
+			rerr := fmt.Errorf("unable to unmarshal start exec message: %s", err)
+			e.logger.Error(rerr)
+			return "", []byte{}, rerr
 		}
 
 		e.logId = startExecRequest.LogId
@@ -77,8 +91,9 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 	case ExecInput:
 		var execInputAction KubeStdinActionPayload
 		if err := json.Unmarshal(actionPayload, &execInputAction); err != nil {
-			log.Printf("Error unmarshaling input: %v", err.Error())
-			return "", []byte{}, fmt.Errorf("unable to unmarshal stdin message")
+			rerr := fmt.Errorf("error unmarshaling stdin: %s", err)
+			e.logger.Error(rerr)
+			return "", []byte{}, rerr
 		}
 
 		e.execStdinChannel <- execInputAction.Stdin
@@ -87,15 +102,18 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 	case ExecResize:
 		var execResizeAction KubeExecResizeActionPayload
 		if err := json.Unmarshal(actionPayload, &execResizeAction); err != nil {
-			log.Printf("Error unmarshaling resize: %v", err.Error())
-			return "", []byte{}, fmt.Errorf("unable to unmarshal resize message")
+			rerr := fmt.Errorf("error unmarshaling resize message: %s", err)
+			e.logger.Error(rerr)
+			return "", []byte{}, rerr
 		}
 
 		e.execResizeChannel <- execResizeAction
 		return string(ExecResize), []byte{}, nil
 
 	default:
-		return "", []byte{}, fmt.Errorf("unhandled exec action: %v", action)
+		rerr := fmt.Errorf("unhandled exec action: %v", action)
+		e.logger.Error(rerr)
+		return "", []byte{}, rerr
 	}
 }
 
@@ -104,7 +122,9 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 	// Create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return "", []byte{}, fmt.Errorf("error creating in-custer config: %v", err.Error())
+		rerr := fmt.Errorf("error creating in-custer config: %s", err)
+		e.logger.Error(rerr)
+		return "", []byte{}, rerr
 	}
 
 	// Add our impersonation information
@@ -116,18 +136,27 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 
 	kubeExecApiUrl := e.kubeHost + startExecRequest.Endpoint
 	kubeExecApiUrlParsed, _ := url.Parse(kubeExecApiUrl)
-	log.Println(kubeExecApiUrlParsed)
 
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
 	if err != nil {
-		return string(StartExec), []byte{}, fmt.Errorf("error creating Spdy executor: %v", err.Error())
+		return string(StartExec), []byte{}, fmt.Errorf("error creating Spdy executor: %s", err)
 	}
 
 	stderrWriter := stdout.NewStdWriter(smsg.StdErr, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
 	stdoutWriter := stdout.NewStdWriter(smsg.StdOut, e.streamOutputChannel, startExecRequest.RequestId, e.logId)
 	stdinReader := stdin.NewStdReader(smsg.StdIn, startExecRequest.RequestId, e.execStdinChannel)
 	terminalSizeQueue := NewTerminalSizeQueue(startExecRequest.RequestId, e.execResizeChannel)
+
+	go func() {
+		// This function listens for a closed datachannel.  If the datachannel is closed, it doesn't necessarily mean
+		// that the exec was properly closed, and because the below exec.Stream only returns when it's done, there's
+		// no way to interrupt it or pass in ctx. Therefore, we need to close the stream in order to pass an io.EOF message
+		// to exec which will close the exec.Stream and that will close the go routine.
+		// https://github.com/kubernetes/client-go/issues/554
+		<-e.ctx.Done()
+		stdinReader.Close()
+	}()
 
 	go func() {
 		err := exec.Stream(remotecommand.StreamOptions{
@@ -137,12 +166,12 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			TerminalSizeQueue: terminalSizeQueue,
 			Tty:               true, // TODO: We dont always want tty
 		})
+
+		stdoutWriter.Write([]byte(EscChar))
 		if err != nil {
-			// TODO: handle error, send end to daemon
-			log.Println("Error with spdy stream")
+			rerr := fmt.Errorf("error in SPDY stream: %s", err)
+			e.logger.Error(rerr)
 		}
-		stdoutWriter.Write([]byte(EndTimes))
-		log.Printf("Spdy stream has ended")
 	}()
 
 	return string(StartExec), []byte{}, nil

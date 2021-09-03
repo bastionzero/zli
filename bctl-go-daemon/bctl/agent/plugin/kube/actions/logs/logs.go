@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
 
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 
 	v1 "k8s.io/api/core/v1"
@@ -27,6 +27,8 @@ type LogAction struct {
 	streamOutputChannel chan smsg.StreamMessage
 	closed              bool
 	doneChannel         chan bool
+	logger              *lggr.Logger
+	ctx                 context.Context
 }
 
 type LogSubAction string
@@ -37,7 +39,7 @@ const (
 	LogStop  LogSubAction = "kube/log/stop"
 )
 
-func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
+func NewLogAction(ctx context.Context, logger *lggr.Logger, serviceAccountToken string, kubeHost string, impersonateGroup string, role string, ch chan smsg.StreamMessage) (*LogAction, error) {
 	return &LogAction{
 		serviceAccountToken: serviceAccountToken,
 		kubeHost:            kubeHost,
@@ -46,6 +48,8 @@ func NewLogAction(serviceAccountToken string, kubeHost string, impersonateGroup 
 		streamOutputChannel: ch,
 		doneChannel:         make(chan bool),
 		closed:              false,
+		logger:              logger,
+		ctx:                 ctx,
 	}, nil
 }
 
@@ -61,17 +65,20 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 	case LogStart:
 		var logActionRequest KubeLogsActionPayload
 		if err := json.Unmarshal(actionPayload, &logActionRequest); err != nil {
-			log.Printf("Error: %v", err.Error())
-			return action, []byte{}, fmt.Errorf("malformed Kube Logs Action payload %v", actionPayload)
+			rerr := fmt.Errorf("malformed Kube Logs Action payload %v", actionPayload)
+			l.logger.Error(rerr)
+			return action, []byte{}, rerr
 		}
 
 		return l.StartLog(logActionRequest, action)
 	case LogStop:
-		log.Println("Stopping log action")
+		l.logger.Info("Stopping Log Action")
 		l.doneChannel <- true
 		return string(LogStop), []byte{}, nil
 	default:
-		return "", []byte{}, fmt.Errorf("unhandled exec action: %v", action)
+		rerr := fmt.Errorf("unhandled log action: %v", action)
+		l.logger.Error(rerr)
+		return "", []byte{}, rerr
 	}
 }
 
@@ -79,8 +86,8 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 
 	endpointWithQuery, err := url.Parse(logActionRequest.Endpoint)
 	if err != nil {
-		log.Printf("Error on url.Parse: %s", err)
-		return action, []byte{}, fmt.Errorf("error on url.Parse %v", logActionRequest.Endpoint)
+		l.logger.Error(err)
+		return action, []byte{}, err
 	}
 
 	// TODO : Is this too hacky? Is there a better way to grab the namespace and podName?
@@ -97,9 +104,6 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 	followFlag, _ := strconv.ParseBool(queryParams.Get("follow"))
 	containerName := queryParams.Get("container")
 
-	// Make our cancel context
-	ctx, cancel := context.WithCancel(context.Background())
-
 	// TODO : Here should be added support for as many as possible native kubectl flags through
 	// the request's query params
 	podLogOptions := v1.PodLogOptions{
@@ -114,7 +118,9 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 	// Create our api object
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		rerr := fmt.Errorf("error grabbing cluster config: %s", err)
+		l.logger.Error(rerr)
+		return action, []byte{}, rerr
 	}
 	// Add our impersonation information
 	config.Impersonate = rest.ImpersonationConfig{
@@ -125,26 +131,31 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		rerr := fmt.Errorf("kubernetes config error: %s", err)
+		l.logger.Error(rerr)
+		return action, []byte{}, rerr
 	}
 
 	podLogRequest := clientSet.CoreV1().
 		Pods(namespace).
 		GetLogs(podName, &podLogOptions)
 
-	stream, err := podLogRequest.Stream(context.TODO())
+	stream, err := podLogRequest.Stream(l.ctx)
 	if err != nil {
-		log.Printf("Error on podLogRequest.Stream: %s", err)
-		return action, []byte{}, fmt.Errorf("error on podLogRequest.Stream: %s", err)
+		l.logger.Error(err)
+		return action, []byte{}, err
 	}
 
 	// Subscribe to normal log request
 	go func() {
-		defer log.Printf("Exited successfully log streaming for request: %v", logActionRequest.RequestId)
 		defer stream.Close()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-l.ctx.Done():
+				stream.Close()
+				return
+			case <-l.doneChannel:
+				stream.Close()
 				return
 			default:
 				buf := make([]byte, 2000)
@@ -152,14 +163,14 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 				if numBytes == 0 {
 					continue
 				}
-				if err == io.EOF {
-					// TODO : EOF should be passed all the way from here to the client
-					cancel()
-					break
-				}
+
 				if err != nil {
-					log.Printf("Error on stream.Read: %s", err)
-					cancel()
+					if err == io.EOF {
+						// TODO : EOF should be passed all the way from here to the client
+						continue // placeholder
+					}
+					l.logger.Error(err)
+					l.closed = true
 					return
 				}
 				// Stream the response back
@@ -177,18 +188,18 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 	}()
 
 	// Subscribe to our done channel
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-l.doneChannel:
-				stream.Close()
-				cancel()
-				return
-			}
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case <-ctx.Done():
+	// 			return
+	// 		case <-l.doneChannel:
+	// 			stream.Close()
+	// 			cancel()
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 	// We also need to listen if we get a cancel log request
 	return action, []byte{}, nil

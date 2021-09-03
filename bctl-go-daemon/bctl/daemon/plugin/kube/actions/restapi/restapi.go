@@ -1,13 +1,14 @@
 package restapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	kuberest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
+	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -21,24 +22,30 @@ type RestApiAction struct {
 	logId             string
 	ksResponseChannel chan plgn.ActionWrapper
 	RequestChannel    chan plgn.ActionWrapper
-	writer            http.ResponseWriter
 	commandBeingRun   string
+	logger            *lggr.Logger
+	ctx               context.Context
 }
 
-func NewRestApiAction(requestId string, logId string, ch chan plgn.ActionWrapper, commandBeingRun string) (*RestApiAction, error) {
+func NewRestApiAction(ctx context.Context,
+	logger *lggr.Logger,
+	requestId string,
+	logId string,
+	ch chan plgn.ActionWrapper,
+	commandBeingRun string) (*RestApiAction, error) {
+
 	return &RestApiAction{
 		requestId:         requestId,
 		logId:             logId,
 		RequestChannel:    ch,
 		ksResponseChannel: make(chan plgn.ActionWrapper),
 		commandBeingRun:   commandBeingRun,
+		logger:            logger,
+		ctx:               ctx,
 	}, nil
 }
 
 func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	// Set this so that we know how to write the response when we get it later
-	r.writer = writer
-
 	// First extract the headers out of the request
 	headers := make(map[string]string)
 	for name, values := range request.Header {
@@ -50,7 +57,9 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 	// Now extract the body
 	bodyInBytes, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		return fmt.Errorf("Error building body")
+		rerr := fmt.Errorf("error building body: %s", err)
+		r.logger.Error(rerr)
+		return rerr
 	}
 
 	// Build the action payload
@@ -71,24 +80,31 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 	}
 
 	select {
+	case <-r.ctx.Done():
+		return nil
 	case rsp := <-r.ksResponseChannel:
 		var apiResponse kuberest.KubeRestApiActionResponsePayload
 		if err := json.Unmarshal(rsp.ActionPayload, &apiResponse); err != nil {
-			return fmt.Errorf("Could not unmarshal Action Response Payload: %v", err.Error())
+			rerr := fmt.Errorf("could not unmarshal Action Response Payload: %s", err)
+			r.logger.Error(rerr)
+			return rerr
 		}
 
 		for name, value := range apiResponse.Headers {
 			if name != "Content-Length" {
-				r.writer.Header().Set(name, value)
+				writer.Header().Set(name, value)
 			}
 		}
 
 		// output, _ := base64.StdEncoding.DecodeString(string(apiResponse.Content))
-		r.writer.Write(apiResponse.Content)
+		writer.Write(apiResponse.Content)
 		if apiResponse.StatusCode != 200 {
+			writer.WriteHeader(http.StatusInternalServerError)
+
 			// log.Printf("ApiResponse Content: %v vs the base64 content: %v", string(apiResponse.Content), string(output))
-			log.Printf("Request Failed with Status Code %v: %v", apiResponse.StatusCode, string(apiResponse.Content)) // TODO: Handle this error at functional level
-			r.writer.WriteHeader(http.StatusInternalServerError)
+			rerr := fmt.Errorf("request failed with status code %v: %v", apiResponse.StatusCode, string(apiResponse.Content))
+			r.logger.Error(rerr)
+			return rerr
 		}
 	}
 
@@ -100,5 +116,4 @@ func (r *RestApiAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 }
 
 func (r *RestApiAction) PushStreamResponse(message smsg.StreamMessage) {
-	return
 }

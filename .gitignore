@@ -342,3 +342,4 @@ ASALocalRun/
 # Our built agent 
 bctl-go-daemon/bctl/daemon/daemon
 bctl-go-daemon/bctl/agent/agent
+package-lock.json

@@ -40,13 +40,6 @@ func (b *BZCert) Verify() (string, time.Time, error) {
 			return "", time.Time{}, fmt.Errorf("failed to hash BZCert")
 		}
 	}
-
-	// exp := time.Now().Add(time.Hour * 24)
-	// if hash, ok := b.Hash(); ok {
-	// 	return hash, exp, nil
-	// } else {
-	// 	return "", time.Time{}, fmt.Errorf("failed to hash BZCert")
-	// }
 }
 
 func (b *BZCert) Hash() (string, bool) {
