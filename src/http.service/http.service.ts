@@ -570,7 +570,7 @@ export class KubeService extends HttpService
             email: email,
         };
 
-        return this.FormPostWithException('get-user', request);
+        return this.Post('get-user', request);
     }
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {
