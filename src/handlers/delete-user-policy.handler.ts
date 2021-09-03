@@ -23,7 +23,7 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
     // Loop till we find the one we are looking for
     for (const policy of policies) {
         if (policy.name == policyName) {
-            if (policy.type !== PolicyType.KubernetesProxy && policy.type !== PolicyType.TargetConnect){
+            if (policy.type !== PolicyType.KubernetesTunnel && policy.type !== PolicyType.TargetConnect){
                 logger.error(`Deleting user from policy ${policyName} failed. Support for deleting users from ${policy.type} policies will be added soon.`);
                 await cleanExit(1, logger);
             }
