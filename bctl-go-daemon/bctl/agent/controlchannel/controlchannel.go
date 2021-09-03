@@ -1,13 +1,9 @@
 package controlchannel
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	"sync"
 
@@ -15,9 +11,6 @@ import (
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
-	"golang.org/x/crypto/sha3"
-
-	ed "crypto/ed25519"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -26,7 +19,6 @@ import (
 
 const (
 	hubEndpoint       = "/api/v1/hub/kube-control"
-	registerEndpoint  = "/api/v1/kube/register-agent"
 	challengeEndpoint = "/api/v1/kube/get-challenge"
 	autoReconnect     = true
 )
@@ -53,27 +45,16 @@ func NewControlChannel(logger *lggr.Logger,
 
 	subLogger := logger.GetWebsocketLogger()
 
-	// Populate keys if they haven't been generated already
-	config, err := newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName)
-	if err != nil {
-		logger.Error(err)
-		return &ControlChannel{}, err
-	}
-
-	solvedChallenge, err := getAndSolveChallenge(orgId, clusterName, serviceUrl, config.Data.PrivateKey)
-	if err != nil {
-		logger.Error(err)
-		return &ControlChannel{}, err
-	}
+	// Load in our saved config
+	config, _ := vault.LoadVault()
 
 	// Create our headers and params, headers are empty
 	headers := make(map[string]string)
 
 	// Make and add our params
 	params := map[string]string{
-		"solved_challange": solvedChallenge,
-		"public_key":       config.Data.PublicKey,
-		"agent_version":    agentVersion,
+		"public_key":    config.Data.PublicKey,
+		"agent_version": agentVersion,
 
 		// Why do we need these?  Can we remove them?
 		"org_id":         orgId,
@@ -134,55 +115,6 @@ func (c *ControlChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 		}
 	}
 	return nil
-}
-
-func getAndSolveChallenge(orgId string, clusterName string, serviceUrl string, privateKey string) (string, error) {
-	// Get Challenge
-	challengeRequest := GetChallengeMessage{
-		OrgId:       orgId,
-		ClusterName: clusterName,
-	}
-
-	challengeJson, err := json.Marshal(challengeRequest)
-	if err != nil {
-		return "", errors.New("error marshalling register data")
-	}
-
-	// Make our POST request
-	response, err := http.Post(
-		"https://"+serviceUrl+challengeEndpoint,
-		"application/json",
-		bytes.NewBuffer(challengeJson))
-	if err != nil || response.StatusCode != http.StatusOK {
-		rerr := fmt.Errorf("error making post request to challenge agent. Error: %v. Response: %v", err, response)
-		return "", rerr
-	}
-	defer response.Body.Close()
-
-	// Extract the challenge
-	responseDecoded := GetChallengeResponse{}
-	json.NewDecoder(response.Body).Decode(&responseDecoded)
-
-	// Solve Challenge
-	return SignChallenge(privateKey, responseDecoded.Challenge)
-}
-
-// TODO: make a bzerolib signing function
-func SignChallenge(privateKey string, challenge string) (string, error) {
-	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
-	if len(keyBytes) != 64 {
-		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
-	}
-	privkey := ed.PrivateKey(keyBytes)
-
-	hashBits := sha3.Sum256([]byte(challenge))
-
-	sig := ed.Sign(privkey, hashBits[:])
-
-	// Convert the signature to base64 string
-	sigBase64 := base64.StdEncoding.EncodeToString(sig)
-
-	return sigBase64, nil
 }
 
 func healthCheck() ([]byte, error) {
@@ -251,56 +183,4 @@ func healthCheck() ([]byte, error) {
 
 	aliveBytes, _ := json.Marshal(alive)
 	return aliveBytes, nil
-}
-
-func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string) (*vault.Vault, error) {
-	config, _ := vault.LoadVault()
-
-	// Check if vault is empty, if so generate a private, public key pair
-	if config.IsEmpty() {
-		logger.Info("Creating new agent secret")
-
-		if publicKey, privateKey, err := ed.GenerateKey(nil); err != nil {
-			return nil, fmt.Errorf("error generating key pair: %v", err.Error())
-		} else {
-			pubkeyString := base64.StdEncoding.EncodeToString([]byte(publicKey))
-			privkeyString := base64.StdEncoding.EncodeToString([]byte(privateKey))
-			config.Data = vault.SecretData{
-				PublicKey:  pubkeyString,
-				PrivateKey: privkeyString,
-			}
-			if err := config.Save(); err != nil {
-				return nil, fmt.Errorf("error saving vault: %s", err)
-			}
-
-			// Register with Bastion
-			logger.Info("Registering agent with Bastion")
-			register := RegisterAgentMessage{
-				PublicKey:      pubkeyString,
-				ActivationCode: activationToken,
-				AgentVersion:   agentVersion,
-				OrgId:          orgId,
-				EnvironmentId:  environmentId,
-				ClusterName:    clusterName,
-			}
-
-			registerJson, err := json.Marshal(register)
-			if err != nil {
-				msg := fmt.Errorf("error marshalling registration data: %s", err)
-				return nil, msg
-			}
-
-			// Make our POST request
-			response, err := http.Post("https://"+serviceUrl+registerEndpoint, "application/json",
-				bytes.NewBuffer(registerJson))
-			if err != nil || response.StatusCode != http.StatusOK {
-				rerr := fmt.Errorf("error making post request to register agent. Error: %s. Response: %v", err, response)
-				return nil, rerr
-			}
-		}
-	} else {
-		// If the vault isn't empty, don't do anything
-		logger.Info("Found Previous config data")
-	}
-	return config, nil
 }

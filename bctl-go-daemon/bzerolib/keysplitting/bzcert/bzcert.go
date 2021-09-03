@@ -25,8 +25,8 @@ type BZCert struct {
 	SignatureOnRand string `json:"signatureOnRand"`
 }
 
-func (b *BZCert) Verify() (string, time.Time, error) {
-	verifier := NewBZCertVerifier(b)
+func (b *BZCert) Verify(idpProvider string, idpOrgId string) (string, time.Time, error) {
+	verifier := NewBZCertVerifier(b, idpProvider, idpOrgId)
 
 	if _, err := verifier.VerifyIdToken(b.InitialIdToken, true, true); err != nil {
 		return "", time.Time{}, err

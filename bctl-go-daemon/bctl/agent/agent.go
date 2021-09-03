@@ -1,25 +1,33 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+
+	ed "crypto/ed25519"
 
 	cc "bastionzero.com/bctl/v1/bctl/agent/controlchannel"
 	dc "bastionzero.com/bctl/v1/bctl/agent/datachannel"
+	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
 var (
-	serviceUrl, orgId, clusterName string
-	environmentId, activationToken string
+	serviceUrl, orgId, clusterName   string
+	environmentId, activationToken   string
+	idpProvider, namespace, idpOrgId string
 )
 
 const (
-	hubEndpoint = "/api/v1/hub/kube-server"
+	hubEndpoint      = "/api/v1/hub/kube-server"
+	registerEndpoint = "/api/v1/kube/register-agent"
 
 	// Disable auto-reconnect
 	autoReconnect = false
@@ -28,14 +36,14 @@ const (
 
 func main() {
 	// Get agent version
-	version := getAgentVersion()
+	agentVersion := getAgentVersion()
 
 	// setup our loggers
 	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, false)
 	if err != nil {
 		return
 	}
-	logger.AddAgentVersion(version)
+	logger.AddAgentVersion(agentVersion)
 
 	ccLogger := logger.GetControlchannelLogger()
 	dcLogger := logger.GetDatachannelLogger()
@@ -45,8 +53,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Populate keys if they haven't been generated already
+	err = newAgent(logger, serviceUrl, activationToken, agentVersion, orgId, environmentId, clusterName, idpProvider, idpOrgId, namespace)
+	if err != nil {
+		logger.Error(err)
+		return
+	}
+
 	// Connect to the control channel
-	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, version, controlchannelTargetSelectHandler)
+	control, err := cc.NewControlChannel(ccLogger, serviceUrl, activationToken, orgId, clusterName, environmentId, agentVersion, controlchannelTargetSelectHandler)
 	if err != nil {
 		select {} // TODO: Should we be trying again here?
 	}
@@ -148,6 +163,9 @@ func parseFlags() error {
 	orgId = os.Getenv("ORG_ID")
 	clusterName = os.Getenv("CLUSTER_NAME")
 	environmentId = os.Getenv("ENVIRONMENT")
+	idpProvider = os.Getenv("IDP_PROVIDER")
+	idpOrgId = os.Getenv("IDP_ORG_ID")
+	namespace = os.Getenv("NAMESPACE")
 
 	// Ensure we have all needed vars
 	missing := []string{}
@@ -161,8 +179,6 @@ func parseFlags() error {
 	case clusterName == "":
 		missing = append(missing, "clusterName")
 		fallthrough
-	// case environmentId == "":
-	// 	missing = append(missing, "environmentId")
 	case activationToken == "":
 		missing = append(missing, "activationToken")
 	}
@@ -179,4 +195,65 @@ func getAgentVersion() string {
 	} else {
 		return "$AGENT_VERSION"
 	}
+}
+
+func newAgent(logger *lggr.Logger, serviceUrl string, activationToken string, agentVersion string, orgId string, environmentId string, clusterName string, idpProvider string, idpOrgId string, namespace string) error {
+	config, _ := vault.LoadVault()
+
+	// Check if vault is empty, if so generate a private, public key pair
+	if config.IsEmpty() {
+		logger.Info("Creating new agent secret")
+
+		if publicKey, privateKey, err := ed.GenerateKey(nil); err != nil {
+			return fmt.Errorf("error generating key pair: %v", err.Error())
+		} else {
+			pubkeyString := base64.StdEncoding.EncodeToString([]byte(publicKey))
+			privkeyString := base64.StdEncoding.EncodeToString([]byte(privateKey))
+			config.Data = vault.SecretData{
+				PublicKey:     pubkeyString,
+				PrivateKey:    privkeyString,
+				OrgId:         orgId,
+				ServiceUrl:    serviceUrl,
+				ClusterName:   clusterName,
+				EnvironmentId: environmentId,
+				Namespace:     namespace,
+				IdpProvider:   idpProvider,
+				IdpOrgId:      idpOrgId,
+			}
+
+			// Register with Bastion
+			logger.Info("Registering agent with Bastion")
+			register := cc.RegisterAgentMessage{
+				PublicKey:      pubkeyString,
+				ActivationCode: activationToken,
+				AgentVersion:   agentVersion,
+				OrgId:          orgId,
+				EnvironmentId:  environmentId,
+				ClusterName:    clusterName,
+			}
+
+			registerJson, err := json.Marshal(register)
+			if err != nil {
+				msg := fmt.Errorf("error marshalling registration data: %s", err)
+				return msg
+			}
+
+			// Make our POST request
+			response, err := http.Post("https://"+serviceUrl+registerEndpoint, "application/json",
+				bytes.NewBuffer(registerJson))
+			if err != nil || response.StatusCode != http.StatusOK {
+				rerr := fmt.Errorf("error making post request to register agent. Error: %s. Response: %v", err, response)
+				return rerr
+			}
+
+			// If the registration went ok, save the config
+			if err := config.Save(); err != nil {
+				return fmt.Errorf("error saving vault: %v", err.Error())
+			}
+		}
+	} else {
+		// If the vault isn't empty, don't do anything
+		logger.Info("Found Previous config data")
+	}
+	return nil
 }

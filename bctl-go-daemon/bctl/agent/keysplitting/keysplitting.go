@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"bastionzero.com/bctl/v1/bctl/agent/vault"
 	bzcrt "bastionzero.com/bctl/v1/bzerolib/keysplitting/bzcert"
 	ksmsg "bastionzero.com/bctl/v1/bzerolib/keysplitting/message"
 	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
@@ -31,6 +32,9 @@ type Keysplitting struct {
 	bzCerts          map[string]BZCertMetadata // only for agent
 	publickey        string
 	privatekey       string
+	idpProvider      string
+	idpOrgId         string
+	orgId            string
 }
 
 func NewKeysplitting() (IKeysplitting, error) {
@@ -41,12 +45,18 @@ func NewKeysplitting() (IKeysplitting, error) {
 		pubkeyString := base64.StdEncoding.EncodeToString([]byte(publicKey))
 		privkeyString := base64.StdEncoding.EncodeToString([]byte(privateKey))
 
+		// Load in our idp infomation from the vault as well
+		config, _ := vault.LoadVault()
+
 		return &Keysplitting{
 			hPointer:         "",
 			expectedHPointer: "",
 			bzCerts:          make(map[string]BZCertMetadata),
 			publickey:        pubkeyString,
 			privatekey:       privkeyString,
+			idpProvider:      config.Data.IdpProvider,
+			idpOrgId:         config.Data.IdpOrgId,
+			orgId:            config.Data.OrgId,
 		}, nil
 	}
 }
@@ -57,7 +67,7 @@ func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {
 		synPayload := ksMessage.KeysplittingPayload.(ksmsg.SynPayload)
 
 		// Verify the BZCert
-		if hash, exp, err := synPayload.BZCert.Verify(); err != nil {
+		if hash, exp, err := synPayload.BZCert.Verify(k.idpProvider, k.idpOrgId); err != nil {
 			return err
 		} else {
 			k.bzCerts[hash] = BZCertMetadata{
