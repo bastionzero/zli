@@ -46,7 +46,7 @@ func NewLogger(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
 		}, nil
 	} else {
 		return &Logger{
-			logger: zerolog.New(os.Stdout).With().Timestamp.Logger(),
+			logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
 		}, nil
 	}
 }
