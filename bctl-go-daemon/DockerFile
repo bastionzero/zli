@@ -17,14 +17,14 @@ RUN VERSION="$(cat /bctl-agent-files/VERSION)" && \
 RUN cd /bctl-agent-files/bctl/agent && \
     go build agent.go
 
-# Move the executable and make it runnable
+# Move the executable and make it runnable, make our log dir
 RUN mv /bctl-agent-files/bctl/agent/agent /bctl-agent && \
-    chmod +x /bctl-agent/agent
+    chmod +x /bctl-agent/agent && \
+    mkdir /var/log/cwc/
 
 # Install rsync for devs, and python3 for our systemd alt
 RUN if [[ "$PROD_TRUE" != "true" ]] ; then \
     apk add rsync python3 && \
-    mkdir /var/log/cwc/ && \
     wget https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -O /usr/local/bin/systemctl && \
     chmod +x /usr/local/bin/systemctl && \
     mkdir -p /etc/systemd/system/ && \
