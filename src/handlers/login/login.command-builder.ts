@@ -1,12 +1,10 @@
 import { IdP } from '../../services/common.types';
 import yargs from 'yargs';
 
-export function loginCmdBuilder (yargs : yargs.Argv<{}>) :
-yargs.Argv<{
-    provider: string;
-} & {
-    mfa: string;
-}>
+export type loginArgs = {provider: string;} &
+    {mfa: string}
+
+export function loginCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<loginArgs>
 {
     return yargs
         .positional('provider', {

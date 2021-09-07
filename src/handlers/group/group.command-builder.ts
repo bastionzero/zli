@@ -1,13 +1,12 @@
 import yargs from "yargs";
 
-export function groupCmdBuilder(yargs: yargs.Argv<{}>) :
-yargs.Argv<
-{add: boolean} &
+export type groupArgs = {add: boolean} &
 {delete: boolean} &
 {groupName: string} &
 {policyName: string} &
 {json: boolean}
-> {
+
+export function groupCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<groupArgs> {
     return yargs
         .option(
             'add',

@@ -1,7 +1,8 @@
 import yargs from "yargs";
 
-export function tunnelCmdBuilder (yargs : yargs.Argv<{}>) :
-yargs.Argv<{tunnelString: string;} & {customPort: number;}> {
+export type tunnelArgs = {tunnelString: string} & {customPort: number}
+
+export function tunnelCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<tunnelArgs> {
     return yargs
         .positional('tunnelString', {
             type: 'string',

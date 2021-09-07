@@ -1,7 +1,8 @@
 import yargs from "yargs";
 
-export function policyCmdBuilder (yargs : yargs.Argv<{}>, policyTypeChoices : string []) :
-yargs.Argv<{type: string;} & {json: boolean;}> {
+export type policyArgs = {type: string} & {json: boolean}
+
+export function policyCmdBuilder (yargs : yargs.Argv<{}>, policyTypeChoices : string []) : yargs.Argv<policyArgs> {
     return yargs
         .option(
             'type',

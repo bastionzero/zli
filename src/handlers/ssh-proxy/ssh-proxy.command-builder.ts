@@ -1,12 +1,11 @@
 import yargs from "yargs";
 
-export function sshProxyCmdBuilder(yargs: yargs.Argv<{}>) :
-yargs.Argv<
-{host: string} &
+export type sshProxyArg = {host: string} &
 {user: string} &
 {port: number} &
 {identityFile: string}
-> {
+
+export function sshProxyCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<sshProxyArg> {
     return yargs
         .positional('host', {
             type: 'string',

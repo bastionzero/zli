@@ -1,15 +1,14 @@
 import yargs from "yargs";
 
-export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) :
-yargs.Argv<
-{typeOfConfig: string} &
+export type generateKubeArgs = {typeOfConfig: string} &
 {clusterName: string} &
 {namespace: string} &
 {labels: string[]} &
 {customPort: number} &
 {outputFile: string} &
 {environmentId: string}
-> {
+
+export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
     return yargs
         .positional('typeOfConfig', {
             type: 'string',

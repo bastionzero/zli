@@ -1,13 +1,12 @@
 import yargs from "yargs";
 
-export function userCmdBuilder(yargs: yargs.Argv<{}>) :
-yargs.Argv<
-{add: boolean} &
+export type userArgs = {add: boolean} &
 {delete: boolean} &
 {idpEmail: string} &
 {policyName: string} &
 {json: boolean}
-> {
+
+export function userCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<userArgs> {
     return yargs
         .option(
             'add',

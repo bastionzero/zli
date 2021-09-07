@@ -1,7 +1,8 @@
 import yargs from "yargs";
 
-export function attachCmdBuilder(yargs : yargs.Argv<{}>) :
-yargs.Argv<{connectionId : string}> {
+export type attachArgs = {connectionId : string}
+
+export function attachCmdBuilder(yargs : yargs.Argv<{}>) : yargs.Argv<attachArgs> {
     return yargs
         .positional('connectionId', {
             type: 'string',

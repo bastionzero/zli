@@ -1,9 +1,8 @@
 import yargs from 'yargs';
 
-export function connectCmdBuilder (
-    yargs : yargs.Argv<{}>,
-    targetTypeChoices : string[]) :
-    yargs.Argv<{targetString: string;} & {targetType: string;}>
+export type connectArgs = {targetString: string} & {targetType: string}
+
+export function connectCmdBuilder (yargs : yargs.Argv<{}>,targetTypeChoices : string[]) : yargs.Argv<connectArgs>
 {
     return yargs
         .positional('targetString', {

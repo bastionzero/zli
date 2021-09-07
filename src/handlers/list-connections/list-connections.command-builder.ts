@@ -1,7 +1,8 @@
 import yargs from "yargs";
 
-export function listConnectionsCmdBuilder(yargs: yargs.Argv<{}>) :
-yargs.Argv<{json: boolean}> {
+export type listConnectionsArgs = {json: boolean}
+
+export function listConnectionsCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<listConnectionsArgs> {
     return yargs
         .option(
             'json',

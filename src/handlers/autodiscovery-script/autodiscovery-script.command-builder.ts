@@ -1,13 +1,12 @@
 import yargs from "yargs";
 
-export function autoDiscoveryScriptCommandBuilder(yargs : yargs.Argv<{}>) :
-yargs.Argv<
-{operatingSystem: string} &
+export type autoDiscoveryScriptArgs = {operatingSystem: string} &
 {targetName: string} &
 {environmentName: string} &
 {agentVersion: string} &
 {outputFile: string}
-> {
+
+export function autoDiscoveryScriptCommandBuilder(yargs : yargs.Argv<{}>) : yargs.Argv<autoDiscoveryScriptArgs> {
     return yargs
         .positional('operatingSystem', {
             type: 'string',
