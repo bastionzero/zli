@@ -340,6 +340,7 @@ ASALocalRun/
 .localhistory/
 
 # Our built agent 
-bctl-go-daemon/bctl/daemon/daemon
-bctl-go-daemon/bctl/agent/agent
+bctl-go-daemon/bctl/daemon/daemon-linux
+bctl-go-daemon/bctl/daemon/daemon-macos
+bctl-go-daemon/bctl/daemon/daemon-windows
 package-lock.json
