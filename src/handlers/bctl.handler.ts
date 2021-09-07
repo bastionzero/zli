@@ -29,7 +29,7 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
     const kubeArgsString = listOfCommands.join(' ');
 
     // We use '++++' as a delimiter so that we can parse the engligh command, logId, token in the daemon
-    const formattedToken = `${token}zli kube ${kubeArgsString}++++${logId}`;
+    const formattedToken = `${token}++++zli kube ${kubeArgsString}++++${logId}`;
 
     // Add the token to the args
     let kubeArgs: string[] = ['--token', formattedToken];

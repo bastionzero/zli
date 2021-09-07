@@ -30,7 +30,8 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
 
     // Check if we've already started a process
     const kubeConfig = configService.getKubeConfig();
-    // TODO : Make sure the user has created a kubeConfig before
+
+    // Make sure the user has created a kubeConfig before
     if (kubeConfig == undefined) {
         logger.error('Please make sure you have created your kubeconfig before running proxy. You can do this via "zli generate kubeConfig"');
         await cleanExit(1, logger);
@@ -87,6 +88,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
             };
 
             const daemonProcess = await spawn(finalDaemonPath, args, options);
+            daemonProcess.unref();
 
             // Now save the Pid so we can kill the process next time we start it
             kubeConfig['localPid'] = daemonProcess.pid;
@@ -111,12 +113,21 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
 
             process.on('SIGINT', () => {
                 // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
-                spawn('pkill', ['-P', daemonProcess.pid], {
-                    cwd: process.cwd(),
-                    shell: true,
-                    detached: true,
-                    stdio: 'inherit'
-                });
+                if (process.platform === 'linux') {
+                    spawn('pkill', ['-s', kubeConfig['localPid'].toString()], {
+                        cwd: process.cwd(),
+                        shell: true,
+                        detached: true,
+                        stdio: 'inherit'
+                    });
+                } else {
+                    spawn('kill', ['-9', kubeConfig['localPid'].toString()], {
+                        cwd: process.cwd(),
+                        shell: true,
+                        detached: true,
+                        stdio: 'inherit'
+                    });
+                }
             });
 
             daemonProcess.on('exit', function () {
