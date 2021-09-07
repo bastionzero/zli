@@ -60,5 +60,9 @@ export async function generateKubeYamlHandler(
     } else {
         logger.info(kubeYaml.yaml);
     }
+
+    // Always let the user know they need to create the namespace
+    logger.info(`Please make sure you create the kube namespace: ${argv.namespace}`)
+
     await cleanExit(0, logger);
 }

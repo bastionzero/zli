@@ -784,7 +784,7 @@ export class CliDriver
                             default: null
                         }).option('namespace', {
                             type: 'string',
-                            default: '',
+                            default: 'bastionzero',
                             demandOption: false
                         }).option('labels', {
                             type: 'array',
