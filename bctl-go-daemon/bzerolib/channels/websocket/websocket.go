@@ -30,8 +30,6 @@ const (
 	// SignalR
 	signalRMessageTerminatorByte = 0x1E
 	signalRTypeNumber            = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
-
-	cleanWebsocketExit = "websocket: close 1000 (normal)"
 )
 
 type IWebsocket interface {
@@ -140,8 +138,8 @@ func (w *Websocket) Receive() error {
 		w.IsReady = false
 
 		// Check if it's a clean exit or we don't need to reconnect
-		if err.Error() == cleanWebsocketExit || !w.autoReconnect {
-			return errors.New("Websocket closed")
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || !w.autoReconnect {
+			return errors.New("websocket closed")
 		} else { // else, reconnect
 			msg := fmt.Errorf("error in websocket, will attempt to reconnect: %s", err)
 			w.logger.Error(msg)
