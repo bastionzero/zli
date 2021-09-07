@@ -15,6 +15,7 @@ import (
 var (
 	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl           string
 	daemonPort, localhostToken, environmentId, certPath, keyPath, configPath string
+	logPath                                                                  string
 )
 
 const (
@@ -102,12 +103,14 @@ func parseFlags() error {
 	flag.StringVar(&certPath, "certPath", "", "Path to cert to use for our localhost server")
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
 	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
+	flag.StringVar(&logPath, "logPath", "", "Path to log file for daemon")
 
 	flag.Parse()
 
 	// Check we have all required flags
 	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeClusterId == "" || serviceUrl == "" ||
-		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" {
+		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" ||
+		logPath == "" || configPath == "" {
 		return fmt.Errorf("missing flags")
 	} else {
 		return nil
@@ -115,5 +118,5 @@ func parseFlags() error {
 }
 
 func getLogFilePath() string {
-	return configPath
+	return logPath
 }

@@ -59,7 +59,8 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         `-environmentId="${clusterTarget.environmentId}"`,
         `-certPath="${kubeConfig['certPath']}"`,
         `-keyPath="${kubeConfig['keyPath']}"`,
-        `-configPath="${loggerConfigService.daemonLogPath()}"`
+        `-configPath=${configService.configPath()}`,
+        `-logPath="${loggerConfigService.daemonLogPath()}"`
     ];
     let cwd = process.cwd();
 
