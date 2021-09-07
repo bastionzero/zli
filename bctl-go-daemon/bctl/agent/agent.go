@@ -31,15 +31,22 @@ const (
 
 	// Disable auto-reconnect
 	autoReconnect = false
-	logFilePath   = "/var/log/cwc/bctl-agent.log"
+	logFilePath   = "/var/log/cwc/bctl-agent-logs.log"
 )
 
 func main() {
 	// Get agent version
 	agentVersion := getAgentVersion()
 
+	// Check if we are in dev mode
+	devMode := os.Getenv("DEV")
+	stdoutStream := true
+	if devMode == "true" {
+		stdoutStream = false
+	}
+
 	// setup our loggers
-	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, false)
+	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, stdoutStream)
 	if err != nil {
 		return
 	}
