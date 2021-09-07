@@ -1,16 +1,16 @@
 import path from 'path';
 import utils from 'util';
 import fs from 'fs';
-import { loggers } from 'winston';
 import { killDaemon } from '../../src/kube.service/kube.service';
 import { ConfigService } from '../config.service/config.service';
 import { PolicyQueryService } from '../http.service/http.service';
 import { Logger } from '../logger.service/logger';
 import { ClusterSummary, KubeClusterStatus } from '../types';
 import { cleanExit } from './clean-exit.handler';
+import { LoggerConfigService } from '../logger-config.service/logger-config.service';
 const { spawn } = require('child_process');
 
-export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
     if (clusterTarget.status != KubeClusterStatus.Online) {
@@ -41,8 +41,6 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         killDaemon(configService);
     }
 
-    const configPath = configService.configPath();
-
     // See if the user passed in a custom port
     let daemonPort = kubeConfig['localPort'].toString();
     if (argv.customPort != -1) {
@@ -61,7 +59,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         `-environmentId="${clusterTarget.environmentId}"`,
         `-certPath="${kubeConfig['certPath']}"`,
         `-keyPath="${kubeConfig['keyPath']}"`,
-        `-configPath="${configPath}"`
+        `-configPath="${loggerConfigService.daemonLogPath()}"`
     ];
     let cwd = process.cwd();
 

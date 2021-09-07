@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
@@ -22,7 +21,6 @@ const (
 	hubEndpoint   = "/api/v1/hub/kube"
 	autoReconnect = true
 	version       = "1.0.0" // TODO: Change this?
-	logFileName   = "bctl-daemon.log"
 )
 
 func main() {
@@ -117,5 +115,5 @@ func parseFlags() error {
 }
 
 func getLogFilePath() string {
-	return filepath.Join(filepath.Dir(configPath), logFileName)
+	return configPath
 }
