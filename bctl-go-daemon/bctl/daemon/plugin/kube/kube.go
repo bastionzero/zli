@@ -210,7 +210,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	tokensSplit := strings.Split(tokenToValidate, securityTokenDelimiter)
 	if tokensSplit[0] != k.localhostToken {
 		w.WriteHeader(http.StatusInternalServerError)
-		k.logger.Error(errors.New("http internal server error"))
+		k.logger.Error(errors.New("Localhost token did not validate. Ensure you are using the right Kube config file!"))
 		return
 	}
 
