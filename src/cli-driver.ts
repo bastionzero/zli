@@ -64,6 +64,7 @@ export class CliDriver
 
     // use the following to shortcut middleware according to command
     private oauthCommands: string[] = [
+        'kube',
         'ssh-proxy-config',
         'connect',
         'tunnel',
@@ -88,6 +89,7 @@ export class CliDriver
     ];
 
     private mixpanelCommands: string[] = [
+        'kube',
         'ssh-proxy-config',
         'connect',
         'tunnel',
@@ -267,9 +269,7 @@ export class CliDriver
                 },
                 async (argv) => {
                     if (argv.tunnelString) {
-                        // TODO make this smart parsing
-                        const connectUser = argv.tunnelString.split('@')[0];
-                        const connectCluster = argv.tunnelString.split('@')[1];
+                        const [connectUser, connectCluster] = argv.tunnelString.split('@');
 
                         await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
                     } else {

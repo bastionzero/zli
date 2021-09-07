@@ -343,4 +343,3 @@ ASALocalRun/
 bctl-go-daemon/bctl/daemon/daemon-linux
 bctl-go-daemon/bctl/daemon/daemon-macos
 bctl-go-daemon/bctl/daemon/daemon-windows
-package-lock.json
