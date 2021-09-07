@@ -31,18 +31,27 @@ func NewLogger(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
 	zerolog.SetGlobalLevel(debugLevel)
 
 	// If the log file doesn't exist, create it, or append to the file
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("error: %s", err)
-		return &Logger{}, err
+	if logFilePath != "" {
+		logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Printf("error: %s", err)
+			return &Logger{}, err
+		}
+
+		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
+		multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
+
+		return &Logger{
+			logger: zerolog.New(multi).With().Timestamp().Logger(),
+		}, nil
+	} else {
+		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
+		multi := zerolog.MultiLevelWriter(consoleWriter)
+
+		return &Logger{
+			logger: zerolog.New(multi).With().Timestamp().Logger(),
+		}, nil
 	}
-
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-	multi := zerolog.MultiLevelWriter(consoleWriter)
-
-	return &Logger{
-		logger: zerolog.New(multi).With().Logger(),
-	}, nil
 }
 
 func (l *Logger) AddAgentVersion(version string) {
