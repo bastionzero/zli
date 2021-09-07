@@ -6,10 +6,6 @@ import (
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
 
-var (
-	notreadybytes = [2]byte{64, 94}
-)
-
 type StdWriter struct {
 	StdType        smsg.StreamType
 	outputChannel  chan smsg.StreamMessage

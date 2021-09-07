@@ -8,10 +8,6 @@ import (
 	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
 
-const (
-	bzecertLifetime = time.Hour * 24 * 365 * 5 // 5 years
-)
-
 type IBZCert interface {
 	Verify() (string, time.Time, error)
 	Hash() (string, bool)
@@ -25,6 +21,10 @@ type BZCert struct {
 	SignatureOnRand string `json:"signatureOnRand"`
 }
 
+// This function verifies the user's bzcert.  We pass in the user's SSO provider (idpProvider) and
+// their org id (e.g. called 'org' in Google jwts and 'tenantId' for microsoft) which specifies a particular
+// organization/company/group that hosts their SSO as part of a larger SSO.
+// The function returns the hash the bzcert, the expiration time of the bzcert, and an error if there is one
 func (b *BZCert) Verify(idpProvider string, idpOrgId string) (string, time.Time, error) {
 	verifier := NewBZCertVerifier(b, idpProvider, idpOrgId)
 

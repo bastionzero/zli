@@ -82,10 +82,10 @@ func NewControlChannel(logger *lggr.Logger,
 	go func() {
 		for {
 			select {
-			case <-control.websocket.DoneChannel:
+			case <-control.websocket.DoneChan:
 				control.logger.Info("Websocket has been closed, closing controlchannel")
 				return
-			case agentMessage := <-control.websocket.InputChannel:
+			case agentMessage := <-control.websocket.InputChan:
 				if err := control.Receive(agentMessage); err != nil {
 					control.logger.Error(err)
 					return
@@ -109,12 +109,14 @@ func (c *ControlChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 		if msg, err := healthCheck(); err != nil {
 			return err
 		} else {
-			c.websocket.OutputChannel <- wsmsg.AgentMessage{
+			c.websocket.OutputChan <- wsmsg.AgentMessage{
 				MessageType:    string(wsmsg.HealthCheck),
 				SchemaVersion:  wsmsg.SchemaVersion,
 				MessagePayload: msg,
 			}
 		}
+	default:
+		return fmt.Errorf("Unrecognized controlchannel message type")
 	}
 	return nil
 }

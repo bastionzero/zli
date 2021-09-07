@@ -9,8 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"sync"
 	"time"
 
@@ -30,8 +28,6 @@ const (
 	// SignalR
 	signalRMessageTerminatorByte = 0x1E
 	signalRTypeNumber            = 1 // Ref: https://github.com/aspnet/SignalR/blob/master/specs/HubProtocol.md#invocation-message-encoding
-
-	cleanWebsocketExit = "websocket: close 1000 (normal)"
 )
 
 type IWebsocket interface {
@@ -42,17 +38,17 @@ type IWebsocket interface {
 
 // This will be the client that we use to store our websocket connection
 type Websocket struct {
-	Client  *websocket.Conn
+	client  *websocket.Conn
 	logger  *lggr.Logger
 	IsReady bool
 
 	// Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
-	SocketLock sync.Mutex
+	socketLock sync.Mutex
 
 	// These are the channels for recieving and sending messages and done
-	InputChannel  chan wsmsg.AgentMessage
-	OutputChannel chan wsmsg.AgentMessage
-	DoneChannel   chan bool
+	InputChan  chan wsmsg.AgentMessage
+	OutputChan chan wsmsg.AgentMessage
+	DoneChan   chan bool
 
 	// Function for figuring out correct Target SignalR Hub
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
@@ -84,9 +80,9 @@ func NewWebsocket(ctx context.Context,
 
 	ret := Websocket{
 		logger:              logger,
-		InputChannel:        make(chan wsmsg.AgentMessage, 200),
-		OutputChannel:       make(chan wsmsg.AgentMessage, 200),
-		DoneChannel:         make(chan bool),
+		InputChan:           make(chan wsmsg.AgentMessage, 200),
+		OutputChan:          make(chan wsmsg.AgentMessage, 200),
+		DoneChan:            make(chan bool),
 		targetSelectHandler: targetSelectHandler,
 		getChallenge:        getChallenge,
 		autoReconnect:       autoReconnect,
@@ -108,7 +104,7 @@ func NewWebsocket(ctx context.Context,
 			default:
 				if err := ret.Receive(); err != nil {
 					ret.logger.Error(err)
-					ret.DoneChannel <- true
+					ret.DoneChan <- true
 					return
 				}
 			}
@@ -124,7 +120,7 @@ func (w *Websocket) subscribeToOutputChannel() {
 			select {
 			case <-w.ctx.Done():
 				return
-			case msg := <-w.OutputChannel:
+			case msg := <-w.OutputChan:
 				w.Send(msg)
 			}
 		}
@@ -134,14 +130,14 @@ func (w *Websocket) subscribeToOutputChannel() {
 // Returns error on websocket closed
 func (w *Websocket) Receive() error {
 	// Read incoming message(s)
-	_, rawMessage, err := w.Client.ReadMessage()
+	_, rawMessage, err := w.client.ReadMessage()
 
 	if err != nil {
 		w.IsReady = false
 
 		// Check if it's a clean exit or we don't need to reconnect
-		if err.Error() == cleanWebsocketExit || !w.autoReconnect {
-			return errors.New("Websocket closed")
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || !w.autoReconnect {
+			return errors.New("websocket closed")
 		} else { // else, reconnect
 			msg := fmt.Errorf("error in websocket, will attempt to reconnect: %s", err)
 			w.logger.Error(msg)
@@ -178,7 +174,7 @@ func (w *Websocket) Receive() error {
 				} else {
 					w.subscribeToOutputChannel()
 				}
-				w.InputChannel <- wrappedMessage.Arguments[0]
+				w.InputChan <- wrappedMessage.Arguments[0]
 			}
 		}
 	}
@@ -190,10 +186,6 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	if !w.IsReady {
 		return fmt.Errorf("Websocket not ready to send yet")
 	}
-
-	// Lock our mutex and setup the unlock
-	w.SocketLock.Lock()
-	defer w.SocketLock.Unlock()
 
 	// Select target
 	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
@@ -216,7 +208,7 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 		return fmt.Errorf("error marshalling outgoing SignalR Message: %v", signalRMessage)
 	} else {
 		// Write our message to websocket
-		if err = w.Client.WriteMessage(websocket.TextMessage, append(msgBytes, signalRMessageTerminatorByte)); err != nil {
+		if err = w.client.WriteMessage(websocket.TextMessage, append(msgBytes, signalRMessageTerminatorByte)); err != nil {
 			return err
 		} else {
 			return nil
@@ -300,11 +292,6 @@ func (w *Websocket) Connect() {
 		w.params["clientProtocol"] = "1.5"
 		w.params["transport"] = "WebSockets"
 
-		// Make an interrupt channel
-		// TODO: Think this can be removed
-		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt)
-
 		// Build our url u , add our params as well
 		websocketUrl := url.URL{Scheme: "wss", Host: w.serviceUrl, Path: w.hubEndpoint}
 		q = websocketUrl.Query()
@@ -317,7 +304,7 @@ func (w *Websocket) Connect() {
 		w.logger.Info(msg)
 
 		var err error
-		w.Client, _, err = websocket.DefaultDialer.Dial(
+		w.client, _, err = websocket.DefaultDialer.Dial(
 			websocketUrl.String(),
 			http.Header{"Authorization": []string{w.headers["Authorization"]}})
 		if err != nil {
@@ -325,9 +312,9 @@ func (w *Websocket) Connect() {
 		} else {
 			// Define our protocol and version
 			// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
-			if err := w.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), signalRMessageTerminatorByte)); err != nil {
+			if err := w.client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), signalRMessageTerminatorByte)); err != nil {
 				w.logger.Info("Error when trying to agree on version for SignalR!")
-				w.Client.Close()
+				w.client.Close()
 			} else {
 				w.IsReady = true
 				break

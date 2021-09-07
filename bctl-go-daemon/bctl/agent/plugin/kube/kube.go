@@ -46,7 +46,7 @@ type KubePlugin struct {
 	serviceAccountToken string
 	kubeHost            string
 	actions             map[string]IKubeAction
-	actionsMapLock      sync.RWMutex
+	actionsMapLock      sync.Mutex
 	logger              *lggr.Logger
 	ctx                 context.Context
 }
@@ -117,12 +117,12 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 
 	// Interactive commands like exec and log need to be able to recieve multiple inputs, so we start them and track them
 	// and send any new messages with the same request ID to the existing action object
-	if act, ok := k.actions[rid]; ok {
+	if act, ok := k.getActionsMap(rid); ok {
 		action, payload, err := act.InputMessageHandler(action, actionPayloadSafe)
 
 		// Check if that last message closed the action, if so delete from map
 		if act.Closed() {
-			delete(k.actions, rid)
+			k.deleteActionsMap(rid)
 		}
 		return action, payload, err
 	} else {
@@ -158,4 +158,17 @@ func (k *KubePlugin) updateActionsMap(newAction IKubeAction, id string) {
 	k.actionsMapLock.Lock()
 	k.actions[id] = newAction
 	k.actionsMapLock.Unlock()
+}
+
+func (k *KubePlugin) deleteActionsMap(rid string) {
+	k.actionsMapLock.Lock()
+	delete(k.actions, rid)
+	k.actionsMapLock.Unlock()
+}
+
+func (k *KubePlugin) getActionsMap(rid string) (IKubeAction, bool) {
+	k.actionsMapLock.Lock()
+	defer k.actionsMapLock.Unlock()
+	act, ok := k.actions[rid]
+	return act, ok
 }
