@@ -7,7 +7,7 @@ export async function killDaemon(configService: ConfigService) {
     // then kill the daemon
     if (kubeConfig['localPid'] != null) {
         // First try to kill the process
-        if (process.platform === "win32") {
+        if (process.platform === 'win32') {
             spawn('taskkill', ['/F', '/T', '/PID', kubeConfig['localPid'].toString()]);
         } else {
             spawn('pkill', ['-P', kubeConfig['localPid'].toString()]);
@@ -17,8 +17,8 @@ export async function killDaemon(configService: ConfigService) {
         kubeConfig['localPid'] = null;
         configService.setKubeConfig(kubeConfig);
 
-        return true
+        return true;
     } else {
-        return false
+        return false;
     }
 }

@@ -5,7 +5,7 @@ import util from 'util';
 import { spawn, exec } from 'child_process';
 
 const { v4: uuidv4 } = require('uuid');
-const execPromise = util.promisify(exec)
+const execPromise = util.promisify(exec);
 
 
 export async function bctlHandler(configService: ConfigService, logger: Logger, listOfCommands: string[]) {

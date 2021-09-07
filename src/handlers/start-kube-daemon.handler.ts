@@ -85,7 +85,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
                 shell: true,
                 stdio: ['ignore', 'ignore', 'ignore']
             };
-            
+
             const daemonProcess = await spawn(finalDaemonPath, args, options);
 
             // Now save the Pid so we can kill the process next time we start it
@@ -145,8 +145,8 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
     // Ref: https://github.com/vercel/pkg/issues/342
 
     // First get the parent dir of the config path
-    const configFileDir = path.dirname(configPath)
-    
+    const configFileDir = path.dirname(configPath);
+
     const chmod = utils.promisify(fs.chmod);
 
     // Our copy function as we cannot use fs.copyFileSync
@@ -163,12 +163,12 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
 
     }
 
-    var daemonExecPath = undefined;
-    var finalDaemonPath = undefined;
+    let daemonExecPath = undefined;
+    let finalDaemonPath = undefined;
     if (process.platform === 'win32') {
         daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-windows');
 
-        finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe')
+        finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe');
     }
     else if (process.platform === 'linux' || process.platform === 'darwin') {
         if (process.platform === 'linux') {
@@ -177,7 +177,7 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
             daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-macos');
         }
 
-        finalDaemonPath = path.join(configFileDir, 'daemon')
+        finalDaemonPath = path.join(configFileDir, 'daemon');
     } else {
         logger.error(`Unsupported operating system: ${process.platform}`);
         await cleanExit(1, logger);
@@ -186,7 +186,7 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
     await deleteIfExists(finalDaemonPath);
 
     // Create our executable file
-    fs.writeFileSync(finalDaemonPath, "");
+    fs.writeFileSync(finalDaemonPath, '');
 
     // Copy the file to the computers file system
     await copy(daemonExecPath, finalDaemonPath);
@@ -203,6 +203,6 @@ async function deleteIfExists(pathToFile: string) {
     // Check if the file exists, delete if so
     if (fs.existsSync(pathToFile)) {
         // Delete the file
-        fs.unlinkSync(pathToFile)
+        fs.unlinkSync(pathToFile);
     }
 }
