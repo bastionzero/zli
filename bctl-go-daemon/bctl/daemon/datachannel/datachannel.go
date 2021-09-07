@@ -91,14 +91,14 @@ func NewDataChannel(logger *lggr.Logger,
 	go func() {
 		for {
 			select {
-			case agentMessage := <-ret.websocket.InputChannel:
+			case agentMessage := <-ret.websocket.InputChan:
 				// Handle each message in its own thread
 				go func() {
 					if err := ret.Receive(agentMessage); err != nil {
 						ret.logger.Error(err)
 					}
 				}()
-			case <-ret.websocket.DoneChannel:
+			case <-ret.websocket.DoneChan:
 				// The websocket has been closed
 				msg := "Websocket has been closed, closing datachannel"
 				ret.logger.Info(msg)
@@ -145,7 +145,7 @@ func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interfa
 	}
 
 	// Push message to websocket channel output
-	d.websocket.OutputChannel <- agentMessage
+	d.websocket.OutputChan <- agentMessage
 	return nil
 }
 

@@ -50,9 +50,9 @@ type Websocket struct {
 	SocketLock sync.Mutex
 
 	// These are the channels for recieving and sending messages and done
-	InputChannel  chan wsmsg.AgentMessage
-	OutputChannel chan wsmsg.AgentMessage
-	DoneChannel   chan bool
+	InputChan  chan wsmsg.AgentMessage
+	OutputChan chan wsmsg.AgentMessage
+	DoneChan   chan bool
 
 	// Function for figuring out correct Target SignalR Hub
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
@@ -84,9 +84,9 @@ func NewWebsocket(ctx context.Context,
 
 	ret := Websocket{
 		logger:              logger,
-		InputChannel:        make(chan wsmsg.AgentMessage, 200),
-		OutputChannel:       make(chan wsmsg.AgentMessage, 200),
-		DoneChannel:         make(chan bool),
+		InputChan:           make(chan wsmsg.AgentMessage, 200),
+		OutputChan:          make(chan wsmsg.AgentMessage, 200),
+		DoneChan:            make(chan bool),
 		targetSelectHandler: targetSelectHandler,
 		getChallenge:        getChallenge,
 		autoReconnect:       autoReconnect,
@@ -108,7 +108,7 @@ func NewWebsocket(ctx context.Context,
 			default:
 				if err := ret.Receive(); err != nil {
 					ret.logger.Error(err)
-					ret.DoneChannel <- true
+					ret.DoneChan <- true
 					return
 				}
 			}
@@ -124,7 +124,7 @@ func (w *Websocket) subscribeToOutputChannel() {
 			select {
 			case <-w.ctx.Done():
 				return
-			case msg := <-w.OutputChannel:
+			case msg := <-w.OutputChan:
 				w.Send(msg)
 			}
 		}
@@ -178,7 +178,7 @@ func (w *Websocket) Receive() error {
 				} else {
 					w.subscribeToOutputChannel()
 				}
-				w.InputChannel <- wrappedMessage.Arguments[0]
+				w.InputChan <- wrappedMessage.Arguments[0]
 			}
 		}
 	}
