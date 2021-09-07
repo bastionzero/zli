@@ -824,15 +824,11 @@ export class CliDriver
                     await logoutHandler(this.configService, this.logger);
                 }
             )
-            .command('$0', 'Kubectl wrapper catch all', () => { }, async (_) => {
-                // Check to see what type of cli we are trying to proxy
-                var command = process.argv[2];
-                if (command == 'kube') {
-                    await bctlHandler(this.configService, this.logger);
-                } else {
-                    this.logger.error(`Unknown command passed ${command}`);
-                    await cleanExit(1, this.logger);
-                }
+            .command('kube', 'Kubectl wrapper catch all', (yargs) => {
+                return yargs.example('$0 kube -- get pods', '');
+             }, async (argv: any) => {
+                // This expects that the kube command will go after the --
+                await bctlHandler(this.configService, this.logger, argv._);
             })
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})
