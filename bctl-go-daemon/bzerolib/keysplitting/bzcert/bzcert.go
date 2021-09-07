@@ -8,10 +8,6 @@ import (
 	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
 
-const (
-	bzecertLifetime = time.Hour * 24 * 365 * 5 // 5 years
-)
-
 type IBZCert interface {
 	Verify() (string, time.Time, error)
 	Hash() (string, bool)
