@@ -10,6 +10,7 @@ export async function deleteUserFromPolicyHandler(userEmail: string, policyName:
     const kubeService = new KubeService(configService, logger);
     const userInfo = await kubeService.GetUserInfoFromEmail(userEmail);
 
+    // Backend stores the literal string 'unknown'
     if (userInfo.email == 'unknown') {
         // Log an error
         logger.error(`Unable to find user with email: ${userEmail}`);

@@ -265,7 +265,8 @@ export class CliDriver
                             default: -1,
                             demandOption: false
                         })
-                        .example('$0 tunnel admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role');
+                        .example('$0 tunnel admin@neat-cluster', 'Connect to neat-cluster as the admin Kube RBAC role')
+                        .example('$0 tunnel', 'Get info on currently active tunnel');
                 },
                 async (argv) => {
                     if (argv.tunnelString) {
@@ -314,7 +315,7 @@ export class CliDriver
                         .positional('clusterName', {
                             type: 'string',
                         })
-                        .example('$0 status test-cluster', '');
+                        .example('$0 describe-cluster test-cluster', '');
                 },
                 async (argv) => {
                     await describeClusterHandler(argv.clusterName, this.configService, this.logger, this.clusterTargets, this.envs);

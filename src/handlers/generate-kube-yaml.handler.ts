@@ -36,7 +36,7 @@ export async function generateKubeYamlHandler(
         }
     }
 
-    // If environemtn has been passed, ensure its a valid envId
+    // If environment has been passed, ensure it's a valid envId
     if (argv.environmentId != null) {
         let validEnv = false;
         (await envs).forEach(env => {
