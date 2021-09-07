@@ -138,7 +138,12 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 	config.BearerToken = e.serviceAccountToken
 
 	kubeExecApiUrl := e.kubeHost + startExecRequest.Endpoint
-	kubeExecApiUrlParsed, _ := url.Parse(kubeExecApiUrl)
+	kubeExecApiUrlParsed, err := url.Parse(kubeExecApiUrl)
+	if err != nil {
+		rerr := fmt.Errorf("could not parse kube exec url: %s", err)
+		e.logger.Error(rerr)
+		return "", []byte{}, rerr
+	}
 
 	// Turn it into a SPDY executor
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", kubeExecApiUrlParsed)
