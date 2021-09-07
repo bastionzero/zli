@@ -45,11 +45,8 @@ func NewLogger(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
 			logger: zerolog.New(multi).With().Timestamp().Logger(),
 		}, nil
 	} else {
-		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-		multi := zerolog.MultiLevelWriter(consoleWriter)
-
 		return &Logger{
-			logger: zerolog.New(multi).With().Timestamp().Logger(),
+			logger: zerolog.New(os.Stdout).With().Timestamp.Logger(),
 		}, nil
 	}
 }
