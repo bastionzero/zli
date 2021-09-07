@@ -191,10 +191,6 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 		return fmt.Errorf("Websocket not ready to send yet")
 	}
 
-	// Lock our mutex and setup the unlock
-	w.socketLock.Lock()
-	defer w.socketLock.Unlock()
-
 	// Select target
 	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
 	if err != nil {
