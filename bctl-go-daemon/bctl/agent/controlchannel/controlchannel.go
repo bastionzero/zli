@@ -115,6 +115,8 @@ func (c *ControlChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 				MessagePayload: msg,
 			}
 		}
+	default:
+		return fmt.Errorf("Unrecognized controlchannel message type")
 	}
 	return nil
 }
