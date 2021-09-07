@@ -38,15 +38,8 @@ func main() {
 	// Get agent version
 	agentVersion := getAgentVersion()
 
-	// Check if we are in dev mode
-	devMode := os.Getenv("DEV")
-	stdoutStream := true
-	if devMode == "true" {
-		stdoutStream = false
-	}
-
 	// setup our loggers
-	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, stdoutStream)
+	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, true)
 	if err != nil {
 		return
 	}
