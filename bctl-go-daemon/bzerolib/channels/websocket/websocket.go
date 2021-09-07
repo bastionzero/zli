@@ -9,8 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"sync"
 	"time"
 
@@ -293,11 +291,6 @@ func (w *Websocket) Connect() {
 		w.params["id"] = connectionId.(string)
 		w.params["clientProtocol"] = "1.5"
 		w.params["transport"] = "WebSockets"
-
-		// Make an interrupt channel
-		// TODO: Think this can be removed
-		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt)
 
 		// Build our url u , add our params as well
 		websocketUrl := url.URL{Scheme: "wss", Host: w.serviceUrl, Path: w.hubEndpoint}
