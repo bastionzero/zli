@@ -50,7 +50,7 @@ export async function generateKubeconfigHandler(
 
                 // Generate a token that can be used for auth
                 const randtoken = require('rand-token');
-                const token = randtoken.generate(128) + '++++';
+                const token = randtoken.generate(128);
 
                 // Find an open port, define it here as if the config has already been created, this codeblock will never be executed
                 const findPort = require('find-open-port');

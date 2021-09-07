@@ -21,7 +21,10 @@ import (
 )
 
 const (
-	securityToken = "++++"
+	// This token is used when validating our Bearer token. Our token comes in with the form "{localhostToken}++++{english command i.e. zli kube get pods}++++{logId}"
+	// The english command and logId are only generated if the user is using "zli kube ..."
+	// So we use this securityTokenDelimiter to split up our token and extract what might be there
+	securityTokenDelimiter = "++++"
 )
 
 type JustRequestId struct {
@@ -197,10 +200,6 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Trim off localhost token
-	// TODO: Fix this
-	k.localhostToken = strings.Replace(k.localhostToken, securityToken, "", -1) // ?
-
 	// First verify our token and extract any commands if we can
 	tokenToValidate := r.Header.Get("Authorization")
 
@@ -208,7 +207,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	tokenToValidate = strings.Replace(tokenToValidate, "Bearer ", "", -1)
 
 	// Validate the token
-	tokensSplit := strings.Split(tokenToValidate, securityToken)
+	tokensSplit := strings.Split(tokenToValidate, securityTokenDelimiter)
 	if tokensSplit[0] != k.localhostToken {
 		w.WriteHeader(http.StatusInternalServerError)
 		k.logger.Error(errors.New("http internal server error"))
