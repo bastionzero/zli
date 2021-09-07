@@ -73,7 +73,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
         finalDaemonPath = 'go';
         args = ['run', 'daemon.go'].concat(args);
     } else {
-        finalDaemonPath = await copyExecutableToTempDir(logger, configService.configPath());
+        finalDaemonPath = await copyExecutableToLocalDir(logger, configService.configPath());
     }
 
     try {
@@ -140,8 +140,8 @@ async function getClusterInfoFromName(clusterTargets: ClusterSummary[], clusterN
     await cleanExit(1, logger);
 }
 
-async function copyExecutableToTempDir(logger: Logger, configPath: string): Promise<string> {
-    // Helper function to copy the Daemon executable to a temp dir on the file system
+async function copyExecutableToLocalDir(logger: Logger, configPath: string): Promise<string> {
+    // Helper function to copy the Daemon executable to a local dir on the file system
     // Ref: https://github.com/vercel/pkg/issues/342
 
     // First get the parent dir of the config path
@@ -192,8 +192,7 @@ async function copyExecutableToTempDir(logger: Logger, configPath: string): Prom
     await copy(daemonExecPath, finalDaemonPath);
 
     // Grant execute permission
-    // TODO: See if this is the right level of permission
-    await chmod(finalDaemonPath, 0o765);
+    await chmod(finalDaemonPath, 0o755);
 
     // Return the path
     return finalDaemonPath;

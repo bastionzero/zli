@@ -27,6 +27,8 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
 
     // Now build our token
     const kubeArgsString = listOfCommands.join(' ');
+
+    // We use '++++' as a delimiter so that we can parse the engligh command, logId, token in the daemon
     const formattedToken = `${token}zli kube ${kubeArgsString}++++${logId}`;
 
     // Add the token to the args
@@ -35,7 +37,7 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
     // Then add the extract the args
     kubeArgs = kubeArgs.concat(listOfCommands);
 
-    const kubeCommandProcess = spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
+    const kubeCommandProcess = await spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
 
     kubeCommandProcess.on('close', async (code: number) => {
         logger.debug(`Kube command process exited with code ${code}`);

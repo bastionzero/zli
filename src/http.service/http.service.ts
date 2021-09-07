@@ -202,41 +202,6 @@ export class HttpService
             this.handleHttpException(route, error);
         }
     }
-
-    // Returns a request object that you can add response handlers to at a higher layer
-    protected FormStream<TReq>(route: string, body: TReq, localPath: string) : Promise<void>
-    {
-        this.setHeaders();
-
-        const formBody = this.getFormDataFromRequest(body);
-        const whereToSave = localPath.endsWith('/') ? localPath + `bzero-download-${Math.floor(Date.now() / 1000)}` : localPath;
-
-        return new Promise((resolve, reject) => {
-            try {
-                const requestStream = this.httpClient.stream.post(
-                    route,
-                    {
-                        isStream: true,
-                        body: formBody
-                    }
-                );
-
-                // Buffer is returned by 'data' event
-                requestStream.on('data', (response: Buffer) => {
-                    fs.writeFileSync(whereToSave, response);
-                });
-
-                requestStream.on('end', () => {
-                    this.logger.info('File download complete');
-                    this.logger.info(whereToSave);
-                    resolve();
-                });
-            } catch (error) {
-                this.handleHttpException(route, error);
-                reject(error);
-            }
-        });
-    }
 }
 
 export class SessionService extends HttpService

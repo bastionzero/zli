@@ -22,7 +22,7 @@ export async function listTargetsHandler(
     clusters: Promise<ClusterSummary[]>,
     envsPassed: Promise<EnvironmentDetails[]>) {
 
-    const clusterTargets = (await clusters).map<TargetSummary>((cluster, _index, _array) => {
+    const clusterTargets = (await clusters).map<TargetSummary>((cluster) => {
         return {
             type: TargetType.CLUSTER,
             id: cluster.id,
