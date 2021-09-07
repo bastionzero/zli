@@ -25,19 +25,19 @@ type Logger struct {
 	logger zerolog.Logger
 }
 
-func NewLogger(debugLevel DebugLevel, logFilePath string, stdout bool) (*Logger, error) {
+func NewLogger(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
 	// Let's us display stack info on errors
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	zerolog.SetGlobalLevel(debugLevel)
 
 	// If the log file doesn't exist, create it, or append to the file
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("error: %s", err)
-		return &Logger{}, err
-	}
+	if logFilePath != "" {
+		logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Printf("error: %s", err)
+			return &Logger{}, err
+		}
 
-	if stdout {
 		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
 		multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
 
@@ -46,7 +46,7 @@ func NewLogger(debugLevel DebugLevel, logFilePath string, stdout bool) (*Logger,
 		}, nil
 	} else {
 		return &Logger{
-			logger: zerolog.New(logFile).With().Timestamp().Logger(),
+			logger: zerolog.New(os.Stdout).With().Timestamp.Logger(),
 		}, nil
 	}
 }
