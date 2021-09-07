@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
@@ -58,11 +57,6 @@ func startDatachannel(logger *lggr.Logger) {
 	params["environment_id"] = environmentId
 
 	dataChannel, _ := dc.NewDataChannel(logger, configPath, assumeRole, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect)
-
-	// TODO: Integrate this with existing messaging
-	time.Sleep(3 * time.Second)
-	// TODO: Trigger this via datachannel when sending the first message
-	dataChannel.SendSyn()
 
 	if err := dataChannel.StartKubeDaemonPlugin(localhostToken, daemonPort, certPath, keyPath); err != nil {
 		return

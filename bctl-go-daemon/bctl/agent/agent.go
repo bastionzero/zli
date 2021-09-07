@@ -108,39 +108,41 @@ func controlchannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string,
 }
 
 func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
-	// First check if its a keysplitting message
-	var keysplittingPayload map[string]interface{}
-	if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
-		if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
-			switch keysplittingPayloadVal["action"] {
-			case "kube/restapi":
-				return "ResponseClusterToBastion", nil
-			case "kube/exec/start":
-				return "ResponseClusterToBastion", nil
-			case "kube/exec/input":
-				return "ResponseClusterToBastion", nil
-			case "kube/exec/resize":
-				return "ResponseClusterToBastion", nil
-			case "kube/log/start":
-				return "ResponseClusterToBastion", nil
-			case "kube/log/stop":
-				return "ResponseClusterToBastion", nil
+	switch wsmsg.MessageType(agentMessage.MessageType) {
+	case wsmsg.Keysplitting:
+		var keysplittingPayload map[string]interface{}
+		if err := json.Unmarshal(agentMessage.MessagePayload, &keysplittingPayload); err == nil {
+			if keysplittingPayloadVal, ok := keysplittingPayload["keysplittingPayload"].(map[string]interface{}); ok {
+				switch keysplittingPayloadVal["action"] {
+				case "kube/restapi":
+					return "ResponseClusterToBastion", nil
+				case "kube/exec/start":
+					return "ResponseClusterToBastion", nil
+				case "kube/exec/input":
+					return "ResponseClusterToBastion", nil
+				case "kube/exec/resize":
+					return "ResponseClusterToBastion", nil
+				case "kube/log/start":
+					return "ResponseClusterToBastion", nil
+				case "kube/log/stop":
+					return "ResponseClusterToBastion", nil
+				}
 			}
 		}
-	}
-
-	// Else check if its a stream message
-	var messagePayload smsg.StreamMessage
-	if err := json.Unmarshal(agentMessage.MessagePayload, &messagePayload); err == nil {
-		// p := payload["keysplittingPayload"].(map[string]interface{})
-		switch messagePayload.Type {
-		case "kube/exec/stdout":
-			return "StdoutClusterToBastion", nil
-		case "kube/exec/stderr":
-			return "StderrClusterToBastion", nil
-		case "kube/log/stdout":
-			return "ResponseLogClusterToBastion", nil
+	case wsmsg.Stream:
+		var messagePayload smsg.StreamMessage
+		if err := json.Unmarshal(agentMessage.MessagePayload, &messagePayload); err == nil {
+			switch messagePayload.Type {
+			case "kube/exec/stdout":
+				return "StdoutClusterToBastion", nil
+			case "kube/exec/stderr":
+				return "StderrClusterToBastion", nil
+			case "kube/log/stdout":
+				return "ResponseLogClusterToBastion", nil
+			}
 		}
+	case wsmsg.Error:
+		return "ResponseClusterToBastion", nil
 	}
 
 	return "", fmt.Errorf("unable to determine SignalR endpoint")

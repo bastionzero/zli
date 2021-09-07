@@ -12,16 +12,13 @@ import (
 	"bastionzero.com/bctl/v1/bzerolib/keysplitting/util"
 )
 
-const (
-	schemaVersion = "1.0"
-)
-
 type BZCertMetadata struct {
 	Cert bzcrt.BZCert
 	Exp  time.Time
 }
 
 type IKeysplitting interface {
+	GetHpointer() string
 	Validate(ksMessage *ksmsg.KeysplittingMessage) error
 	BuildResponse(ksMessage *ksmsg.KeysplittingMessage, action string, actionPayload []byte) (ksmsg.KeysplittingMessage, error)
 }
@@ -59,6 +56,10 @@ func NewKeysplitting() (IKeysplitting, error) {
 			orgId:            config.Data.OrgId,
 		}, nil
 	}
+}
+
+func (k *Keysplitting) GetHpointer() string {
+	return k.hPointer
 }
 
 func (k *Keysplitting) Validate(ksMessage *ksmsg.KeysplittingMessage) error {

@@ -9,10 +9,15 @@ import (
 	kube "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
 	ws "bastionzero.com/bctl/v1/bzerolib/channels/websocket"
+	rrr "bastionzero.com/bctl/v1/bzerolib/error"
 	ksmsg "bastionzero.com/bctl/v1/bzerolib/keysplitting/message"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
+)
+
+const (
+	maxRetries = 3
 )
 
 type IDataChannel interface {
@@ -25,14 +30,22 @@ type DataChannel struct {
 	websocket    *ws.Websocket
 	logger       *lggr.Logger
 	ctx          context.Context
+	cancel       context.CancelFunc
 	plugin       plgn.IPlugin
 	keysplitting ks.IKeysplitting
+	handshook    bool // aka whether we need to send a syn
 
 	// Kube-specific vars aka to-be-removed
 	role string
 
 	// Done channel to bubble up messages to kubectl
 	doneChannel chan string
+
+	// If we need to send a SYN, then we need a way to keep
+	// track of whatever message that triggered the send SYN
+	onDeck      plgn.ActionWrapper
+	lastMessage plgn.ActionWrapper
+	retry       int
 }
 
 func NewDataChannel(logger *lggr.Logger,
@@ -45,27 +58,33 @@ func NewDataChannel(logger *lggr.Logger,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
 	autoReconnect bool) (*DataChannel, error) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	subLogger := logger.GetWebsocketLogger()
-	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
+	wsClient, err := ws.NewWebsocket(ctx, subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, false)
 	if err != nil {
+		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err // TODO: how tf are we going to report these?
 	}
 
 	keysplitter, err := ks.NewKeysplitting("", configPath)
 	if err != nil {
+		cancel()
 		logger.Error(err)
 		return &DataChannel{}, err
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	ret := &DataChannel{
 		websocket:    wsClient,
 		logger:       logger,
 		ctx:          ctx,
+		cancel:       cancel,
 		keysplitting: keysplitter,
+		handshook:    false,
 		doneChannel:  make(chan string),
+		onDeck:       plgn.ActionWrapper{},
+		retry:        0,
 	}
 
 	// Subscribe to our input channel
@@ -81,11 +100,12 @@ func NewDataChannel(logger *lggr.Logger,
 				}()
 			case <-ret.websocket.DoneChannel:
 				// The websocket has been closed
-				ret.logger.Info("Websocket has been closed, closing datachannel")
+				msg := "Websocket has been closed, closing datachannel"
+				ret.logger.Info(msg)
 				cancel()
 
-				// Send a message to our done channel to the kubectl can get the message
-				ret.doneChannel <- "true"
+				// Send a message to our done channel so kubectl can display it
+				ret.doneChannel <- msg
 				return
 			}
 		}
@@ -102,6 +122,10 @@ func (d *DataChannel) StartKubeDaemonPlugin(localhostToken string, daemonPort st
 		return rerr
 	} else {
 		d.plugin = plugin
+
+		if err := d.sendSyn(); err != nil {
+			return err
+		}
 		return nil
 	}
 }
@@ -125,21 +149,23 @@ func (d *DataChannel) Send(messageType wsmsg.MessageType, messagePayload interfa
 	return nil
 }
 
-func (d *DataChannel) SendSyn() { // TODO: have this return an error
+func (d *DataChannel) sendSyn() error {
+	d.logger.Info("Sending SYN")
+	d.handshook = false
 	payload := map[string]string{
 		"Role": d.role,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
-	// TODO: have the action be something more meaningful, probably passed in as a flag
-	action := "kube/restapi"
+	action := "kube/restapi" // placeholder
 	if synMessage, err := d.keysplitting.BuildSyn(action, payloadBytes); err != nil {
 		rerr := fmt.Errorf("error building Syn: %s", err)
 		d.logger.Error(rerr)
-		return
+		return rerr
 	} else {
 		d.Send(wsmsg.Keysplitting, synMessage)
 	}
+	return nil
 }
 
 func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
@@ -171,6 +197,37 @@ func (d *DataChannel) Receive(agentMessage wsmsg.AgentMessage) error {
 				return err
 			}
 		}
+	case wsmsg.Error:
+		var errMessage rrr.ErrorMessage
+		if err := json.Unmarshal(agentMessage.MessagePayload, &errMessage); err != nil {
+			rerr := fmt.Errorf("malformed Error message")
+			d.logger.Error(rerr)
+			return rerr
+		} else {
+			rerr := fmt.Errorf("received error from agent: %s", errMessage.Message)
+			d.logger.Error(rerr)
+
+			// Keysplitting validation errors are probably going to be mostly bzcert renewals and
+			// we don't want to break every time that happens so we need to get back on the ks train
+			// executive decision: we don't retry if we get an error on a syn aka d.handshook == false
+			if rrr.ErrorType(errMessage.Type) == rrr.KeysplittingValidationError && d.handshook {
+				d.retry++
+				d.onDeck = d.lastMessage
+
+				// In order to get back on the keysplitting train, we need to resend the syn, get the synack
+				// so that our input message handler is pointing to the right thing.
+				if err := d.sendSyn(); err != nil {
+					d.logger.Error(err)
+					return err
+				} else {
+					return rerr
+				}
+			}
+
+			d.doneChannel <- rerr.Error()
+			d.cancel()
+			return rerr
+		}
 	default:
 		rerr := fmt.Errorf("unhandled Message type: %v", agentMessage.MessageType)
 		d.logger.Error(rerr)
@@ -194,7 +251,20 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 		synAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.SynAckPayload)
 		action = synAckPayload.Action
 		actionResponsePayload = synAckPayload.ActionResponsePayload
+
+		d.handshook = true
+
+		// If there is a message that wasn't sent because we got a keysplitting validation error on it, send it now
+		if d.onDeck.Action != "" {
+			err := d.sendKeysplittingMessage(keysplittingMessage, d.onDeck.Action, d.onDeck.ActionPayload)
+			return err
+		}
 	case ksmsg.DataAck:
+		// If we had something on deck, then this was the ack for it and we can remove it
+		d.onDeck = plgn.ActionWrapper{}
+		// If we're here, it means that the previous data message that caused the error was accepted
+		d.retry = 0
+
 		dataAckPayload := keysplittingMessage.KeysplittingPayload.(ksmsg.DataAckPayload)
 		action = dataAckPayload.Action
 		actionResponsePayload = dataAckPayload.ActionResponsePayload
@@ -207,17 +277,28 @@ func (d *DataChannel) handleKeysplittingMessage(keysplittingMessage *ksmsg.Keysp
 	// Send message to plugin's input message handler
 	if action, returnPayload, err := d.plugin.InputMessageHandler(action, actionResponsePayload); err == nil {
 
-		// Build and send response
-		if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, returnPayload); err != nil {
-			rerr := fmt.Errorf("could not build response message: %s", err)
-			d.logger.Error(rerr)
-			return rerr
-		} else {
-			d.Send(wsmsg.Keysplitting, respKSMessage)
-			return nil
+		// We need to know the last message for invisible response to keysplitting validation errors
+		d.lastMessage = plgn.ActionWrapper{
+			Action:        action,
+			ActionPayload: returnPayload,
 		}
+
+		return d.sendKeysplittingMessage(keysplittingMessage, action, returnPayload)
+
 	} else {
 		d.logger.Error(err)
 		return err
+	}
+}
+
+func (d *DataChannel) sendKeysplittingMessage(keysplittingMessage *ksmsg.KeysplittingMessage, action string, payload []byte) error {
+	// Build and send response
+	if respKSMessage, err := d.keysplitting.BuildResponse(keysplittingMessage, action, payload); err != nil {
+		rerr := fmt.Errorf("could not build response message: %s", err)
+		d.logger.Error(rerr)
+		return rerr
+	} else {
+		d.Send(wsmsg.Keysplitting, respKSMessage)
+		return nil
 	}
 }

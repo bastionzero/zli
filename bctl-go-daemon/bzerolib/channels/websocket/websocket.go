@@ -67,10 +67,13 @@ type Websocket struct {
 	hubEndpoint string
 	params      map[string]string
 	headers     map[string]string
+
+	ctx context.Context
 }
 
 // Constructor to create a new common websocket client object that can be shared by the daemon and server
-func NewWebsocket(logger *lggr.Logger,
+func NewWebsocket(ctx context.Context,
+	logger *lggr.Logger,
 	serviceUrl string,
 	hubEndpoint string,
 	params map[string]string,
@@ -78,8 +81,6 @@ func NewWebsocket(logger *lggr.Logger,
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error),
 	autoReconnect bool,
 	getChallenge bool) (*Websocket, error) {
-
-	ctx := context.TODO() // TODO: get this from parent channel
 
 	ret := Websocket{
 		logger:              logger,
@@ -93,27 +94,16 @@ func NewWebsocket(logger *lggr.Logger,
 		hubEndpoint:         hubEndpoint,
 		params:              params,
 		headers:             headers,
+		ctx:                 ctx,
 	}
 
 	ret.Connect()
 
-	// Listener for any outgoing messages
+	// Listener for any incoming messages
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
-				return
-			case msg := <-ret.OutputChannel:
-				ret.Send(msg)
-			}
-		}
-	}()
-
-	// Set up our listener to alert on the channel when we get a message
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
+			case <-ret.ctx.Done():
 				return
 			default:
 				if err := ret.Receive(); err != nil {
@@ -125,6 +115,20 @@ func NewWebsocket(logger *lggr.Logger,
 		}
 	}()
 	return &ret, nil
+}
+
+func (w *Websocket) subscribeToOutputChannel() {
+	// Listener for any messages that need to be sent
+	go func() {
+		for {
+			select {
+			case <-w.ctx.Done():
+				return
+			case msg := <-w.OutputChannel:
+				w.Send(msg)
+			}
+		}
+	}()
 }
 
 // Returns error on websocket closed
@@ -164,10 +168,15 @@ func (w *Websocket) Receive() error {
 			// push to channel
 			if wrappedMessage.Type != signalRTypeNumber {
 				msg := fmt.Sprintf("Ignoring SignalR message with type %v", wrappedMessage.Type)
-				w.logger.Debug(msg)
+				w.logger.Trace(msg)
 			} else if len(wrappedMessage.Arguments) != 0 {
 				if wrappedMessage.Target == "CloseConnection" {
 					return errors.New("closing message received; websocket closed")
+				} else if wrappedMessage.Target == "ReadyBastionToClient" {
+					w.subscribeToOutputChannel()
+					break
+				} else {
+					w.subscribeToOutputChannel()
 				}
 				w.InputChannel <- wrappedMessage.Arguments[0]
 			}
@@ -189,7 +198,9 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	// Select target
 	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
 	if err != nil {
-		return fmt.Errorf("error in selecting SignalR Endpoint target name: %s", err)
+		rerr := fmt.Errorf("error in selecting SignalR Endpoint target name: %s", err)
+		w.logger.Error(rerr)
+		return rerr
 	}
 
 	msg := fmt.Sprintf("Sending %s message to the Bastion", target)

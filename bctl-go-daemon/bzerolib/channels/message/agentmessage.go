@@ -29,6 +29,6 @@ const (
 	Error MessageType = "error"
 
 	// For the control channel
-	NewDatachannel MessageType = "newDatachannel" // Can we make this into a single word?
+	NewDatachannel MessageType = "newDatachannel" // TODO: Can we make this into a single word?
 	HealthCheck    MessageType = "healthcheck"
 )

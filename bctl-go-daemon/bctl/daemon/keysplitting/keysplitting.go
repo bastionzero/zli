@@ -15,11 +15,6 @@ import (
 
 const (
 	schemaVersion = "1.0"
-
-	// Config is in json
-	// keysplittingConfigName  = "keySplitting"
-	// tokenConfigName         = "tokenSet"
-	// currentIdTokenFieldName = "id_token"
 )
 
 type Config struct {
@@ -59,7 +54,7 @@ type Keysplitting struct {
 	// daemon variables
 	targetId   string
 	configPath string
-	bzcertHash string // Might not need this because we should be checking config everytime
+	bzcertHash string
 }
 
 func NewKeysplitting(targetId string, configPath string) (IKeysplitting, error) {
@@ -154,12 +149,6 @@ func (k *Keysplitting) BuildSyn(action string, payload []byte) (ksmsg.Keysplitti
 		} else {
 			return ksmsg.KeysplittingMessage{}, fmt.Errorf("could not hash BZ Certificate")
 		}
-
-		// if hashBytes, ok := util.HashPayload(bzCert); !ok {
-		// 	return ksmsg.KeysplittingMessage{}, fmt.Errorf("could not hash BZ Certificate")
-		// } else {
-		// 	k.bzcertHash = base64.StdEncoding.EncodeToString(hashBytes)
-		// }
 	}
 
 	// Build the keysplitting message

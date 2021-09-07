@@ -65,7 +65,9 @@ func NewControlChannel(logger *lggr.Logger,
 	msg := fmt.Sprintf("{serviceURL: %v, hubEndpoint: %v, params: %v, headers: %v}", serviceUrl, hubEndpoint, params, headers)
 	logger.Info(msg)
 
-	wsClient, err := ws.NewWebsocket(subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, true)
+	ctx := context.TODO()
+
+	wsClient, err := ws.NewWebsocket(ctx, subLogger, serviceUrl, hubEndpoint, params, headers, targetSelectHandler, autoReconnect, true)
 	if err != nil {
 		return &ControlChannel{}, err
 	}
