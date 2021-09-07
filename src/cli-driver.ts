@@ -191,7 +191,7 @@ export class CliDriver
             .middleware(async (argv) => {
                 if(!includes(this.oauthCommands, argv._[0]))
                     return;
-                await checkVersionMiddleware(this.logger);
+                await checkVersionMiddleware(this.configService, this.logger);
             })
             .middleware(async (argv) => {
                 if(!includes(this.oauthCommands, argv._[0]))

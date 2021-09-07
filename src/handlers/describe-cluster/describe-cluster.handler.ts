@@ -4,6 +4,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { ClusterDetails } from '../../services/kube/kube.types';
+import { getTableOfDescribeCluster } from '../../utils';
 
 
 export async function describeClusterHandler(
@@ -40,25 +41,33 @@ export async function describeClusterHandler(
     const policyService = new PolicyQueryService(configService, logger);
     const clusterPolicyInfo = await policyService.GetAllPoliciesForClusterId(clusterSummary.id);
 
-    // Build our policies string
-    let policiesString = '';
-    for (const policy of clusterPolicyInfo.policies) {
-        policiesString += policy.name + ',';
+    if (clusterPolicyInfo.policies.length === 0){
+        logger.info('There are no available policies for this cluster.');
+        await cleanExit(0, logger);
     }
-    if (clusterPolicyInfo.policies.length != 0) {
-        policiesString = policiesString.substring(0, policiesString.length - 1); // remove trailing ,
-    }
+    // regular table output
+    const tableString = getTableOfDescribeCluster(clusterPolicyInfo.policies, clusterSummary.targetUsers, environment.name);
+    console.log(tableString);
 
-    // Build our validUsers string
-    let validUserString = '';
-    for (const validUser of clusterSummary.targetUsers) {
-        validUserString += validUser + ',';
-    }
-    validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,
+    // // Build our policies string
+    // let policiesString = '';
+    // for (const policy of clusterPolicyInfo.policies) {
+    //     policiesString += policy.name + ',';
+    // }
+    // if (clusterPolicyInfo.policies.length != 0) {
+    //     policiesString = policiesString.substring(0, policiesString.length - 1); // remove trailing ,
+    // }
 
-    // Now we can print all the information we know
-    logger.info(`Cluster information for: ${clusterName}`);
-    logger.info(`    - Environment Name: ${environment.name}`);
-    logger.info(`    - Policies using this cluster: ${policiesString}`);
-    logger.info(`    - Valid Cluster Users: ${validUserString}`);
+    // // Build our validUsers string
+    // let validUserString = '';
+    // for (const validUser of clusterSummary.targetUsers) {
+    //     validUserString += validUser + ',';
+    // }
+    // validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,
+
+    // // Now we can print all the information we know
+    // logger.info(`Cluster information for: ${clusterName}`);
+    // logger.info(`    - Environment Name: ${environment.name}`);
+    // logger.info(`    - Policies using this cluster: ${policiesString}`);
+    // logger.info(`    - Valid Cluster Users: ${validUserString}`);
 }
