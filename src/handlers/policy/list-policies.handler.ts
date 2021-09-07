@@ -9,7 +9,7 @@ import { TargetSummary } from '../../services/common.types';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { GroupsService } from '../../services/groups/groups.service';
 import { GroupSummary } from '../../services/groups/groups.types';
-import { ClusterSummary } from '../../services/kube/kube.types';
+import { ClusterDetails } from '../../services/kube/kube.types';
 import { PolicyService } from '../../services/policy/policy.service';
 import { UserService } from '../../services/user/user.service';
 import { UserSummary } from '../../services/user/user.types';
@@ -20,7 +20,7 @@ export async function listPoliciesHandler(
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,
     dynamicAccessConfigs: Promise<TargetSummary[]>,
-    clusterTargets: Promise<ClusterSummary[]>,
+    clusterTargets: Promise<ClusterDetails[]>,
     environments: Promise<EnvironmentDetails[]>
 ){
     const policyService = new PolicyService(configService, logger);

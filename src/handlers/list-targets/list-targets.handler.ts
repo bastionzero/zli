@@ -10,7 +10,7 @@ import { includes, map, uniq } from 'lodash';
 import { ConfigService } from '../../services/config/config.service';
 import { TargetSummary, TargetType, TargetUser, TargetStatus } from '../../services/common.types';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
-import { ClusterSummary } from '../../services/kube/kube.types';
+import { ClusterDetails } from '../../services/kube/kube.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { VerbType } from '../../services/policy-query/policy-query.types';
 
@@ -21,7 +21,7 @@ export async function listTargetsHandler(
     argv: any,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
-    clusters: Promise<ClusterSummary[]>,
+    clusters: Promise<ClusterDetails[]>,
     envsPassed: Promise<EnvironmentDetails[]>) {
 
     const clusterTargets = (await clusters).map<TargetSummary>((cluster) => {

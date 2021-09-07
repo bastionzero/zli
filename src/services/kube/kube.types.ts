@@ -16,13 +16,13 @@ export enum KubeClusterStatus {
     Error = 'Error'
 }
 
-// export interface ClusterSummary
-// {
-//     id: string;
-//     name: string;
-//     status: KubeClusterStatus;
-//     environmentId: string;
-//     targetUsers: string[];
-//     lastAgentUpdate: Date;
-//     agentVersion: string;
-// }
+export interface ClusterDetails
+{
+    id: string;
+    name: string;
+    status: KubeClusterStatus;
+    environmentId: string;
+    targetUsers: string[];
+    lastAgentUpdate: Date;
+    agentVersion: string;
+}

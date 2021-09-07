@@ -1,3 +1,5 @@
+import { TargetStatus } from "../common.types";
+
 export interface SsmTargetSummary {
     id: string;
     name: string;

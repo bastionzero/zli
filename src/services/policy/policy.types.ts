@@ -54,10 +54,10 @@ export interface KubernetesPolicyClusterUsers {
 }
 
 
-interface PolicyMetadata {
+export interface PolicyMetadata {
     description: string;
 }
 
-interface PolicyEnvironment {
+export interface PolicyEnvironment {
     id: string;
 }

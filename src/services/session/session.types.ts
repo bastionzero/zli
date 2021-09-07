@@ -1,3 +1,6 @@
+import { TargetType } from "../common.types";
+import { ConnectionSummary } from "../connection/connection.types";
+
 export interface SessionDetails {
     id: string;
     displayName: string;

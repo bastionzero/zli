@@ -1,5 +1,5 @@
+import { IdP } from '../../services/common.types';
 import yargs from 'yargs';
-import { IdP } from '../../types';
 
 export function loginCmdBuilder (yargs : yargs.Argv<{}>) :
 yargs.Argv<{

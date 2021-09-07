@@ -3,20 +3,20 @@ import { ConfigService } from '../../services/config/config.service';
 import { cleanExit } from '../clean-exit.handler';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
-import { ClusterSummary } from '../../services/kube/kube.types';
+import { ClusterDetails } from '../../services/kube/kube.types';
 
 
 export async function describeClusterHandler(
     clusterName: string,
     configService: ConfigService,
     logger: Logger,
-    clusterTargets: Promise<ClusterSummary[]>,
+    clusterTargets: Promise<ClusterDetails[]>,
     envs: Promise<EnvironmentDetails[]>
 ) {
     // First determine if the name passed is valid
-    let clusterSummary: ClusterSummary = null;
+    let clusterSummary: ClusterDetails = null;
     for (const cluster of await clusterTargets) {
-        if (cluster.clusterName == clusterName) {
+        if (cluster.name == clusterName) {
             clusterSummary = cluster;
             break;
         }

@@ -1,3 +1,5 @@
+import { TargetType } from "../common.types";
+
 export interface CreateConnectionRequest {
     sessionId: string;
     serverId: string;

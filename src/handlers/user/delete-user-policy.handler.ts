@@ -1,12 +1,12 @@
 import { KubeService } from '../../services/kube/kube.service';
-import { ClusterSummary } from '../../services/kube/kube.types';
+import { ClusterDetails } from '../../services/kube/kube.types';
 import { PolicyService } from '../../services/policy/policy.service';
 import { PolicyType } from '../../services/policy/policy.types';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 
-export async function deleteUserFromPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger) {
+export async function deleteUserFromPolicyHandler(userEmail: string, policyName: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger) {
     // First ensure we can lookup the user
     const kubeService = new KubeService(configService, logger);
     const userInfo = await kubeService.GetUserInfoFromEmail(userEmail);

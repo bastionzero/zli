@@ -8,7 +8,7 @@ import { TargetSummary, TargetType } from '../services/common.types';
 import { DynamicAccessConfigService } from '../services/dynamic-access-config/dynamic-access-config.service';
 import { EnvironmentService } from '../services/environment/environment.service';
 import { KubeService } from '../services/kube/kube.service';
-import { ClusterSummary } from '../services/kube/kube.types';
+import { ClusterDetails } from '../services/kube/kube.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
 
@@ -55,7 +55,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
 
     const clusterTargets = kubeService.ListKubeClusters()
         .then(result =>
-            result.map<ClusterSummary>((cluster, _index, _array) => {
+            result.map<ClusterDetails>((cluster, _index, _array) => {
                 return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate};
             })
         );

@@ -3,7 +3,7 @@ import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
 import { GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, GetUserInfoResponse, GetUserInfoRequest } from './kube.mesagges';
-import { ClusterSummary } from './kube.types';
+import { ClusterDetails, ClusterSummary } from './kube.types';
 
 export class KubeService extends HttpService
 {

@@ -1,3 +1,5 @@
+import { ConnectionsToOpen, SessionDetails } from "./session.types";
+
 export interface ListSessionsResponse {
     sessions: SessionDetails[];
 }

@@ -62,7 +62,7 @@ import { autoDiscoveryScriptCommandBuilder } from './handlers/autodiscovery-scri
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
-import { ClusterSummary } from './services/kube/kube.types';
+import { ClusterDetails } from './services/kube/kube.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/policy/policy.types';
 
@@ -77,7 +77,7 @@ export class CliDriver
 
     private ssmTargets: Promise<TargetSummary[]>;
     private dynamicConfigs: Promise<TargetSummary[]>;
-    private clusterTargets: Promise<ClusterSummary[]>;
+    private clusterTargets: Promise<ClusterDetails[]>;
     private envs: Promise<EnvironmentDetails[]>;
 
     // use the following to shortcut middleware according to command

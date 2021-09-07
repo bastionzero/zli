@@ -1,13 +1,13 @@
 import path from 'path';
 import { killDaemon } from '../../services/kube/kube.service';
-import { ClusterSummary, KubeClusterStatus } from '../../services/kube/kube.types';
+import { ClusterDetails, KubeClusterStatus } from '../../services/kube/kube.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 const { spawn } = require('child_process');
 
-export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterSummary[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
+export async function startKubeDaemonHandler(argv: any, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger) {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
     if (clusterTarget.status != KubeClusterStatus.Online) {
@@ -137,7 +137,7 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
     }
 }
 
-async function getClusterInfoFromName(clusterTargets: ClusterSummary[], clusterName: string, logger: Logger): Promise<ClusterSummary> {
+async function getClusterInfoFromName(clusterTargets: ClusterDetails[], clusterName: string, logger: Logger): Promise<ClusterDetails> {
     for (const clusterTarget of clusterTargets) {
         if (clusterTarget.name == clusterName) {
             return clusterTarget;
