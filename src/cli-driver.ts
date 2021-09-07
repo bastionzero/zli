@@ -828,7 +828,8 @@ export class CliDriver
                 return yargs.example('$0 kube -- get pods', '');
              }, async (argv: any) => {
                 // This expects that the kube command will go after the --
-                await bctlHandler(this.configService, this.logger, argv._);
+                let listOfCommands = argv._.slice(1) // this removes the 'kube' part of 'zli kube -- ...'
+                await bctlHandler(this.configService, this.logger, listOfCommands);
             })
             .option('configName', {type: 'string', choices: ['prod', 'stage', 'dev'], default: this.envMap['configName'], hidden: true})
             .option('debug', {type: 'boolean', default: false, describe: 'Flag to show debug logs'})

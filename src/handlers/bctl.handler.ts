@@ -26,14 +26,14 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
     const logId = uuidv4();
 
     // Now build our token
-    const kubeArgsString = listOfCommands.slice(1).join(' ');
+    const kubeArgsString = listOfCommands.join(' ');
     const formattedToken = `${token}zli kube ${kubeArgsString}++++${logId}`;
 
     // Add the token to the args
     let kubeArgs: string[] = ['--token', formattedToken];
 
     // Then add the extract the args
-    kubeArgs = kubeArgs.concat(listOfCommands.slice(1));
+    kubeArgs = kubeArgs.concat(listOfCommands);
 
     const kubeCommandProcess = spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
 
