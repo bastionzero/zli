@@ -88,7 +88,6 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
             };
 
             const daemonProcess = await spawn(finalDaemonPath, args, options);
-            daemonProcess.unref();
 
             // Now save the Pid so we can kill the process next time we start it
             kubeConfig['localPid'] = daemonProcess.pid;
