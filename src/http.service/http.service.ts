@@ -50,8 +50,6 @@ import FormData from 'form-data';
 import { Logger } from '../../src/logger.service/logger';
 import { cleanExit } from '../../src/handlers/clean-exit.handler';
 
-const fs = require('fs');
-
 export class HttpService
 {
     // ref for got: https://github.com/sindresorhus/got
