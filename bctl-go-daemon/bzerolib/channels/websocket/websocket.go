@@ -42,12 +42,12 @@ type IWebsocket interface {
 
 // This will be the client that we use to store our websocket connection
 type Websocket struct {
-	Client  *websocket.Conn
+	client  *websocket.Conn
 	logger  *lggr.Logger
 	IsReady bool
 
 	// Ref: https://github.com/gorilla/websocket/issues/119#issuecomment-198710015
-	SocketLock sync.Mutex
+	socketLock sync.Mutex
 
 	// These are the channels for recieving and sending messages and done
 	InputChan  chan wsmsg.AgentMessage
@@ -134,7 +134,7 @@ func (w *Websocket) subscribeToOutputChannel() {
 // Returns error on websocket closed
 func (w *Websocket) Receive() error {
 	// Read incoming message(s)
-	_, rawMessage, err := w.Client.ReadMessage()
+	_, rawMessage, err := w.client.ReadMessage()
 
 	if err != nil {
 		w.IsReady = false
@@ -192,8 +192,8 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 	}
 
 	// Lock our mutex and setup the unlock
-	w.SocketLock.Lock()
-	defer w.SocketLock.Unlock()
+	w.socketLock.Lock()
+	defer w.socketLock.Unlock()
 
 	// Select target
 	target, err := w.targetSelectHandler(agentMessage) // Agent and Daemon specify their own function to choose target
@@ -216,7 +216,7 @@ func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
 		return fmt.Errorf("error marshalling outgoing SignalR Message: %v", signalRMessage)
 	} else {
 		// Write our message to websocket
-		if err = w.Client.WriteMessage(websocket.TextMessage, append(msgBytes, signalRMessageTerminatorByte)); err != nil {
+		if err = w.client.WriteMessage(websocket.TextMessage, append(msgBytes, signalRMessageTerminatorByte)); err != nil {
 			return err
 		} else {
 			return nil
@@ -317,7 +317,7 @@ func (w *Websocket) Connect() {
 		w.logger.Info(msg)
 
 		var err error
-		w.Client, _, err = websocket.DefaultDialer.Dial(
+		w.client, _, err = websocket.DefaultDialer.Dial(
 			websocketUrl.String(),
 			http.Header{"Authorization": []string{w.headers["Authorization"]}})
 		if err != nil {
@@ -325,9 +325,9 @@ func (w *Websocket) Connect() {
 		} else {
 			// Define our protocol and version
 			// Ref: https://stackoverflow.com/questions/65214787/signalr-websockets-and-go
-			if err := w.Client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), signalRMessageTerminatorByte)); err != nil {
+			if err := w.client.WriteMessage(websocket.TextMessage, append([]byte(`{"protocol": "json","version": 1}`), signalRMessageTerminatorByte)); err != nil {
 				w.logger.Info("Error when trying to agree on version for SignalR!")
-				w.Client.Close()
+				w.client.Close()
 			} else {
 				w.IsReady = true
 				break
