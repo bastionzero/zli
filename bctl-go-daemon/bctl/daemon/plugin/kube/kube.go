@@ -123,7 +123,7 @@ func NewKubeDaemonPlugin(ctx context.Context,
 }
 
 func (k *KubeDaemonPlugin) handleStreamMessage(smessage smsg.StreamMessage) error {
-	if act, ok := k.actions[smessage.RequestId]; ok {
+	if act, ok := k.getActionsMap(smessage.RequestId); ok {
 		act.PushStreamResponse(smessage)
 		return nil
 	} else {
@@ -151,7 +151,7 @@ func (k *KubeDaemonPlugin) InputMessageHandler(action string, actionPayload []by
 			k.logger.Error(rerr)
 			return "", []byte{}, rerr
 		} else {
-			if act, ok := k.actions[d.RequestId]; ok {
+			if act, ok := k.getActionsMap(d.RequestId); ok {
 				wrappedAction := plgn.ActionWrapper{
 					Action:        action,
 					ActionPayload: actionPayload,
@@ -274,4 +274,17 @@ func (k *KubeDaemonPlugin) updateActionsMap(newAction IKubeDaemonAction, id stri
 	k.mapLock.Lock()
 	k.actions[id] = newAction
 	k.mapLock.Unlock()
+}
+
+// func (k *KubeDaemonPlugin) deleteActionsMap(rid string) {
+// 	k.mapLock.Lock()
+// 	delete(k.actions, rid)
+// 	k.mapLock.Unlock()
+// }
+
+func (k *KubeDaemonPlugin) getActionsMap(rid string) (IKubeDaemonAction, bool) {
+	k.mapLock.Lock()
+	defer k.mapLock.Unlock()
+	act, ok := k.actions[rid]
+	return act, ok
 }
