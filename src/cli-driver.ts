@@ -271,7 +271,7 @@ export class CliDriver
                     if (argv.tunnelString) {
                         const [connectUser, connectCluster] = argv.tunnelString.split('@');
 
-                        await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger);
+                        await startKubeDaemonHandler(argv, connectUser, connectCluster, this.clusterTargets, this.configService, this.logger, this.loggerConfigService);
                     } else {
                         await kubeStatusHandler(this.configService, this.logger);
                     }

@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	dc "bastionzero.com/bctl/v1/bctl/daemon/datachannel"
 	wsmsg "bastionzero.com/bctl/v1/bzerolib/channels/message"
@@ -16,13 +15,13 @@ import (
 var (
 	sessionId, authHeader, assumeRole, assumeClusterId, serviceUrl           string
 	daemonPort, localhostToken, environmentId, certPath, keyPath, configPath string
+	logPath                                                                  string
 )
 
 const (
 	hubEndpoint   = "/api/v1/hub/kube"
 	autoReconnect = true
 	version       = "1.0.0" // TODO: Change this?
-	logFileName   = "bctl-daemon.log"
 )
 
 func main() {
@@ -104,12 +103,14 @@ func parseFlags() error {
 	flag.StringVar(&certPath, "certPath", "", "Path to cert to use for our localhost server")
 	flag.StringVar(&keyPath, "keyPath", "", "Path to key to use for our localhost server")
 	flag.StringVar(&configPath, "configPath", "", "Local storage path to zli config")
+	flag.StringVar(&logPath, "logPath", "", "Path to log file for daemon")
 
 	flag.Parse()
 
 	// Check we have all required flags
 	if sessionId == "" || authHeader == "" || assumeRole == "" || assumeClusterId == "" || serviceUrl == "" ||
-		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" {
+		daemonPort == "" || localhostToken == "" || environmentId == "" || certPath == "" || keyPath == "" ||
+		logPath == "" || configPath == "" {
 		return fmt.Errorf("missing flags")
 	} else {
 		return nil
@@ -117,5 +118,5 @@ func parseFlags() error {
 }
 
 func getLogFilePath() string {
-	return filepath.Join(filepath.Dir(configPath), logFileName)
+	return logPath
 }
