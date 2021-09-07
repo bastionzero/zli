@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const execPromise = util.promisify(exec)
 
 
-export async function bctlHandler(configService: ConfigService, logger: Logger) {
+export async function bctlHandler(configService: ConfigService, logger: Logger, listOfCommands: string[]) {
     // Check if daemon is even running
     const kubeConfig = configService.getKubeConfig();
     if (kubeConfig['localPid'] == null) {
@@ -26,15 +26,14 @@ export async function bctlHandler(configService: ConfigService, logger: Logger) 
     const logId = uuidv4();
 
     // Now build our token
-    const kubeArgsRaw = process.argv.splice(3);
-    const kubeArgsString = kubeArgsRaw.join(' ');
+    const kubeArgsString = listOfCommands.join(' ');
     const formattedToken = `${token}zli kube ${kubeArgsString}++++${logId}`;
 
     // Add the token to the args
     let kubeArgs: string[] = ['--token', formattedToken];
 
     // Then add the extract the args
-    kubeArgs = kubeArgs.concat(kubeArgsRaw);
+    kubeArgs = kubeArgs.concat(listOfCommands);
 
     const kubeCommandProcess = spawn('kubectl', kubeArgs, { stdio: [process.stdin, process.stdout, process.stderr] });
 
