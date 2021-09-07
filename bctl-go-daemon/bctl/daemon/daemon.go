@@ -31,7 +31,7 @@ func main() {
 	// Setup our loggers
 	// TODO: Pass in debug level as flag
 	// TODO: Pass in stdout output as flag?
-	logger, err := lggr.NewLogger(lggr.Debug, getLogFilePath(), true)
+	logger, err := lggr.NewLogger(lggr.Debug, getLogFilePath())
 	if err != nil {
 		os.Exit(1)
 	}

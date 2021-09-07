@@ -25,7 +25,7 @@ type Logger struct {
 	logger zerolog.Logger
 }
 
-func NewLogger(debugLevel DebugLevel, logFilePath string, stdout bool) (*Logger, error) {
+func NewLogger(debugLevel DebugLevel, logFilePath string) (*Logger, error) {
 	// Let's us display stack info on errors
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	zerolog.SetGlobalLevel(debugLevel)
@@ -37,18 +37,12 @@ func NewLogger(debugLevel DebugLevel, logFilePath string, stdout bool) (*Logger,
 		return &Logger{}, err
 	}
 
-	if stdout {
-		consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
-		multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
+	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout}
+	multi := zerolog.MultiLevelWriter(consoleWriter)
 
-		return &Logger{
-			logger: zerolog.New(multi).With().Timestamp().Logger(),
-		}, nil
-	} else {
-		return &Logger{
-			logger: zerolog.New(logFile).With().Timestamp().Logger(),
-		}, nil
-	}
+	return &Logger{
+		logger: zerolog.New(multi).With().Logger(),
+	}, nil
 }
 
 func (l *Logger) AddAgentVersion(version string) {

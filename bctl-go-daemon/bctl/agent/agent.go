@@ -39,7 +39,7 @@ func main() {
 	agentVersion := getAgentVersion()
 
 	// setup our loggers
-	logger, err := lggr.NewLogger(lggr.Debug, logFilePath, true)
+	logger, err := lggr.NewLogger(lggr.Debug, logFilePath)
 	if err != nil {
 		return
 	}
