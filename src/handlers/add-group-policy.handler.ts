@@ -37,7 +37,7 @@ export async function addGroupToPolicyHandler(groupName: string, policyName: str
     }
 
     // If this group exists already
-    const group = groups.find(g => g.name == groupSummary.name);
+    const group = policy.groups.find(g => g.name == groupSummary.name);
     if (group) {
         logger.error(`Group ${groupSummary.name} exists already for policy: ${policyName}`);
         await cleanExit(1, logger);
