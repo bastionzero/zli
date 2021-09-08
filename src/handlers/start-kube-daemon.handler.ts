@@ -113,14 +113,14 @@ export async function startKubeDaemonHandler(argv: any, assumeUser: string, assu
             process.on('SIGINT', () => {
                 // CNT+C Sent from the user, kill the daemon process, which will trigger an exit
                 if (process.platform === 'linux') {
-                    spawn('pkill', ['-s', kubeConfig['localPid'].toString()], {
+                    spawn('pkill', ['-s', daemonProcess.pid], {
                         cwd: process.cwd(),
                         shell: true,
                         detached: true,
                         stdio: 'inherit'
                     });
                 } else {
-                    spawn('kill', ['-9', kubeConfig['localPid'].toString()], {
+                    spawn('kill', ['-9', daemonProcess.pid], {
                         cwd: process.cwd(),
                         shell: true,
                         detached: true,

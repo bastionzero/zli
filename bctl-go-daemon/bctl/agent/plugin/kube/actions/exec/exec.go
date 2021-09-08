@@ -118,9 +118,6 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 }
 
 func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (string, []byte, error) {
-	defer func() {
-		e.closed = true
-	}()
 	// Now open up our local exec session
 	// Create the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -180,6 +177,8 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			rerr := fmt.Errorf("error in SPDY stream: %s", err)
 			e.logger.Error(rerr)
 		}
+
+		e.closed = true
 	}()
 
 	return string(StartExec), []byte{}, nil
