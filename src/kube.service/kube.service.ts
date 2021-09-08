@@ -9,8 +9,10 @@ export async function killDaemon(configService: ConfigService) {
         // First try to kill the process
         if (process.platform === 'win32') {
             spawn('taskkill', ['/F', '/T', '/PID', kubeConfig['localPid'].toString()]);
+        } else if (process.platform === 'linux') {
+            spawn('pkill', ['-s', kubeConfig['localPid'].toString()]);
         } else {
-            spawn('pkill', ['-P', kubeConfig['localPid'].toString()]);
+            spawn('kill', ['-9', kubeConfig['localPid'].toString()]);
         }
 
         // Update the config
