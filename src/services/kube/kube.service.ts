@@ -14,7 +14,7 @@ export class KubeService extends HttpService
 
     public getKubeUnregisteredAgentYaml(
         clusterName: string,
-        labels: string,
+        labels: { [index: string ]: string },
         namespace: string,
         environmentId: string,
     ): Promise<GetKubeUnregisteredAgentYamlResponse>
@@ -36,11 +36,11 @@ export class KubeService extends HttpService
             email: email,
         };
 
-        return this.FormPostWithException('get-user', request);
+        return this.Post('get-user', request);
     }
 
     public ListKubeClusters(): Promise<ClusterSummary[]> {
-        return this.Post('list', {});
+        return this.Get('list', {});
     }
 }
 
@@ -50,10 +50,20 @@ export async function killDaemon(configService: ConfigService) {
     // then kill the daemon
     if (kubeConfig['localPid'] != null) {
         // First try to kill the process
-        spawn('pkill', ['-P', kubeConfig['localPid'].toString()]);
+        if (process.platform === 'win32') {
+            spawn('taskkill', ['/F', '/T', '/PID', kubeConfig['localPid'].toString()]);
+        } else if (process.platform === 'linux') {
+            spawn('pkill', ['-s', kubeConfig['localPid'].toString()]);
+        } else {
+            spawn('kill', ['-9', kubeConfig['localPid'].toString()]);
+        }
 
         // Update the config
         kubeConfig['localPid'] = null;
         configService.setKubeConfig(kubeConfig);
+
+        return true;
+    } else {
+        return false;
     }
 }

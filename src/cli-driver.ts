@@ -62,9 +62,9 @@ import { autoDiscoveryScriptCommandBuilder } from './handlers/autodiscovery-scri
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
-import { ClusterDetails } from './services/kube/kube.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/policy/policy.types';
+import { ClusterDetails } from './services/kube/kube.types';
 
 export class CliDriver
 {

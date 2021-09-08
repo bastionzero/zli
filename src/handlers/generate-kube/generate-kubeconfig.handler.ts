@@ -1,7 +1,6 @@
-import util from 'util';
-
-import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
+import { Logger } from '../../services/logger/logger.service';
+import util from 'util';
 
 const path = require('path');
 const fs = require('fs');

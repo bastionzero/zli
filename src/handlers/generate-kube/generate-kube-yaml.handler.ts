@@ -1,9 +1,8 @@
-import util from 'util';
-
-import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
-import { cleanExit } from '../clean-exit.handler';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
+import { Logger } from '../../services/logger/logger.service';
+import util from 'util';
+import { cleanExit } from '../clean-exit.handler';
 import { KubeService } from '../../services/kube/kube.service';
 
 const fs = require('fs');
