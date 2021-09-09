@@ -48,26 +48,4 @@ export async function describeClusterHandler(
     // regular table output
     const tableString = getTableOfDescribeCluster(clusterPolicyInfo.policies, clusterSummary.targetUsers, environment.name);
     console.log(tableString);
-
-    // // Build our policies string
-    // let policiesString = '';
-    // for (const policy of clusterPolicyInfo.policies) {
-    //     policiesString += policy.name + ',';
-    // }
-    // if (clusterPolicyInfo.policies.length != 0) {
-    //     policiesString = policiesString.substring(0, policiesString.length - 1); // remove trailing ,
-    // }
-
-    // // Build our validUsers string
-    // let validUserString = '';
-    // for (const validUser of clusterSummary.targetUsers) {
-    //     validUserString += validUser + ',';
-    // }
-    // validUserString = validUserString.substring(0, validUserString.length - 1); // remove trailing ,
-
-    // // Now we can print all the information we know
-    // logger.info(`Cluster information for: ${clusterName}`);
-    // logger.info(`    - Environment Name: ${environment.name}`);
-    // logger.info(`    - Policies using this cluster: ${policiesString}`);
-    // logger.info(`    - Valid Cluster Users: ${validUserString}`);
 }
