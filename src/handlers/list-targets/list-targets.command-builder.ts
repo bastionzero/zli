@@ -71,7 +71,7 @@ export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: 
                 alias: 'j',
             }
         )
-        .example('lt -t ssm', 'List all SSM targets only')
-        .example('lt -i', 'List all targets and show unique ids')
-        .example('lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
+        .example('$0 lt -t ssm', 'List all SSM targets only')
+        .example('$0 lt -i', 'List all targets and show unique ids')
+        .example('$0 lt -e prod --json --silent', 'List all targets targets in prod, output as json, pipeable');
 }

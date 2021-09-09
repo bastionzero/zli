@@ -7,5 +7,5 @@ export function describeClusterCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<de
         .positional('clusterName', {
             type: 'string',
         })
-        .example('status test-cluster', '');
+        .example('$0 describe-cluster test-cluster', '');
 }

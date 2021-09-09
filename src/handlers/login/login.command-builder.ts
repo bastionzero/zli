@@ -19,6 +19,6 @@ export function loginCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<loginArgs>
                 alias: 'm'
             }
         )
-        .example('login Google', 'Login with Google')
-        .example('login Microsoft --mfa 123456', 'Login with Microsoft and enter MFA');
+        .example('$0 login Google', 'Login with Google')
+        .example('$0 login Microsoft --mfa 123456', 'Login with Microsoft and enter MFA');
 }

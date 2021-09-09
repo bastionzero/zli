@@ -30,5 +30,5 @@ export function autoDiscoveryScriptCommandBuilder(yargs : yargs.Argv<{}>) : yarg
                 alias: 'o'
             }
         )
-        .example('autodiscovery-script centos sample-target-name Default', '');
+        .example('$0 autodiscovery-script centos sample-target-name Default', '');
 }

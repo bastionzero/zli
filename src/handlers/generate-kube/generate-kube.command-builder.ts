@@ -39,7 +39,7 @@ export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<gener
             type: 'string',
             default: null
         })
-        .example('generate kubeYaml testcluster', '')
-        .example('generate kubeConfig', '')
-        .example('generate kubeYaml --labels testkey:testvalue', '');
+        .example('$0 generate kubeYaml testcluster', '')
+        .example('$0 generate kubeConfig', '')
+        .example('$0 generate kubeYaml --labels testkey:testvalue', '');
 }

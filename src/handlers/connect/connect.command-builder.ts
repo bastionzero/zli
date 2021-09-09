@@ -17,6 +17,6 @@ export function connectCmdBuilder (yargs : yargs.Argv<{}>,targetTypeChoices : st
                 alias: 't'
             },
         )
-        .example('connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
-        .example('connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config');
+        .example('$0 connect ssm-user@neat-target', 'SSM connect example, uniquely named ssm target')
+        .example('$0 connect --targetType dynamic ssm-user@my-dat-config', 'DAT connect example with a DAT configuration whose name is my-dat-config');
 }

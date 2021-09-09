@@ -22,5 +22,5 @@ export function policyCmdBuilder (yargs : yargs.Argv<{}>, policyTypeChoices : st
                 alias: 'j',
             }
         )
-        .example('policy --json', 'List all policies, output as json, pipeable');
+        .example('$0 policy --json', 'List all policies, output as json, pipeable');
 }

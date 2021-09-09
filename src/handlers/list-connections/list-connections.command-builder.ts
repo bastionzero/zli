@@ -13,5 +13,5 @@ export function listConnectionsCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<li
                 alias: 'j',
             }
         )
-        .example('lc --json', 'List all open zli connections, output as json, pipeable');
+        .example('$0 lc --json', 'List all open zli connections, output as json, pipeable');
 }

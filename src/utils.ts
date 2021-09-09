@@ -118,7 +118,7 @@ export function isGuid(id: string): boolean{
 export function getTableOfTargets(targets: TargetSummary[], envs: EnvironmentDetails[], showDetail: boolean = false, showGuid: boolean = false) : string
 {
     // The following constant numbers are set specifically to conform with the specified 80/132 cols term size - do not change
-    const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16;
+    const targetNameLength = max(targets.map(t => t.name.length)) + 2 || 16; // || 16 here means that when there are no targets default the length to 16
     const envNameLength = max(envs.map(e => e.name.length)) + 2 < 16 ? 16 : max(envs.map(e => e.name.length));
 
     const header: string[] = ['Type', 'Name', 'Environment'];

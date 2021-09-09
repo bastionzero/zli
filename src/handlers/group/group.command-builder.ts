@@ -50,7 +50,7 @@ export function groupCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<groupArgs> {
                 alias: 'j',
             }
         )
-        .example('group --json', 'List all groups, output as json, pipeable')
-        .example('group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
-        .example('group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
+        .example('$0 group --json', 'List all groups, output as json, pipeable')
+        .example('$0 group --add cool-policy engineering-group', 'Adds the engineering-group IDP group to cool-policy policy')
+        .example('$0 group -d cool-policy engineering-group', 'Deletes the engineering-group IDP group from the cool-policy policy');
 }
