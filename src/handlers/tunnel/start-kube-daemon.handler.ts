@@ -12,6 +12,10 @@ import yargs from 'yargs';
 import { tunnelArgs } from './tunnel.command-builder';
 const { spawn } = require('child_process');
 
+const WINDOWS_DAEMON_PATH : string = '../../../../bctl-go-daemon/bctl/daemon/daemon-windows';
+const LINUX_DAEMON_PATH : string = '../../../../bctl-go-daemon/bctl/daemon/daemon-linux';
+const MACOS_DAEMON_PATH : string = '../../../../bctl-go-daemon/bctl/daemon/daemon-macos';
+
 export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
     const clusterTarget = await getClusterInfoFromName(await clusterTargets, assumeCluster, logger);
@@ -178,15 +182,15 @@ async function copyExecutableToLocalDir(logger: Logger, configPath: string): Pro
     let daemonExecPath = undefined;
     let finalDaemonPath = undefined;
     if (process.platform === 'win32') {
-        daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-windows');
+        daemonExecPath = path.join(__dirname, WINDOWS_DAEMON_PATH);
 
         finalDaemonPath = path.join(configFileDir, 'daemon-windows.exe');
     }
     else if (process.platform === 'linux' || process.platform === 'darwin') {
         if (process.platform === 'linux') {
-            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-linux');
+            daemonExecPath = path.join(__dirname, LINUX_DAEMON_PATH);
         } else {
-            daemonExecPath = path.join(__dirname, '../../../bctl-go-daemon/bctl/daemon/daemon-macos');
+            daemonExecPath = path.join(__dirname, MACOS_DAEMON_PATH);
         }
 
         finalDaemonPath = path.join(configFileDir, 'daemon');

@@ -36,7 +36,7 @@ export class PolicyQueryService extends HttpService
             environmentId: environmentId,
         };
 
-        return this.FormPost('kube-proxy', request);
+        return this.FormPost('kube-tunnel', request);
     }
 
     public GetAllPoliciesForClusterId(

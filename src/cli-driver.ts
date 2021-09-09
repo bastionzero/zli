@@ -343,9 +343,9 @@ export class CliDriver
                 },
                 async (argv) => {
                     if (!! argv.add) {
-                        await addUserToPolicyHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
+                        await addUserToPolicyHandler(argv.idpEmail, argv.policyName, this.configService, this.logger);
                     } else if (!! argv.delete) {
-                        await deleteUserFromPolicyHandler(argv.idpEmail, argv.policyName, this.clusterTargets, this.configService, this.logger);
+                        await deleteUserFromPolicyHandler(argv.idpEmail, argv.policyName, this.configService, this.logger);
                     } else if (!(!!argv.add && !!argv.delete)) {
                         await listUsersHandler(argv, this.configService, this.logger);
                     } else {
