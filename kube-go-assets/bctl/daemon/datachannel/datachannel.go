@@ -98,15 +98,17 @@ func NewDataChannel(logger *lggr.Logger,
 						ret.logger.Error(err)
 					}
 				}()
-			case <-ret.websocket.DoneChan:
+			case message := <-ret.websocket.DoneChan:
 				// The websocket has been closed
-				msg := "Websocket has been closed, closing datachannel"
+				msg := fmt.Sprintf("Websocket has been closed, closing datachannel: %s", message)
 				ret.logger.Info(msg)
-				cancel()
 
 				// Send a message to our done channel so kubectl can display it
-				ret.doneChannel <- msg
-				return
+				ret.doneChannel <- message
+
+				// Do not return, so the user can see the error, just sleep forever
+				// We also do not cancel the context for the same reason
+				select {}
 			}
 		}
 	}()

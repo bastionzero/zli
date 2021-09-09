@@ -48,7 +48,7 @@ type Websocket struct {
 	// These are the channels for recieving and sending messages and done
 	InputChan  chan wsmsg.AgentMessage
 	OutputChan chan wsmsg.AgentMessage
-	DoneChan   chan bool
+	DoneChan   chan string
 
 	// Function for figuring out correct Target SignalR Hub
 	targetSelectHandler func(msg wsmsg.AgentMessage) (string, error)
@@ -84,7 +84,7 @@ func NewWebsocket(ctx context.Context,
 		logger:              logger,
 		InputChan:           make(chan wsmsg.AgentMessage, 200),
 		OutputChan:          make(chan wsmsg.AgentMessage, 200),
-		DoneChan:            make(chan bool),
+		DoneChan:            make(chan string),
 		targetSelectHandler: targetSelectHandler,
 		getChallenge:        getChallenge,
 		autoReconnect:       autoReconnect,
@@ -107,7 +107,7 @@ func NewWebsocket(ctx context.Context,
 			default:
 				if err := ret.Receive(); err != nil {
 					ret.logger.Error(err)
-					ret.DoneChan <- true
+					ret.DoneChan <- fmt.Sprint(err)
 					return
 				}
 			}
