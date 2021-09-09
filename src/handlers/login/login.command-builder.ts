@@ -1,8 +1,7 @@
 import { IdP } from '../../services/common.types';
 import yargs from 'yargs';
 
-export type loginArgs = {provider: string;} &
-    {mfa: string}
+export type loginArgs = {provider: string;} & {mfa: string}
 
 export function loginCmdBuilder (yargs : yargs.Argv<{}>) : yargs.Argv<loginArgs>
 {

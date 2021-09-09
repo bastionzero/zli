@@ -13,9 +13,11 @@ import { ClusterDetails } from '../../services/kube/kube.types';
 import { PolicyService } from '../../services/policy/policy.service';
 import { UserService } from '../../services/user/user.service';
 import { UserSummary } from '../../services/user/user.types';
+import yargs from 'yargs';
+import { policyArgs } from './policy.command-builder';
 
 export async function listPoliciesHandler(
-    argv: any,
+    argv: yargs.Arguments<policyArgs>,
     configService: ConfigService,
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,

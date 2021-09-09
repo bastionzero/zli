@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 
-export type describeClusterArgs = {clusterName : string};
+type describeClusterArgs = {clusterName : string};
 
 export function describeClusterCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<describeClusterArgs> {
     return yargs

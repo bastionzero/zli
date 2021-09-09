@@ -13,12 +13,14 @@ import { EnvironmentDetails } from '../../services/environment/environment.types
 import { ClusterDetails } from '../../services/kube/kube.types';
 import { PolicyQueryService } from '../../services/policy-query/policy-query.service';
 import { VerbType } from '../../services/policy-query/policy-query.types';
+import yargs from 'yargs';
+import { listTargetsArgs } from './list-targets.command-builder';
 
 
 export async function listTargetsHandler(
     configService: ConfigService,
     logger: Logger,
-    argv: any,
+    argv: yargs.Arguments<listTargetsArgs>,
     dynamicConfigs: Promise<TargetSummary[]>,
     ssmTargets: Promise<TargetSummary[]>,
     clusters: Promise<ClusterDetails[]>,

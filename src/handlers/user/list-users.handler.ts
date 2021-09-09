@@ -3,9 +3,11 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { getTableOfUsers } from '../../utils';
 import { UserService } from '../../services/user/user.service';
+import yargs from 'yargs';
+import { userArgs } from './user.command-builder';
 
 export async function listUsersHandler(
-    argv: any,
+    argv: yargs.Arguments<userArgs>,
     configService: ConfigService,
     logger: Logger,
 ){

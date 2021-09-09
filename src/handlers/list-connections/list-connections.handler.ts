@@ -6,9 +6,11 @@ import { getCliSpace } from '../../shell-utils';
 import { TargetSummary } from '../../services/common.types';
 import { ConnectionState, ConnectionDetails } from '../../services/connection/connection.types';
 import { SessionService } from '../../services/session/session.service';
+import yargs from 'yargs';
+import { listConnectionsArgs } from './list-connections.command-builder';
 
 export async function listConnectionsHandler(
-    argv: any,
+    argv: yargs.Arguments<listConnectionsArgs>,
     configService: ConfigService,
     logger: Logger,
     ssmTargets: Promise<TargetSummary[]>,

@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 
-export type sshProxyArg = {host: string} &
+type sshProxyArg = {host: string} &
 {user: string} &
 {port: number} &
 {identityFile: string}

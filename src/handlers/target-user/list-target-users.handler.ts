@@ -4,8 +4,10 @@ import { cleanExit } from '../clean-exit.handler';
 import { getTableOfTargetUsers } from '../../utils';
 import { PolicyService } from '../../services/policy/policy.service';
 import { PolicyType, KubernetesPolicyContext, TargetConnectContext } from '../../services/policy/policy.types';
+import yargs from 'yargs';
+import { targetUserArgs } from './target-user.command-builder';
 
-export async function listTargetUsersHandler(configService: ConfigService, logger: Logger, argv : any, policyName: string) {
+export async function listTargetUsersHandler(configService: ConfigService, logger: Logger, argv : yargs.Arguments<targetUserArgs>, policyName: string) {
 
     const policyService = new PolicyService(configService, logger);
     const policies = await policyService.ListAllPolicies();

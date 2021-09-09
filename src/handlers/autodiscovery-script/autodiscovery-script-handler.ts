@@ -6,10 +6,12 @@ import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { AutoDiscoveryScriptService } from '../../services/auto-discovery-script/auto-discovery-script.service';
+import yargs from 'yargs';
+import { autoDiscoveryScriptArgs } from './autodiscovery-script.command-builder';
 
 
 export async function autoDiscoveryScriptHandler(
-    argv: any,
+    argv: yargs.Arguments<autoDiscoveryScriptArgs>,
     logger: Logger,
     configService: ConfigService,
     environments: Promise<EnvironmentDetails[]>

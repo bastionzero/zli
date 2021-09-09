@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 
-export type closeConnectionArgs = {connectionId : string;} & {all : boolean}
+type closeConnectionArgs = {connectionId : string;} & {all : boolean}
 
 export function closeConnectionCmdBuilder(yargs : yargs.Argv<{}>) : yargs.Argv<closeConnectionArgs> {
     return yargs

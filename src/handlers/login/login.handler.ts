@@ -9,6 +9,8 @@ import { IdP } from '../../services/common.types';
 import { MfaService } from '../../services/mfa/mfa.service';
 import { MfaActionRequired } from '../../services/mfa/mfa.types';
 import { UserService } from '../../services/user/user.service';
+import yargs from 'yargs';
+import { loginArgs } from './login.command-builder';
 
 function requestMfaCode(): Promise<string> {
     const readline = require('readline');
@@ -24,7 +26,7 @@ function requestMfaCode(): Promise<string> {
         }));
 }
 
-export async function loginHandler(configService: ConfigService, logger: Logger, argv: any, keySplittingService: KeySplittingService) {
+export async function loginHandler(configService: ConfigService, logger: Logger, argv: yargs.Arguments<loginArgs>, keySplittingService: KeySplittingService) {
     // Clear previous log in info
     configService.logout();
     await keySplittingService.generateKeysplittingLoginData();

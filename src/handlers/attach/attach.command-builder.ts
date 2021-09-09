@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 
-export type attachArgs = {connectionId : string}
+type attachArgs = {connectionId : string}
 
 export function attachCmdBuilder(yargs : yargs.Argv<{}>) : yargs.Argv<attachArgs> {
     return yargs

@@ -4,12 +4,14 @@ import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
 import { cleanExit } from '../clean-exit.handler';
 import { KubeService } from '../../services/kube/kube.service';
+import yargs from 'yargs';
+import { generateKubeArgs } from './generate-kube.command-builder';
 
 const fs = require('fs');
 
 
 export async function generateKubeYamlHandler(
-    argv: any,
+    argv: yargs.Arguments<generateKubeArgs>,
     envs: Promise<EnvironmentDetails[]>,
     configService: ConfigService,
     logger: Logger

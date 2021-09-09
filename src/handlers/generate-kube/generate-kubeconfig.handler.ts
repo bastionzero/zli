@@ -1,13 +1,15 @@
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import util from 'util';
+import yargs from 'yargs';
+import { generateKubeArgs } from './generate-kube.command-builder';
 
 const path = require('path');
 const fs = require('fs');
 const pem = require('pem');
 
 export async function generateKubeconfigHandler(
-    argv: any,
+    argv: yargs.Arguments<generateKubeArgs>,
     configService: ConfigService,
     logger: Logger
 ) {
