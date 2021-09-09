@@ -1,8 +1,8 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { ListSessionsResponse, CreateSessionRequest, CreateSessionResponse, CloseSessionResponse, CloseSessionRequest } from "./session.messages";
-import { SessionDetails } from "./session.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { ListSessionsResponse, CreateSessionRequest, CreateSessionResponse, CloseSessionResponse, CloseSessionRequest } from './session.messages';
+import { SessionDetails } from './session.types';
 
 export class SessionService extends HttpService
 {

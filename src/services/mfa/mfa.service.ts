@@ -1,7 +1,7 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { MfaTokenRequest, MfaResetResponse, MfaResetRequest, MfaClearRequest } from "./mfa.mesagges";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { MfaTokenRequest, MfaResetResponse, MfaResetRequest, MfaClearRequest } from './mfa.mesagges';
 
 export class MfaService extends HttpService
 {

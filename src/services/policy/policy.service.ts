@@ -1,8 +1,8 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { EditPolicyRequest } from "./policy.messages";
-import { PolicySummary } from "./policy.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { EditPolicyRequest } from './policy.messages';
+import { PolicySummary } from './policy.types';
 
 export class PolicyService extends HttpService
 {

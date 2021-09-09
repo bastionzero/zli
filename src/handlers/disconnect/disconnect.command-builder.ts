@@ -1,4 +1,4 @@
-import yargs from "yargs";
+import yargs from 'yargs';
 
 export function disconnectCmdBuilder(yargs : yargs.Argv<{}>) : yargs.Argv<{}> {
     return yargs

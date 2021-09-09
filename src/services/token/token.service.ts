@@ -1,8 +1,8 @@
-import { IdP } from "../common.types";
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { MixpanelTokenResponse, ClientSecretResponse } from "./token.messages";
+import { IdP } from '../common.types';
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { MixpanelTokenResponse, ClientSecretResponse } from './token.messages';
 
 export class TokenService extends HttpService
 {

@@ -1,9 +1,9 @@
-import { TargetType, TargetUser } from "../common.types";
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { GetTargetPolicyResponse, GetTargetPolicyRequest, KubeProxyResponse, KubeProxyRequest, GetAllPoliciesForClusterIdResponse, GetAllPoliciesForClusterIdRequest } from "./policy-query.messages";
-import { Verb } from "./policy-query.types";
+import { TargetType, TargetUser } from '../common.types';
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { GetTargetPolicyResponse, GetTargetPolicyRequest, KubeProxyResponse, KubeProxyRequest, GetAllPoliciesForClusterIdResponse, GetAllPoliciesForClusterIdRequest } from './policy-query.messages';
+import { Verb } from './policy-query.types';
 
 export class PolicyQueryService extends HttpService
 {

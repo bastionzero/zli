@@ -1,7 +1,7 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { DynamicAccessConfigSummary } from "./dynamic-access-config.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { DynamicAccessConfigSummary } from './dynamic-access-config.types';
 
 export class DynamicAccessConfigService extends HttpService
 {

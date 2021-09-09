@@ -1,7 +1,7 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { GetAutodiscoveryScriptResponse, GetAutodiscoveryScriptRequest } from "./auto-discovery-script.messages";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { GetAutodiscoveryScriptResponse, GetAutodiscoveryScriptRequest } from './auto-discovery-script.messages';
 
 export class AutoDiscoveryScriptService extends HttpService
 {

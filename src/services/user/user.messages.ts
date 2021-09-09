@@ -1,4 +1,4 @@
-import { MfaActionRequired } from "../mfa/mfa.types";
+import { MfaActionRequired } from '../mfa/mfa.types';
 
 export interface UserRegisterResponse
 {

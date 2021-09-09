@@ -1,4 +1,4 @@
-import { Group, PolicyMetadata, Subject } from "./policy.types";
+import { Group, PolicyMetadata, Subject } from './policy.types';
 
 export interface EditPolicyRequest {
     id: string;

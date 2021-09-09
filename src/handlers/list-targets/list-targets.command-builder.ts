@@ -1,11 +1,11 @@
-import yargs from "yargs";
+import yargs from 'yargs';
 
-export type listTargetsArgs = {targetType: string} & 
-{env: string} & 
-{name: string} & 
-{status: string[]} & 
-{detail: boolean} & 
-{showId: boolean} & 
+export type listTargetsArgs = {targetType: string} &
+{env: string} &
+{name: string} &
+{status: string[]} &
+{detail: boolean} &
+{showId: boolean} &
 {json: boolean}
 
 export function listTargetsCmdBuilder(yargs: yargs.Argv<{}>, targetTypeChoices: string[], targetStatusChoices: string[]) : yargs.Argv<listTargetsArgs> {

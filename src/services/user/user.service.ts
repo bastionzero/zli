@@ -1,8 +1,8 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { UserRegisterResponse } from "./user.messages";
-import { UserSummary } from "./user.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { UserRegisterResponse } from './user.messages';
+import { UserSummary } from './user.types';
 
 export class UserService extends HttpService
 {

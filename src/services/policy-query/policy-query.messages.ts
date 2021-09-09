@@ -1,6 +1,6 @@
-import { TargetUser, TargetType } from "../common.types";
-import { PolicySummary } from "../policy/policy.types";
-import { Verb } from "./policy-query.types";
+import { TargetUser, TargetType } from '../common.types';
+import { PolicySummary } from '../policy/policy.types';
+import { Verb } from './policy-query.types';
 
 export interface GetTargetPolicyResponse
 {

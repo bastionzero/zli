@@ -1,4 +1,4 @@
-import { TargetType } from "../common.types";
+import { TargetType } from '../common.types';
 
 export interface ConnectionSummary {
     id: string;

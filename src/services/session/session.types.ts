@@ -1,5 +1,5 @@
-import { TargetType } from "../common.types";
-import { ConnectionSummary } from "../connection/connection.types";
+import { TargetType } from '../common.types';
+import { ConnectionSummary } from '../connection/connection.types';
 
 export interface SessionDetails {
     id: string;

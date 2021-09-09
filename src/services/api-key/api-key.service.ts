@@ -1,7 +1,7 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { ApiKeyDetails } from "./api-key.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { ApiKeyDetails } from './api-key.types';
 
 export class ApiKeyService extends HttpService
 {

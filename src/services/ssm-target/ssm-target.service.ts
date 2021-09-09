@@ -1,8 +1,8 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { ListSsmTargetsRequest } from "./ssm-target.messages";
-import { SsmTargetSummary } from "./ssm-target.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { ListSsmTargetsRequest } from './ssm-target.messages';
+import { SsmTargetSummary } from './ssm-target.types';
 
 export class SsmTargetService extends HttpService
 {

@@ -1,4 +1,4 @@
-import yargs from "yargs";
+import yargs from 'yargs';
 
 export type listConnectionsArgs = {json: boolean}
 

@@ -1,9 +1,9 @@
-import { TargetType } from "../common.types";
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { CreateConnectionRequest, CreateConnectionResponse, CloseConnectionRequest } from "./connection.messages";
-import { ConnectionSummary, ShellConnectionAuthDetails } from "./connection.types";
+import { TargetType } from '../common.types';
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { CreateConnectionRequest, CreateConnectionResponse, CloseConnectionRequest } from './connection.messages';
+import { ConnectionSummary, ShellConnectionAuthDetails } from './connection.types';
 
 export class ConnectionService extends HttpService
 {

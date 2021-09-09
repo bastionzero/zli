@@ -1,7 +1,7 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { EnvironmentDetails } from "./environment.types";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { EnvironmentDetails } from './environment.types';
 
 export class EnvironmentService extends HttpService
 {

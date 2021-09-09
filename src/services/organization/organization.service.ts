@@ -1,7 +1,7 @@
-import { ConfigService } from "../config/config.service";
-import { HttpService } from "../http/http.service";
-import { Logger } from "../logger/logger.service";
-import { IdentityProviderGroupsMetadataResponse } from "./organization.messages";
+import { ConfigService } from '../config/config.service';
+import { HttpService } from '../http/http.service';
+import { Logger } from '../logger/logger.service';
+import { IdentityProviderGroupsMetadataResponse } from './organization.messages';
 
 export class OrganizationService extends HttpService
 {
