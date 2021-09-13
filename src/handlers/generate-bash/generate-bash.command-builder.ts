@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 
-const targetNameSchemes = ["do", "aws", "time", "hostname"] as const;
+const targetNameSchemes = ['do', 'aws', 'time', 'hostname'] as const;
 export type TargetNameScheme = typeof targetNameSchemes[number];
 
 export type generateBashArgs = { environment: string } &

@@ -1,13 +1,13 @@
-import yargs from "yargs";
-import { generateBashCmdBuilder } from "./generate-bash.command-builder";
+import yargs from 'yargs';
+import { generateBashCmdBuilder } from './generate-bash.command-builder';
 
 // Tests that code in .check() in generateBashCmdBuilder() does not mess up
 // mutual exclusion check on --targetName and --targetNameScheme flags
 test.each([
-    [["--targetName", "foo", "--targetNameScheme", "time"]],
-    [["--targetName", "foo", "       --targetNameScheme", "time"]],
-    [["--targetName", "foo", "--targetNameScheme=time"]],
-    [["--targetName", "foo", "       --targetNameScheme=time"]],
+    [['--targetName', 'foo', '--targetNameScheme', 'time']],
+    [['--targetName', 'foo', '       --targetNameScheme', 'time']],
+    [['--targetName', 'foo', '--targetNameScheme=time']],
+    [['--targetName', 'foo', '       --targetNameScheme=time']],
 ])('check mutually exclusive error is thrown with processArgs: %s', (processArgs) => {
     // Simulate passing in arguments for yargs and store validation error
     let validationErr: Error;
@@ -25,8 +25,8 @@ test.each([
 // --targetName flag to be passed by itself without any validation errors (e.g.
 // mutual exclusion error)
 test.each([
-    [["--targetName", "foo"]],
-    [["-n", "foo"]],
+    [['--targetName', 'foo']],
+    [['-n', 'foo']],
 ])('check no validation error is thrown with processArgs: %s', (processArgs) => {
     // Simulate passing in arguments for yargs and store validation error
     let validationErr: Error;

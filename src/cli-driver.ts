@@ -463,7 +463,7 @@ export class CliDriver
                 'generate-bash',
                 'Returns a bash script to autodiscover a target.',
                 (yargs) => {
-                   return generateBashCmdBuilder(process.argv, yargs) ;
+                    return generateBashCmdBuilder(process.argv, yargs) ;
                 },
                 async (argv) => {
                     await generateBashHandler(argv, this.logger, this.configService, this.envs);

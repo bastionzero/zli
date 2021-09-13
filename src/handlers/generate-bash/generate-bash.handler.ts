@@ -14,28 +14,28 @@ export async function generateBashHandler(
     configService: ConfigService,
     environments: Promise<EnvironmentDetails[]>
 ) {
-    let targetNameScript: string = ""
+    let targetNameScript: string = '';
     if (argv.targetName === undefined) {
         switch (argv.targetNameScheme) {
-            case 'do':
-                targetNameScript = "TARGET_NAME=$(curl http://169.254.169.254/metadata/v1/hostname)";
-                break;
-            case 'aws':
-                targetNameScript = String.raw`
+        case 'do':
+            targetNameScript = 'TARGET_NAME=$(curl http://169.254.169.254/metadata/v1/hostname)';
+            break;
+        case 'aws':
+            targetNameScript = String.raw`
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 TARGET_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)`;
-                break;
-            case 'time':
-                targetNameScript = "TARGET_NAME=target-$(date +\"%m%d-%H%M%S\")";
-                break;
-            case 'hostname':
-                targetNameScript = "TARGET_NAME=$(hostname)";
-                break;
-            default:
-                // Compile-time exhaustive check
-                // See: https://www.typescriptlang.org/docs/handbook/2/narrowing.html#exhaustiveness-checking
-                const _exhaustiveCheck: never = argv.targetNameScheme;
-                return _exhaustiveCheck;
+            break;
+        case 'time':
+            targetNameScript = 'TARGET_NAME=target-$(date +"%m%d-%H%M%S")';
+            break;
+        case 'hostname':
+            targetNameScript = 'TARGET_NAME=$(hostname)';
+            break;
+        default:
+            // Compile-time exhaustive check
+            // See: https://www.typescriptlang.org/docs/handbook/2/narrowing.html#exhaustiveness-checking
+            const _exhaustiveCheck: never = argv.targetNameScheme;
+            return _exhaustiveCheck;
         }
     } else {
         // Target name scheme option: Manual
