@@ -3,10 +3,11 @@ import fs from 'fs';
 import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
-import { AutoDiscoveryScriptService } from '../../services/auto-discovery-script/auto-discovery-script.service';
+import { getAutodiscoveryScript } from '../../services/auto-discovery-script/auto-discovery-script.service';
 import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
+import { TargetName } from '../../services/auto-discovery-script/auto-discovery-script.types';
 
 export async function generateBashHandler(
     argv: yargs.Arguments<generateBashArgs>,
@@ -14,22 +15,21 @@ export async function generateBashHandler(
     configService: ConfigService,
     environments: Promise<EnvironmentDetails[]>
 ) {
-    let targetNameScript: string = '';
+    let targetName: TargetName;
+
     if (argv.targetName === undefined) {
         switch (argv.targetNameScheme) {
         case 'do':
-            targetNameScript = 'TARGET_NAME=$(curl http://169.254.169.254/metadata/v1/hostname)';
+            targetName = { scheme: 'digitalocean' };
             break;
         case 'aws':
-            targetNameScript = String.raw`
-TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-TARGET_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)`;
+            targetName = { scheme: 'aws' };
             break;
         case 'time':
-            targetNameScript = 'TARGET_NAME=target-$(date +"%m%d-%H%M%S")';
+            targetName = { scheme: 'time' };
             break;
         case 'hostname':
-            targetNameScript = 'TARGET_NAME=$(hostname)';
+            targetName = { scheme: 'hostname' };
             break;
         default:
             // Compile-time exhaustive check
@@ -38,8 +38,7 @@ TARGET_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.2
             return _exhaustiveCheck;
         }
     } else {
-        // Target name scheme option: Manual
-        targetNameScript = `TARGET_NAME=\"${argv.targetName}\"`;
+        targetName = { name: argv.targetName, scheme: 'manual' };
     }
 
     // Ensure that environment name argument is valid
@@ -50,12 +49,11 @@ TARGET_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.2
         await cleanExit(1, logger);
     }
 
-    const autodiscoveryScriptService = new AutoDiscoveryScriptService(configService, logger);
-    const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(argv.os, targetNameScript, environment.id, argv.agentVersion);
+    const script = await getAutodiscoveryScript(logger, configService, environment, targetName, argv.os, argv.agentVersion);
 
     if (argv.outputFile) {
-        await util.promisify(fs.writeFile)(argv.outputFile, autodiscoveryScriptResponse.autodiscoveryScript);
+        await util.promisify(fs.writeFile)(argv.outputFile, script);
     } else {
-        console.log(autodiscoveryScriptResponse.autodiscoveryScript);
+        console.log(script);
     }
 }

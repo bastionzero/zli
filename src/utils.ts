@@ -11,6 +11,9 @@ import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, Target
 import { UserSummary } from './services/user/user.types';
 import { IdentityProvider } from '../webshell-common-ts/auth-service/auth.types';
 
+import util from 'util';
+import fs from 'fs';
+
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
 {
@@ -457,4 +460,8 @@ export async function disambiguateTarget(
     }
 
     return parsedTarget;
+}
+
+export function readFile(filePath: string): Promise<string> {
+    return util.promisify(fs.readFile)(filePath, 'utf8');
 }

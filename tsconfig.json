@@ -2,6 +2,9 @@
     "compilerOptions": {
         "module": "commonjs",
         "esModuleInterop": true,
+        "lib": [
+            "ES2020.Promise",
+        ],
         "allowSyntheticDefaultImports": true,
         "resolveJsonModule": true,
         "target": "es6",

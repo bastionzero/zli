@@ -3,10 +3,13 @@ import yargs from 'yargs';
 const targetNameSchemes = ['do', 'aws', 'time', 'hostname'] as const;
 export type TargetNameScheme = typeof targetNameSchemes[number];
 
+const operatingSystems = ['centos', 'ubuntu', 'universal'] as const;
+export type OperatingSystem = typeof operatingSystems[number];
+
 export type generateBashArgs = { environment: string } &
 { targetNameScheme: TargetNameScheme } &
 { agentVersion: string } &
-{ os: string } &
+{ os: OperatingSystem } &
 { targetName: string } &
 { outputFile: string }
 
@@ -46,8 +49,8 @@ export function generateBashCmdBuilder(processArgs : string[], yargs: yargs.Argv
             {
                 type: 'string',
                 demandOption: false,
-                choices: ['centos', 'ubuntu', 'universal'],
-                default: 'universal',
+                choices: operatingSystems,
+                default: 'universal' as OperatingSystem,
                 describe: 'Assume a specific operating system',
             }
         )
