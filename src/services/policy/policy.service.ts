@@ -1,7 +1,7 @@
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
-import { EditPolicyRequest } from './policy.messages';
+import { AddPolicyRequest, EditPolicyRequest } from './policy.messages';
 import { PolicySummary } from './policy.types';
 
 export class PolicyService extends HttpService
@@ -29,5 +29,10 @@ export class PolicyService extends HttpService
             policyMetadata: policy.metadata
         };
         return this.Post('edit', request);
+    }
+
+    public AddPolicy(req : AddPolicyRequest) : Promise<PolicySummary>
+    {
+        return this.Post<AddPolicyRequest, PolicySummary>('add', req);
     }
 }
