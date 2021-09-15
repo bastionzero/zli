@@ -1,6 +1,5 @@
 import { cleanExit } from '../../handlers/clean-exit.handler';
-import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHConfig } from './quickstart-ssm.service.types';
-import { EnvironmentService } from '../environment/environment.service';
+import { SSHConfigHostBlock, ValidSSHHost, SSHHostConfig, SSHConfigParseError, InvalidSSHHost, ValidSSHHostAndConfig, QuickstartSSMTarget, RegistrableSSHHost } from './quickstart-ssm.service.types';
 import { getAutodiscoveryScript } from '../auto-discovery-script/auto-discovery-script.service';
 import { ConfigService } from '../config/config.service';
 import { Logger } from '../logger/logger.service';
@@ -15,11 +14,18 @@ import os from 'os';
 import pRetry from 'p-retry';
 import prompts, { PromptObject } from 'prompts';
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
+import { PolicyService } from '../policy/policy.service';
+import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject, SubjectType, TargetConnectContext } from '../policy/policy.types';
+import { Verb, VerbType } from '../policy-query/policy-query.types';
+import { EnvironmentDetails } from '../environment/environment.types';
+import { EnvironmentService } from '../environment/environment.service';
 
 export class QuickstartSsmService {
     constructor(
         private logger: Logger,
         private configService: ConfigService,
+        private policyService: PolicyService,
+        private environmentService: EnvironmentService
     ) { }
 
     /**
@@ -49,13 +55,36 @@ export class QuickstartSsmService {
         return result;
     }
 
+    private async isAgentAlreadyInstalled(sshConnection: SSHConnection, hostName: string): Promise<boolean> {
+        try {
+            // Check to see if agent is already installed on this host
+            //
+            // NOTE: We don't handle the edge case where the executable name
+            // has changed since the target was first registered. In this
+            // edge case, the target will be registered again.
+            await sshConnection.exec(`bzero-ssm-agent --version`);
+        } catch {
+            // exec() throws an error if the command fails to run (e.g. agent
+            // binary not found)
+            this.logger.debug(`Agent not found on host ${hostName}`);
+            return false;
+        }
+
+        // If the catch block wasn't hit, then we know the agent is installed as
+        // the command succeeded.
+        return true;
+    }
+
     /**
      * Connects to an SSH host and runs the universal autodiscovery script on it.
      * @param sshConfig SSH configuration to use when building the SSH connection
      * @param hostName Name of SSH host to use in log messages
      * @returns The SSM target ID of the newly registered machine
      */
-    public async runAutodiscoveryOnSSHHost(sshConfig: SSHConfig, hostName: string): Promise<string> {
+    public async runAutodiscoveryOnSSHHost(registrableSSHHost : RegistrableSSHHost): Promise<string> {
+        const sshConfig = registrableSSHHost.host.config;
+        const hostName = registrableSSHHost.host.sshHost.name;
+
         // Start SSH connection
         const ssh = new SSHConnection(sshConfig);
         let conn: SSHConnection;
@@ -67,72 +96,82 @@ export class QuickstartSsmService {
             throw new Error(`Failed to establish SSH connection: ${error}`);
         }
 
-        // Get autodiscovery script
-        const envService = new EnvironmentService(this.configService, this.logger);
-        const envs = await envService.ListEnvironments();
-        const defaultEnv = envs.find(envDetails => envDetails.name == 'Default');
-        if (!defaultEnv) {
-            this.logger.error('Default environment not found!');
-            await cleanExit(1, this.logger);
-        }
-        const script = await getAutodiscoveryScript(this.logger, this.configService, defaultEnv, { scheme: 'manual', name: hostName }, 'universal', 'latest');
+        // Wrap everything in a try+finally block so that we close the SSH
+        // connection on any kind of failure
+        try {
+            // Check to see if the host has already been registered by checking
+            // to see if the agent is installed
+            if (await this.isAgentAlreadyInstalled(conn, hostName)) {
+                // We don't want to register twice, so fail early
+                //
+                // NOTE: Instead of throwing an error, a better design would be
+                // to return the SSM target ID of the already registered target.
+                // It improves the quickstart experience in the following ways:
+                // (1) User's SSH config for an already registered SSH host can
+                // have a new username => New policy will be created with new
+                // TargetUser.
+                // (2) If user picked this host as the target to connect to in
+                // the end, it will still work.
+                // (3) The target is still displayed in final summary that is
+                // printed at the end of quickstart.
+                // 
+                // We can't make this improvement right now as the agent doesn't
+                // know its own ID (we don't store it in the agent)
+                throw new Error('Agent is already installed');
+            }
 
-        // Check that we can run at least one command before attempting to run
-        // the whole autodiscovery script
-        const sanityExpectedOutput = 'test';
-        const sanityCheckResult = await conn.exec(`echo ${sanityExpectedOutput}`);
-        if (sanityCheckResult.trim() !== sanityExpectedOutput) {
-            throw new Error(`Sanity check failed! Want: ${sanityExpectedOutput}. Got: ${sanityCheckResult.trim()}`);
-        }
+            // Get autodiscovery script
+            const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, { scheme: 'manual', name: hostName }, 'universal', 'latest');
 
-        // Run script on target
-        const execAutodiscoveryScriptCmd = `bash << 'endmsg'\n${script}\nendmsg`;
-        const execAutodiscoveryScript = new Promise<string>(async (resolve, reject) => {
-            conn.spawn(execAutodiscoveryScriptCmd)
-                .then(socket => {
-                    this.logger.debug(`Running autodiscovery script on host: ${hostName}`);
+            // Run script on target
+            const execAutodiscoveryScriptCmd = `bash << 'endmsg'\n${script}\nendmsg`;
+            const execAutodiscoveryScript = new Promise<string>(async (resolve, reject) => {
+                conn.spawn(execAutodiscoveryScriptCmd)
+                    .then(socket => {
+                        this.logger.debug(`Running autodiscovery script on host: ${hostName}`);
 
-                    // Store last printed message on stdout
-                    let lastOutput = '';
+                        // Store last printed message on stdout
+                        let lastOutput = '';
 
-                    socket.on('data', (data: Buffer) => {
-                        // Log stdout
-                        const dataAsStr = data.toString();
-                        this.logger.debug(`STDOUT: ${dataAsStr}`);
-                        lastOutput = dataAsStr;
-                    });
-                    socket.on('close', (code: number) => {
-                        if (code == 0) {
-                            this.logger.debug(`Successfully executed autodiscovery script on host: ${hostName}`);
+                        socket.on('data', (data: Buffer) => {
+                            // Log stdout
+                            const dataAsStr = data.toString();
+                            this.logger.debug(`STDOUT: ${dataAsStr}`);
+                            lastOutput = dataAsStr;
+                        });
+                        socket.on('close', (code: number) => {
+                            if (code == 0) {
+                                this.logger.debug(`Successfully executed autodiscovery script on host: ${hostName}`);
 
-                            // Regex expression looks for "Target Id:" and then
-                            // captures (saves a backwards reference) any
-                            // alphanumeric (+ underscore) characters
-                            const targetIdRegex = new RegExp('Target Id: ([\\w-]*)');
-                            const matches = targetIdRegex.exec(lastOutput);
-                            if (matches) {
-                                // The result of the first capturing group is
-                                // stored at index 1
-                                resolve(matches[1].trim());
+                                // Regex expression looks for "Target Id:" and then
+                                // captures (saves a backwards reference) any
+                                // alphanumeric (+ underscore) characters
+                                const targetIdRegex = new RegExp('Target Id: ([\\w-]*)');
+                                const matches = targetIdRegex.exec(lastOutput);
+                                if (matches) {
+                                    // The result of the first capturing group is
+                                    // stored at index 1
+                                    resolve(matches[1].trim());
+                                } else {
+                                    reject(`Failed to find target ID in last message printed by stdout`);
+                                }
                             } else {
-                                reject(`Failed to find target ID in last message printed by stdout`);
+                                reject(`Failed to execute autodiscovery script. Error code: ${code}`);
                             }
-                        } else {
-                            reject(`Failed to execute autodiscovery script. Error code: ${code}`);
-                        }
+                        });
+                    })
+                    .catch(err => {
+                        reject(`Error when attempting to execute autodiscovery script on host: ${hostName}. ${err}`);
                     });
-                })
-                .catch(err => {
-                    reject(`Error when attempting to execute autodiscovery script on host: ${hostName}. ${err}`);
-                });
-        });
-
-        return await execAutodiscoveryScript
-            .finally(async () => {
-                this.logger.debug(`Closing SSH connection with host: ${hostName}`);
-                await conn.close();
-                this.logger.debug(`Closed SSH connection with host: ${hostName}`);
             });
+
+            // Wait for the script to finish executing
+            return await execAutodiscoveryScript
+        } finally {
+            this.logger.debug(`Closing SSH connection with host: ${hostName}`);
+            await conn.close();
+            this.logger.debug(`Closed SSH connection with host: ${hostName}`);
+        }
     }
 
     public async promptSkipHostOrExit(hostName: string, onCancel: (prompt: PromptObject, answers: any) => void): Promise<boolean> {
@@ -148,8 +187,8 @@ export class QuickstartSsmService {
         return confirmSkipOrExit.value;
     }
 
-    public async promptConvertValidSSHHostsToSSHConfigs(hosts: ValidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHConfig[]> {
-        const sshConfigs: ValidSSHConfig[] = [];
+    public async promptConvertValidSSHHostsToSSHConfigs(hosts: ValidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHostAndConfig[]> {
+        const sshConfigs: ValidSSHHostAndConfig[] = [];
         for (const host of hosts) {
             // Try to read the IdentityFile and store its contents in keyFile variable
             let keyFile: string;
@@ -200,7 +239,7 @@ export class QuickstartSsmService {
 
             // Convert from ValidSSHHost to ValidSSHConfig
             sshConfigs.push({
-                sshHostName: host.name,
+                sshHost: host,
                 config: {
                     host: host.hostIp,
                     username: host.username,
@@ -229,43 +268,43 @@ export class QuickstartSsmService {
         const validSSHHost = invalidSSHHost.incompleteValidSSHHost;
         for (const parseError of parseErrors) {
             switch (parseError.error) {
-            case 'missing_host_name':
-                const hostName = await this.handleMissingHostName();
-                if (hostName === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.hostIp = hostName;
-                }
-                break;
-            case 'missing_port':
-                const port = await this.handleMissingPort();
-                if (port === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.port = port;
-                }
-                break;
-            case 'missing_user':
-                const user = await this.handleMissingUser();
-                if (user === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.username = user;
-                }
-                break;
-            case 'missing_identity_file':
-                const identityFilePath = await this.handleMissingIdentityFile();
-                if (identityFilePath === undefined) {
-                    return undefined;
-                } else {
-                    validSSHHost.identityFile = this.resolveHome(identityFilePath);
-                }
-                break;
-            default:
-                // Note: This error is never thrown at runtime. It is an
-                // exhaustive check at compile-time.
-                const exhaustiveCheck: never = parseError;
-                throw new Error(`Unhandled parse error type: ${exhaustiveCheck}`);
+                case 'missing_host_name':
+                    const hostName = await this.handleMissingHostName();
+                    if (hostName === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.hostIp = hostName;
+                    }
+                    break;
+                case 'missing_port':
+                    const port = await this.handleMissingPort();
+                    if (port === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.port = port;
+                    }
+                    break;
+                case 'missing_user':
+                    const user = await this.handleMissingUser();
+                    if (user === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.username = user;
+                    }
+                    break;
+                case 'missing_identity_file':
+                    const identityFilePath = await this.handleMissingIdentityFile();
+                    if (identityFilePath === undefined) {
+                        return undefined;
+                    } else {
+                        validSSHHost.identityFile = this.resolveHome(identityFilePath);
+                    }
+                    break;
+                default:
+                    // Note: This error is never thrown at runtime. It is an
+                    // exhaustive check at compile-time.
+                    const exhaustiveCheck: never = parseError;
+                    throw new Error(`Unhandled parse error type: ${exhaustiveCheck}`);
             }
         }
 
@@ -336,6 +375,155 @@ export class QuickstartSsmService {
                 validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
             }, { onSubmit: onSubmit, onCancel: onCancel });
         });
+    }
+
+    private async createQuickstartEnvironment(sshUsername: string, envName: string): Promise<string> {
+        const createEnvResp = await this.environmentService.CreateEnvironment({
+            name: envName,
+            description: `Quickstart autogenerated environment for ${sshUsername} users`,
+            // This is the default timeout used in the webapp
+            offlineCleanupTimeoutHours: 24 * 90
+        });
+        return createEnvResp.id;
+    }
+
+    private async createQuickstartTargetConnectPolicy(sshUsername: string, envId: string, policyName: string): Promise<PolicySummary> {
+        // Create a TargetConnect policy that permits:
+        // (1) Subject: The user running quickstart
+        // (2) Action: To perform the following three verbs with
+        // TargetUser (unix username) == the parsed SSH username: open a
+        // shell connection, create an SSH tunnel, and perform FUD.
+        // (3) Context: To any target in the Default environment
+        const environmentContext: { [key: string]: PolicyEnvironment } = { [envId]: { id: envId } };
+        const targetUserContext: { [key: string]: PolicyTargetUser } = { [sshUsername]: { userName: sshUsername } };
+        const verbContext: { [key: string]: Verb } = {
+            [VerbType.Shell]: { type: VerbType.Shell },
+            [VerbType.Tunnel]: { type: VerbType.Tunnel },
+            [VerbType.FileTransfer]: { type: VerbType.FileTransfer }
+        };
+        const connectContext: TargetConnectContext = {
+            targets: undefined,
+            environments: environmentContext,
+            targetUsers: targetUserContext,
+            verbs: verbContext
+        };
+        const userAsSubject: Subject = {
+            id: this.configService.me().id,
+            type: SubjectType.User
+        };
+
+        return await this.policyService.AddPolicy({
+            name: policyName,
+            type: PolicyType.TargetConnect.toString(),
+            subjects: [userAsSubject],
+            groups: [],
+            context: JSON.stringify(connectContext),
+            policyMetadata: { description: `Quickstart autogenerated policy for ${sshUsername} users` }
+        });
+    }
+
+    public async createEnvForUniqueUsernames(hostsToAdd: ValidSSHHostAndConfig[]): Promise<RegistrableSSHHost[]> {
+        const registrableSSHHosts: RegistrableSSHHost[] = [];
+        const usernameMap: Map<string, ValidSSHHostAndConfig[]> = new Map();
+
+        // Build map of common SSH usernames among the hosts that are expected
+        // to be successfully added to BastionZero
+        for (const host of hostsToAdd) {
+            // Normalize to lowercase
+            const usernameMatch = host.sshHost.username.toLowerCase();
+            if (usernameMap.has(usernameMatch)) {
+                // Update the list with the matching host
+                const matchingTargets = usernameMap.get(usernameMatch);
+                matchingTargets.push(host);
+            } else {
+                // Otherwise create new list starting with one host
+                usernameMap.set(usernameMatch, [host]);
+            }
+        }
+
+        // Create an environment per common SSH username
+        for (let [username, hosts] of usernameMap) {
+            const quickstartEnvName = `${username}-users_quickstart`;
+            let quickstartEnvId: string;
+            try {
+                const envs = await this.environmentService.ListEnvironments();
+                const quickstartEnv = envs.find(env => env.name === quickstartEnvName);
+                if (quickstartEnv === undefined) {
+                    // Quickstart env for this ssh username does not exist
+
+                    // Create new environment
+                    quickstartEnvId = await this.createQuickstartEnvironment(username, quickstartEnvName);
+                } else {
+                    // Environment already exists
+                    quickstartEnvId = quickstartEnv.id;
+                }
+
+                // Convert hosts to registrable hosts with accompanying
+                // environment id to use during registration
+                hosts.forEach(host => registrableSSHHosts.push({host: host, envId: quickstartEnvId}));
+            } catch (err) {
+                this.logger.error(`Failed creating env for SSH username ${username}: ${err}`);
+                continue;
+            }
+        }
+
+        return registrableSSHHosts;
+    }
+
+    public async createPolicyForUniqueUsernames(quickstartTargets: QuickstartSSMTarget[]): Promise<QuickstartSSMTarget[]> {
+        const connectableTargets: QuickstartSSMTarget[] = [];
+        const usernameMap: Map<string, QuickstartSSMTarget[]> = new Map();
+
+        // Build map of common SSH usernames among the targets that were
+        // successfully added to BastionZero
+        for (const target of quickstartTargets) {
+            // Normalize to lowercase
+            const usernameMatch = target.sshHost.username.toLowerCase();
+            if (usernameMap.has(usernameMatch)) {
+                // Update the list with the matching target
+                const matchingTargets = usernameMap.get(usernameMatch);
+                matchingTargets.push(target);
+            } else {
+                // Otherwise create new list starting with one target
+                usernameMap.set(usernameMatch, [target]);
+            }
+        }
+
+        // Create a policy per common SSH username
+        for (let [username, targets] of usernameMap) {
+            const quickstartPolicyName = `${username}-users-policy_quickstart`;
+            try {
+                // Ensure that quickstart policy exists for this SSH username.
+                const policies = await this.policyService.ListAllPolicies();
+                if (policies.find(policy => policy.name === quickstartPolicyName) === undefined) {
+                    // Quickstart policy for this ssh username does not exist
+
+                    // All targets with the same SSH username were registered in
+                    // the same environment
+                    const envId = targets[0].ssmTarget.environmentId;
+
+                    // Create new policy
+                    await this.createQuickstartTargetConnectPolicy(username, envId, quickstartPolicyName);
+                }
+
+                // Either the policy already exists, or we've just successfully
+                // created one. Add all targets to final list of
+                // connectableTargets.
+                //
+                // NOTE: It's entirely possible that even though the policy
+                // exists with the correct name above, the policy has been
+                // changed in such a way that shell connect becomes impossible
+                // for these targets (e.g. current user removed from list of
+                // subjects, connect verb removed, etc.). We've chosen not to
+                // cover this edge case.
+                targets.forEach(target => connectableTargets.push(target));
+            } catch (err) {
+                this.logger.error(`Failed creating policy for SSH username ${username}: ${err}`);
+                continue;
+            }
+        }
+
+        return connectableTargets;
     }
 
     /**

@@ -61,3 +61,12 @@ export interface PolicyMetadata {
 export interface PolicyEnvironment {
     id: string;
 }
+
+export interface PolicyTarget {
+    id: string;
+    type: "ssm" | "dynamic";
+}
+
+export interface PolicyTargetUser {
+    userName: string;
+}

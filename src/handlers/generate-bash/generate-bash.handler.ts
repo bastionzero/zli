@@ -49,7 +49,7 @@ export async function generateBashHandler(
         await cleanExit(1, logger);
     }
 
-    const script = await getAutodiscoveryScript(logger, configService, environment, targetName, argv.os, argv.agentVersion);
+    const script = await getAutodiscoveryScript(logger, configService, environment.id, targetName, argv.os, argv.agentVersion);
 
     if (argv.outputFile) {
         await util.promisify(fs.writeFile)(argv.outputFile, script);

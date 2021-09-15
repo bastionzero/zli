@@ -1,4 +1,5 @@
 import SSHConfig from 'ssh2-promise/lib/sshConfig';
+import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
 
 // Interface types for SSHConfig parsing package
 export interface SSHHostConfig {
@@ -11,7 +12,14 @@ export interface SSHConfigHostBlock {
     config: SSHHostConfig[]
 }
 
-// SSHHost encapsulates the information needed to start an SSH connection
+// QuickstartSSMTarget represents an SSH host that has successfully been added
+// to BastionZero as an SSM target
+export interface QuickstartSSMTarget {
+    ssmTarget: SsmTargetSummary;
+    sshHost: ValidSSHHost;
+}
+
+// ValidSSHHost encapsulates the information needed to start an SSH connection
 export interface ValidSSHHost {
     name: string;
     hostIp: string;
@@ -20,9 +28,17 @@ export interface ValidSSHHost {
     identityFile: string;
 }
 
-export interface ValidSSHConfig {
+// ValidSSHHostAndConfig encapsulates the SSH configuration used by the SSH2-promise library to start an SSH connection to a valid SSH host
+export interface ValidSSHHostAndConfig {
     config: SSHConfig;
-    sshHostName: string;
+    sshHost: ValidSSHHost;
+}
+
+// RegistrableSSHHost represents a valid SSH host that can be registered as it
+// contains the environment ID to use during registration process
+export interface RegistrableSSHHost {
+    host: ValidSSHHostAndConfig;
+    envId: string;
 }
 
 export type MissingHostNameParseError = {

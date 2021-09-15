@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { InvalidSSHHost, ValidSSHConfig, ValidSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
+import { InvalidSSHHost, ValidSSHHost, RegistrableSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { ParsedTargetString, TargetType } from '../../services/common.types';
 import { EnvironmentService } from '../../services/environment/environment.service';
@@ -13,6 +13,7 @@ import { quickstartArgs } from './quickstart.command-builder';
 
 import prompts, { PromptObject } from 'prompts';
 import yargs from 'yargs';
+import { PolicyService } from '../../services/policy/policy.service';
 
 async function interactiveDebugSession(
     invalidSSHHosts: InvalidSSHHost[],
@@ -66,7 +67,9 @@ export async function quickstartHandler(
     configService: ConfigService,
     mixpanelService: MixpanelService,
 ) {
-    const quickstartService = new QuickstartSsmService(logger, configService);
+    const policyService = new PolicyService(configService, logger);
+    const envService = new EnvironmentService(configService, logger);
+    const quickstartService = new QuickstartSsmService(logger, configService, policyService, envService);
 
     // Parse SSH config file
     logger.info(`\nParsing SSH config file: ${argv.sshConfigFile}`);
@@ -177,50 +180,60 @@ export async function quickstartHandler(
         await cleanExit(1, logger);
     }
 
+    // Create environment for each unique username parsed from the SSH config
+    const registrableHosts = await quickstartService.createEnvForUniqueUsernames(validSSHConfigs);
+
+    // // Get "Default" environment which is guaranteed to exist
+    // const defaultEnvName = 'Default';
+    // const envs = await envService.ListEnvironments();
+    // const defaultEnv = envs.find(envDetails => envDetails.name == defaultEnvName)!;
+
     // Run autodiscovery script on all hosts concurrently
-    const autodiscoveryResultsPromise = Promise.allSettled(validSSHConfigs.map(config => addSSHHostToBastionZero(config, quickstartService, logger)));
+    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => addSSHHostToBastionZero(host, quickstartService, logger)));
 
     // Await for **all** hosts to either come "Online" or error
     const autodiscoveryResults = await autodiscoveryResultsPromise;
-    const ssmTargetsSuccessfullyAdded = autodiscoveryResults.reduce<SsmTargetSummary[]>((acc, result) => {
-        if (result.status === 'fulfilled') {
-            acc.push(result.value);
-            return acc;
-        } else {
-            return acc;
-        }
-    }, []);
-    const didRegisterAtLeastOne = ssmTargetsSuccessfullyAdded.length > 0;
+    const ssmTargetsSuccessfullyAdded = autodiscoveryResults.reduce<SsmTargetSummary[]>((acc, result) => result.status === 'fulfilled' ? [...acc, result.value] : acc, []);
+
+    // Exit early if all hosts failed
+    if (ssmTargetsSuccessfullyAdded.length == 0) {
+        await cleanExit(1, logger);
+    }
+
+    // Create policy for each unique username parsed from the SSH config
+    const connectableTargets = await quickstartService.createPolicyForUniqueUsernames(
+        ssmTargetsSuccessfullyAdded.map(target => ({ ssmTarget: target, sshHost: validSSHHosts.get(target.name) }))
+    );
+    const isAtLeastOneConnectableTarget = connectableTargets.length > 0;
 
     // Gather extra information if user said to connect to specific
     // target after registration completes.
     let targetToConnectToAtEndAsParsedTargetString: ParsedTargetString = undefined;
     if (shouldConnectAfter) {
         // targetToConnectToAtEnd is guaranteed to be defined if shouldConnectAfter == true
-        const ssmTargetToConnectToAtEnd = ssmTargetsSuccessfullyAdded.find(target => target.name === targetToConnectToAtEnd.name);
+        const ssmTargetToConnectToAtEnd = connectableTargets.find(target => target.ssmTarget.name === targetToConnectToAtEnd.name);
         if (ssmTargetToConnectToAtEnd) {
-            const envService = new EnvironmentService(configService, logger);
             const envs = await envService.ListEnvironments();
-            const environment = envs.find(envDetails => envDetails.id == ssmTargetToConnectToAtEnd.environmentId);
+            const environment = envs.find(envDetails => envDetails.id == ssmTargetToConnectToAtEnd.ssmTarget.environmentId);
             targetToConnectToAtEndAsParsedTargetString = {
-                id: ssmTargetToConnectToAtEnd.id,
-                user: 'ssm-user',
+                id: ssmTargetToConnectToAtEnd.ssmTarget.id,
+                user: ssmTargetToConnectToAtEnd.sshHost.username,
                 type: TargetType.SSM,
                 envName: environment.name
             } as ParsedTargetString;
         }
     }
 
-    let exitCode = didRegisterAtLeastOne ? 0 : 1;
+    let exitCode = isAtLeastOneConnectableTarget ? 0 : 1;
     if (targetToConnectToAtEndAsParsedTargetString) {
         logger.info(`Connecting to ${targetToConnectToAtEnd.name} by using \`zli connect ${targetToConnectToAtEndAsParsedTargetString.user}@${targetToConnectToAtEnd.name}\``);
         exitCode = await connectHandler(configService, logger, mixpanelService, targetToConnectToAtEndAsParsedTargetString);
     }
 
-    if (didRegisterAtLeastOne) {
-        logger.info('Use `zli connect` to connect to your registered targets.');
-        for (const ssmTarget of ssmTargetsSuccessfullyAdded) {
-            logger.info(`\tzli connect ssm-user@${ssmTarget.name}`);
+    if (isAtLeastOneConnectableTarget) {
+        logger.info('Use `zli connect` to connect to your newly registered targets.');
+        for (const target of connectableTargets) {
+            logger.info(`\tzli connect ${target.sshHost.username}@${target.ssmTarget.name}`);
         }
     }
 
@@ -228,26 +241,27 @@ export async function quickstartHandler(
 }
 
 async function addSSHHostToBastionZero(
-    validSSHConfig: ValidSSHConfig,
+    registrableHost: RegistrableSSHHost,
     quickstartService: QuickstartSsmService,
     logger: Logger): Promise<SsmTargetSummary> {
 
     return new Promise<SsmTargetSummary>(async (resolve, reject) => {
         try {
-            logger.info(`Attempting to add SSH host ${validSSHConfig.sshHostName} to BastionZero...`);
+            logger.info(`Attempting to add SSH host ${registrableHost.host.sshHost.name} to BastionZero...`);
 
-            logger.info(`Running autodiscovery script on SSH host ${validSSHConfig.sshHostName} (could take several minutes)...`);
-            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(validSSHConfig.config, validSSHConfig.sshHostName);
-            logger.info(`Bastion assigned SSH host ${validSSHConfig.sshHostName} with the following unique target id: ${ssmTargetId}`);
+            logger.info(`Running autodiscovery script on SSH host ${registrableHost.host.sshHost.name} (could take several minutes)...`);
+            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(registrableHost);
+
+            logger.info(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
 
             // Poll for "Online" status
-            logger.info(`Waiting for target ${validSSHConfig.sshHostName} to become online (could take several minutes)...`);
+            logger.info(`Waiting for target ${registrableHost.host.sshHost.name} to become online (could take several minutes)...`);
             const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
-            logger.info(`SSH host ${validSSHConfig.sshHostName} successfully added to BastionZero!`);
+            logger.info(`SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
 
             resolve(ssmTarget);
         } catch (error) {
-            logger.error(`Failed to add SSH host: ${validSSHConfig.sshHostName} to BastionZero. ${error}`);
+            logger.error(`Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
             reject(error);
         }
     });

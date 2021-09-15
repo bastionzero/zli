@@ -30,7 +30,7 @@ export class AutoDiscoveryScriptService extends HttpService {
 export async function getAutodiscoveryScript(
     logger: Logger,
     configService: ConfigService,
-    environment: EnvironmentDetails,
+    environmentId: string,
     targetName: TargetName,
     operatingSystem: OperatingSystem,
     agentVersion: string
@@ -62,7 +62,7 @@ TARGET_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.2
     }
 
     const autodiscoveryScriptService = new AutoDiscoveryScriptService(configService, logger);
-    const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(operatingSystem, targetNameScript, environment.id, agentVersion);
+    const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(operatingSystem, targetNameScript, environmentId, agentVersion);
 
     return autodiscoveryScriptResponse.autodiscoveryScript;
 }
