@@ -18,7 +18,7 @@ export async function generateKubeYamlHandler(
 ) {
     // First check all the required args
     if (argv.clusterName == null) {
-        logger.error('Please make sure you have passed a -clusterName before trying to generate a yaml!');
+        logger.error('Please make sure you have passed the clusterName positional before trying to generate a yaml!');
         await cleanExit(1, logger);
     }
 
