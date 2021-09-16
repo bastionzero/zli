@@ -172,11 +172,18 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 			Tty:               true, // TODO: We dont always want tty
 		})
 
-		stdoutWriter.Write([]byte(EscChar))
+		// First check the error to bubble up to the user
 		if err != nil {
+			// Log the error
 			rerr := fmt.Errorf("error in SPDY stream: %s", err)
 			e.logger.Error(rerr)
+
+			// Also write the error to our stdoutWriter so the user can see it
+			stdoutWriter.Write([]byte(fmt.Sprint(err)))
 		}
+
+		// Now close the stream
+		stdoutWriter.Write([]byte(EscChar))
 
 		e.closed = true
 	}()
