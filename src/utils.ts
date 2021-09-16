@@ -472,5 +472,5 @@ export async function getEnvironmentFromName(enviromentName: string, envs: Envir
         logger.error(`Environment ${enviromentName} does not exist`);
         await cleanExit(1, logger);
     }
-    return environment
+    return environment;
 }

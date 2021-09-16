@@ -39,7 +39,7 @@ export async function generateKubeYamlHandler(
     }
 
     // If environment has been passed, ensure it's a valid envId
-    var environmentId = null;
+    let environmentId = null;
     if (argv.environmentName != null) {
         const environment = await getEnvironmentFromName(argv.environmentName, await envs, logger);
         environmentId = environment.id;

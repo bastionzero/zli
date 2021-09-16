@@ -4,7 +4,6 @@ import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { getAutodiscoveryScript } from '../../services/auto-discovery-script/auto-discovery-script.service';
-import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
 import { TargetName } from '../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
