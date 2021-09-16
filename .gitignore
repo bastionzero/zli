@@ -340,6 +340,6 @@ ASALocalRun/
 .localhistory/
 
 # Our built agent 
-bctl-go-daemon/bctl/daemon/daemon-linux
-bctl-go-daemon/bctl/daemon/daemon-macos
-bctl-go-daemon/bctl/daemon/daemon-windows
+kube-go-assets/bctl/daemon/daemon-linux
+kube-go-assets/bctl/daemon/daemon-macos
+kube-go-assets/bctl/daemon/daemon-windows

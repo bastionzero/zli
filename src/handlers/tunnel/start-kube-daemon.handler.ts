@@ -12,9 +12,9 @@ import yargs from 'yargs';
 import { tunnelArgs } from './tunnel.command-builder';
 const { spawn } = require('child_process');
 
-const WINDOWS_DAEMON_PATH : string = '../../../../bctl-go-daemon/bctl/daemon/daemon-windows';
-const LINUX_DAEMON_PATH : string = '../../../../bctl-go-daemon/bctl/daemon/daemon-linux';
-const MACOS_DAEMON_PATH : string = '../../../../bctl-go-daemon/bctl/daemon/daemon-macos';
+const WINDOWS_DAEMON_PATH : string = '../../../../kube-go-assets/bctl/daemon/daemon-windows';
+const LINUX_DAEMON_PATH : string = '../../../../kube-go-assets/bctl/daemon/daemon-linux';
+const MACOS_DAEMON_PATH : string = '../../../../kube-go-assets/bctl/daemon/daemon-macos';
 
 export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, assumeUser: string, assumeCluster: string, clusterTargets: Promise<ClusterDetails[]>, configService: ConfigService, logger: Logger, loggerConfigService: LoggerConfigService) {
     // First check that the cluster is online
