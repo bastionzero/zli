@@ -3,11 +3,11 @@ import fs from 'fs';
 
 import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
-import { cleanExit } from '../clean-exit.handler';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { AutoDiscoveryScriptService } from '../../services/auto-discovery-script/auto-discovery-script.service';
 import yargs from 'yargs';
 import { autoDiscoveryScriptArgs } from './autodiscovery-script.command-builder';
+import { getEnvironmentFromName } from '../../../src/utils';
 
 
 export async function autoDiscoveryScriptHandler(
@@ -24,11 +24,7 @@ export async function autoDiscoveryScriptHandler(
     const agentVersionArg = argv.agentVersion;
     const envs = await environments;
 
-    const environment = envs.find(envDetails => envDetails.name == environmentNameArg);
-    if (!environment) {
-        logger.error(`Environment ${environmentNameArg} does not exist`);
-        await cleanExit(1, logger);
-    }
+    const environment = await getEnvironmentFromName(environmentNameArg, envs, logger);
 
     const autodiscoveryScriptService = new AutoDiscoveryScriptService(configService, logger);
     const autodiscoveryScriptResponse = await autodiscoveryScriptService.getAutodiscoveryScript(argv.operatingSystem, `TARGET_NAME=\"${argv.targetName}\"`, environment.id, agentVersionArg);

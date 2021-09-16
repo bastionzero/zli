@@ -6,7 +6,7 @@ export type generateKubeArgs = {typeOfConfig: string} &
 {labels: string[]} &
 {customPort: number} &
 {outputFile: string} &
-{environmentId: string}
+{environmentName: string}
 
 export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<generateKubeArgs> {
     return yargs
@@ -35,7 +35,7 @@ export function generateKubeCmdBuilder(yargs: yargs.Argv<{}>) : yargs.Argv<gener
             alias: 'o',
             default: null
         })
-        .option('environmentId', {
+        .option('environmentName', {
             type: 'string',
             default: null
         })
