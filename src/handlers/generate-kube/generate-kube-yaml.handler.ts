@@ -44,8 +44,6 @@ export async function generateKubeYamlHandler(
         const environment = await getEnvironmentFromName(argv.environmentName, await envs, logger);
         environmentId = environment.id;
     }
-    logger.info(environmentId);
-    logger.info(argv.environmentName);
 
     // Get our kubeYaml
     const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labels, argv.namespace, environmentId);
