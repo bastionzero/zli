@@ -19,6 +19,12 @@ export function quickstartCmdBuilder(yargs: yargs.Argv<{}>): yargs.Argv<quicksta
             }
         )
         .check(function (argv) {
+            // OS check
+            if (process.platform === 'win32') {
+                throw new Error('Quickstart is not supported on Windows machines');
+            }
+
+            // Check sshConfigFile parameter
             if (argv.sshConfigFile === undefined) {
                 // User did not pass in sshConfigFile parameter. Use default parameter
                 argv.sshConfigFile = defaultSshConfigFilePath;
