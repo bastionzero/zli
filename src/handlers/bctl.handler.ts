@@ -11,7 +11,7 @@ const execPromise = util.promisify(exec);
 export async function bctlHandler(configService: ConfigService, logger: Logger, listOfCommands: string[]) {
     // Check if daemon is even running
     const kubeConfig = configService.getKubeConfig();
-    if (kubeConfig !== undefined && kubeConfig['localPid'] === null) {
+    if (kubeConfig !== null && kubeConfig['localPid'] === null) {
         logger.warn('No Kube daemon running');
         await cleanExit(1, logger);
     }
