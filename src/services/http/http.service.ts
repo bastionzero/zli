@@ -4,8 +4,6 @@ import { ConfigService } from '../config/config.service';
 import FormData from 'form-data';
 import { Logger } from '../logger/logger.service';
 
-const fs = require('fs');
-
 export class HttpService {
     // ref for got: https://github.com/sindresorhus/got
     protected httpClient: Got;
@@ -68,7 +66,7 @@ export class HttpService {
                     const parsedJSON = JSON.parse(error.response.body as string);
                     errorMessage = JSON.stringify(parsedJSON, null, 2);
                 } catch (e) {
-                    errorMessage = "";
+                    errorMessage = '';
                 }
             }
             return `Server Error:\n${errorMessage}`;

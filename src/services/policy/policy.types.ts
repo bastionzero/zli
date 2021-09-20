@@ -64,7 +64,7 @@ export interface PolicyEnvironment {
 
 export interface PolicyTarget {
     id: string;
-    type: "ssm" | "dynamic";
+    type: 'ssm' | 'dynamic';
 }
 
 export interface PolicyTargetUser {

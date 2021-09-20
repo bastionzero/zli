@@ -160,7 +160,7 @@ export class QuickstartSsmService {
                 // the end, it will still work.
                 // (3) The target is still displayed in final summary that is
                 // printed at the end of quickstart.
-                // 
+                //
                 // We can't make this improvement right now as the agent doesn't
                 // know its own ID (we don't store it in the agent)
                 throw new Error('Agent is already installed');
@@ -215,7 +215,7 @@ export class QuickstartSsmService {
             });
 
             // Wait for the script to finish executing
-            return await execAutodiscoveryScript
+            return await execAutodiscoveryScript;
         } finally {
             this.logger.debug(`Closing SSH connection with host: ${hostName}`);
             await conn.close();
@@ -390,43 +390,43 @@ export class QuickstartSsmService {
         const validSSHHost = invalidSSHHost.incompleteValidSSHHost;
         for (const parseError of parseErrors) {
             switch (parseError.error) {
-                case 'missing_host_name':
-                    const hostName = await this.handleMissingHostName();
-                    if (hostName === undefined) {
-                        return undefined;
-                    } else {
-                        validSSHHost.hostIp = hostName;
-                    }
-                    break;
-                case 'missing_port':
-                    const port = await this.handleMissingPort();
-                    if (port === undefined) {
-                        return undefined;
-                    } else {
-                        validSSHHost.port = port;
-                    }
-                    break;
-                case 'missing_user':
-                    const user = await this.handleMissingUser();
-                    if (user === undefined) {
-                        return undefined;
-                    } else {
-                        validSSHHost.username = user;
-                    }
-                    break;
-                case 'missing_identity_file':
-                    const identityFilePath = await this.handleMissingIdentityFile();
-                    if (identityFilePath === undefined) {
-                        return undefined;
-                    } else {
-                        validSSHHost.identityFile = this.resolveHome(identityFilePath);
-                    }
-                    break;
-                default:
-                    // Note: This error is never thrown at runtime. It is an
-                    // exhaustive check at compile-time.
-                    const exhaustiveCheck: never = parseError;
-                    throw new Error(`Unhandled parse error type: ${exhaustiveCheck}`);
+            case 'missing_host_name':
+                const hostName = await this.handleMissingHostName();
+                if (hostName === undefined) {
+                    return undefined;
+                } else {
+                    validSSHHost.hostIp = hostName;
+                }
+                break;
+            case 'missing_port':
+                const port = await this.handleMissingPort();
+                if (port === undefined) {
+                    return undefined;
+                } else {
+                    validSSHHost.port = port;
+                }
+                break;
+            case 'missing_user':
+                const user = await this.handleMissingUser();
+                if (user === undefined) {
+                    return undefined;
+                } else {
+                    validSSHHost.username = user;
+                }
+                break;
+            case 'missing_identity_file':
+                const identityFilePath = await this.handleMissingIdentityFile();
+                if (identityFilePath === undefined) {
+                    return undefined;
+                } else {
+                    validSSHHost.identityFile = this.resolveHome(identityFilePath);
+                }
+                break;
+            default:
+                // Note: This error is never thrown at runtime. It is an
+                // exhaustive check at compile-time.
+                const exhaustiveCheck: never = parseError;
+                throw new Error(`Unhandled parse error type: ${exhaustiveCheck}`);
             }
         }
 
@@ -635,7 +635,7 @@ export class QuickstartSsmService {
         }
 
         // Create an environment per common SSH username
-        for (let [username, hosts] of usernameMap) {
+        for (const [username, hosts] of usernameMap) {
             const quickstartEnvName = `${username}-users_quickstart`;
             let quickstartEnvId: string;
             try {
@@ -701,7 +701,7 @@ export class QuickstartSsmService {
         }
 
         // Create a policy per common SSH username
-        for (let [username, targets] of usernameMap) {
+        for (const [username, targets] of usernameMap) {
             const quickstartPolicyName = `${username}-users-policy_quickstart`;
             try {
                 // Ensure that quickstart policy exists for this SSH username.
@@ -753,7 +753,7 @@ export class QuickstartSsmService {
      *
      * The second element contains a list of all invalid SSH hosts. Each invalid
      * SSH host contains an associated list of parse errors and an incomplete
-     * ValidSSHHost (e.g. some required parameters were included). 
+     * ValidSSHHost (e.g. some required parameters were included).
      */
     public parseSSHHosts(sshConfig: string): [hosts: Map<string, ValidSSHHost>, invalidSSHHosts: InvalidSSHHost[]] {
         // Parse sshConfig content to usable HostBlock types
