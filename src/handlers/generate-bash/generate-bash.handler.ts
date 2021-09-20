@@ -7,7 +7,7 @@ import { getAutodiscoveryScript } from '../../services/auto-discovery-script/aut
 import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
-import { TargetName } from '../../services/auto-discovery-script/auto-discovery-script.types';
+import { TargetName } from '../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
 
 export async function generateBashHandler(
     argv: yargs.Arguments<generateBashArgs>,
