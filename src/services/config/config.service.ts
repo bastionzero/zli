@@ -8,17 +8,8 @@ import { IdP } from '../common.types';
 import { ClientSecretResponse } from '../token/token.messages';
 import { TokenService } from '../token/token.service';
 import { UserSummary } from '../user/user.types';
+import { KubeConfig, getDefaultKubeConfig } from '../kube/kube.service';
 
-export interface KubeConfig {
-    keyPath: string,
-    certPath: string,
-    token: string,
-    localHost: string,
-    localPort: number,
-    localPid: number,
-    assumeRole: string,
-    assumeCluster: string,
-}
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
 type BastionZeroConfigSchema = {
@@ -64,7 +55,7 @@ export class ConfigService implements ConfigInterface {
                 whoami: undefined,
                 sshKeyPath: undefined,
                 keySplitting: getDefaultKeysplittingConfig(),
-                kubeConfig: undefined
+                kubeConfig: getDefaultKubeConfig()
             },
             accessPropertiesByDotNotation: true,
             clearInvalidConfig: true,    // if config is invalid, delete

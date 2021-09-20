@@ -5,6 +5,17 @@ import { Logger } from '../logger/logger.service';
 import { GetKubeUnregisteredAgentYamlResponse, GetKubeUnregisteredAgentYamlRequest, GetUserInfoResponse, GetUserInfoRequest } from './kube.mesagges';
 import { ClusterSummary } from './kube.types';
 
+export interface KubeConfig {
+    keyPath: string,
+    certPath: string,
+    token: string,
+    localHost: string,
+    localPort: number,
+    localPid: number,
+    assumeRole: string,
+    assumeCluster: string,
+}
+
 export class KubeService extends HttpService
 {
     constructor(configService: ConfigService, logger: Logger)
@@ -65,5 +76,18 @@ export async function killDaemon(configService: ConfigService) {
         return true;
     } else {
         return false;
+    }
+}
+
+export function getDefaultKubeConfig(): KubeConfig {
+    return {
+        keyPath: null,
+        certPath: null,
+        token: null,
+        localHost: null,
+        localPort: null,
+        localPid: null,
+        assumeRole: null,
+        assumeCluster: null,
     }
 }
