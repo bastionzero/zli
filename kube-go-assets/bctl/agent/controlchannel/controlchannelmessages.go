@@ -26,5 +26,5 @@ type GetChallengeMessage struct {
 }
 
 type GetChallengeResponse struct {
-	Challenge string `json:"challange"`
+	Challenge string `json:"challenge"`
 }

@@ -37,17 +37,17 @@ func newChallenge(orgId string, clusterName string, serviceUrl string, privateKe
 	json.NewDecoder(response.Body).Decode(&responseDecoded)
 
 	// Solve Challenge
-	return signChallenge(privateKey, responseDecoded.Challenge)
+	return signString(privateKey, responseDecoded.Challenge)
 }
 
-func signChallenge(privateKey string, challenge string) (string, error) {
+func signString(privateKey string, content string) (string, error) {
 	keyBytes, _ := base64.StdEncoding.DecodeString(privateKey)
 	if len(keyBytes) != 64 {
 		return "", fmt.Errorf("invalid private key length: %v", len(keyBytes))
 	}
 	privkey := ed.PrivateKey(keyBytes)
 
-	hashBits := sha3.Sum256([]byte(challenge))
+	hashBits := sha3.Sum256([]byte(content))
 
 	sig := ed.Sign(privkey, hashBits[:])
 
