@@ -52,10 +52,10 @@ export function parsePolicyType(policyType: string) : PolicyType
 
 export function parseIdpType(idp: IdentityProvider) : IdentityProvider
 {
-    switch (idp.toLowerCase()) {
-    case IdentityProvider.Google.toLowerCase():
+    switch (idp) {
+    case IdentityProvider.Google:
         return IdentityProvider.Google;
-    case IdentityProvider.Microsoft.toLowerCase():
+    case IdentityProvider.Microsoft:
         return IdentityProvider.Microsoft;
     default:
         return undefined;
