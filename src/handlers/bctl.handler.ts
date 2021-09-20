@@ -46,7 +46,7 @@ export async function bctlHandler(configService: ConfigService, logger: Logger, 
             // Check to ensure they are using the right context
             const currentContext = await execPromise('kubectl config current-context ');
 
-            if (currentContext.stdout != 'bctl-server') {
+            if (currentContext.stdout != 'bctl-agent') {
                 logger.warn('Make sure you using the correct kube config!');
             }
         }
