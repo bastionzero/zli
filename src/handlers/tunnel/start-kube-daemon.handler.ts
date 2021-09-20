@@ -44,7 +44,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     }
 
 
-    if (kubeConfig['localPid'] != null) {
+    if (kubeConfig !== undefined && kubeConfig['localPid'] !== null) {
         killDaemon(configService);
     }
 
