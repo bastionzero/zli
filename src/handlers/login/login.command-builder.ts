@@ -1,4 +1,3 @@
-import { IdP } from '../../services/common.types';
 import yargs from 'yargs';
 
 export type loginArgs = {mfa: string}

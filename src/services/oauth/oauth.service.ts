@@ -34,7 +34,7 @@ export class OAuthService implements IDisposable {
             res.writeHead(200, {
                 'Access-Control-Allow-Origin': '*',
                 'content-type': 'text/html',
-              });
+            });
 
             // Example of request url string
             // /login-callback?param=...
@@ -62,7 +62,7 @@ export class OAuthService implements IDisposable {
                     await cleanExit(1, this.logger);
                 }
                 await this.configService.loginSetup(provider);
-                
+
                 // Setup the oidc client for a new login
                 await this.setupClient();
                 this.codeVerifier = generators.codeVerifier();
@@ -83,7 +83,7 @@ export class OAuthService implements IDisposable {
                 if(this.nonce === undefined){
                     throw new Error('Unable to parse idp response with undefined nonce');
                 }
-                
+
                 const params = this.oidcClient.callbackParams(req);
 
                 const tokenSet = await this.oidcClient.callback(
