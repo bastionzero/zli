@@ -28,7 +28,8 @@ export class QuickstartSsmService {
     ) { }
 
     /**
-     * Polls the bastion (using exponential backoff) until the SSM target is Online and the agent version is known.
+     * Polls the bastion (using exponential backoff) until the SSM target is
+     * Online and the agent version is known.
      * @param ssmTargetId The ID of the target to poll
      * @returns Information about the target
      */
@@ -54,6 +55,12 @@ export class QuickstartSsmService {
         return result;
     }
 
+    /**
+     * Check to see if an agent is already installed on a host
+     * @param sshConnection SSH connection to the host to be checked
+     * @param hostName Name of the host
+     * @returns True if the agent is already installed. False otherwise.
+     */
     private async isAgentAlreadyInstalled(sshConnection: SSHConnection, hostName: string): Promise<boolean> {
         try {
             // Check to see if agent is already installed on this host
@@ -74,38 +81,51 @@ export class QuickstartSsmService {
         return true;
     }
 
-    public async addSSHHostToBastionZero(
-        registrableHost: RegistrableSSHHost,
-        quickstartService: QuickstartSsmService,
-        logger: Logger): Promise<SsmTargetSummary> {
-
+    /**
+     * Attempts to add a registrable SSH host to BastionZero. Fails with a
+     * rejected promise if any step of the registration process fails: getting
+     * autodiscovery script from Bastion, running autodiscovery script, and
+     * polling for target to be online.
+     *
+     * Note: This function fails if it is found that the passed in SSH host has
+     * an agent already installed on it.
+     * @param registrableHost The SSH host to register
+     * @returns Target summary of the newly registered host
+     */
+    public async addSSHHostToBastionZero(registrableHost: RegistrableSSHHost): Promise<SsmTargetSummary> {
         return new Promise<SsmTargetSummary>(async (resolve, reject) => {
             try {
-                logger.info(`Attempting to add SSH host ${registrableHost.host.sshHost.name} to BastionZero...`);
+                this.logger.info(`Attempting to add SSH host ${registrableHost.host.sshHost.name} to BastionZero...`);
 
-                logger.info(`Running autodiscovery script on SSH host ${registrableHost.host.sshHost.name} (could take several minutes)...`);
-                const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(registrableHost);
+                this.logger.info(`Running autodiscovery script on SSH host ${registrableHost.host.sshHost.name} (could take several minutes)...`);
+                const ssmTargetId = await this.runAutodiscoveryOnSSHHost(registrableHost);
 
-                logger.info(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
+                this.logger.info(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
 
                 // Poll for "Online" status
-                logger.info(`Waiting for target ${registrableHost.host.sshHost.name} to become online (could take several minutes)...`);
-                const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
-                logger.info(`SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
+                this.logger.info(`Waiting for target ${registrableHost.host.sshHost.name} to become online (could take several minutes)...`);
+                const ssmTarget = await this.pollSsmTargetOnline(ssmTargetId);
+                this.logger.info(`SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
 
                 resolve(ssmTarget);
             } catch (error) {
-                logger.error(`Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
+                this.logger.error(`Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
                 reject(error);
             }
         });
     }
 
     /**
-     * Connects to an SSH host and runs the universal autodiscovery script on it.
-     * @param sshConfig SSH configuration to use when building the SSH connection
-     * @param hostName Name of SSH host to use in log messages
-     * @returns The SSM target ID of the newly registered machine
+     * Connects to an SSH host and runs the universal autodiscovery script on
+     * it. This function returns a rejected promise if:
+     * - The SSH connection failed
+     * - The agent is already installed on the machine
+     * - A failure to receive the autodiscovery script from the Bastion
+     * - A failure to start the autodiscovery script
+     * - If the autodiscovery script returns a non-zero exit status code
+     * - A failure to parse the machine's SSM target ID
+     * @param registrableSSHHost The SSH host to run the autodiscovery script on
+     * @returns The target ID of the newly registered host
      */
     private async runAutodiscoveryOnSSHHost(registrableSSHHost: RegistrableSSHHost): Promise<string> {
         const sshConfig = registrableSSHHost.host.config;
@@ -147,6 +167,9 @@ export class QuickstartSsmService {
             }
 
             // Get autodiscovery script
+            //
+            // The registered target's name will match the hostname alias parsed
+            // from the SSH config file
             const script = await getAutodiscoveryScript(this.logger, this.configService, registrableSSHHost.envId, { scheme: 'manual', name: hostName }, 'universal', 'latest');
 
             // Run script on target
@@ -200,6 +223,15 @@ export class QuickstartSsmService {
         }
     }
 
+    /**
+     * Display a prompt asking the user if they wish to skip the host or exit
+     * out of quickstart
+     * @param hostName Name of the host
+     * @param onCancel Handler function for interruption of the prompt (e.g.
+     * CTRL-C, ESC, etc.)
+     * @returns True if the user wishes to skip the host. False if the user
+     * wishes to exit.
+     */
     public async promptSkipHostOrExit(hostName: string, onCancel: (prompt: PromptObject, answers: any) => void): Promise<boolean> {
         const confirmSkipOrExit = await prompts({
             type: 'toggle',
@@ -213,9 +245,23 @@ export class QuickstartSsmService {
         return confirmSkipOrExit.value;
     }
 
+    /**
+     * Converts parsed valid SSH hosts from the SSH config file to SSHConfigs
+     * that are usable by the ssh2-promise library. This process is interactive
+     * as it also checks to see if the IdentityFile (SSH key) is both present on
+     * disk and encrypted. If the key is encrypted, we prompt the user to enter
+     * the passphrase so that we can decrypt it and use when building the SSH
+     * connection later.
+     * @param hosts List of valid SSH hosts
+     * @param onCancel Handler function for interruption of the prompt (e.g.
+     * CTRL-C, ESC, etc.)
+     * @returns A list of valid SSH hosts with their corresponding SSHConfig
+     * configurations for use with the ssh2-promise library
+     */
     public async promptConvertValidSSHHostsToSSHConfigs(hosts: ValidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHostAndConfig[]> {
         const sshConfigs: ValidSSHHostAndConfig[] = [];
         for (const host of hosts) {
+            this.logger.info(`Validating SSH key for host ${host.name}`);
             // Try to read the IdentityFile and store its contents in keyFile variable
             let keyFile: string;
             try {
@@ -257,6 +303,7 @@ export class QuickstartSsmService {
             }
 
             // Convert from ValidSSHHost to ValidSSHConfig
+            this.logger.info(`SSH key for host ${host.name} is valid`);
             sshConfigs.push({
                 sshHost: host,
                 config: {
@@ -272,15 +319,18 @@ export class QuickstartSsmService {
         return sshConfigs;
     }
 
-    public async promptInteractiveDebugSession(
-        invalidSSHHosts: InvalidSSHHost[],
-        quickstartService: QuickstartSsmService,
-        logger: Logger,
-        onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
-
+    /**
+     * Begin an interactive debugging session (user is prompted with questions)
+     * to convert invalid SSH hosts to valid SSH hosts.
+     * @param invalidSSHHosts A list of invalid SSH hosts
+     * @param onCancel Handler function for interruption of the prompt (e.g.
+     * CTRL-C, ESC, etc.)
+     * @returns A list of valid SSH hosts (potentially empty)
+     */
+    public async promptInteractiveDebugSession(invalidSSHHosts: InvalidSSHHost[], onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
         // Get pretty string of invalid SSH hosts' names
         const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.incompleteValidSSHHost.name).join(', ');
-        logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
+        this.logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
 
         const fixedSSHHosts: ValidSSHHost[] = [];
         const confirmDebugSessionResponse = await prompts({
@@ -296,19 +346,19 @@ export class QuickstartSsmService {
         if (!shouldStartDebugSession)
             return fixedSSHHosts;
 
-        logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
+        this.logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
 
         for (const invalidSSHHost of invalidSSHHosts) {
-            const fixedHost = await quickstartService.promptFixInvalidSSHHost(invalidSSHHost);
+            const fixedHost = await this.promptFixInvalidSSHHost(invalidSSHHost);
             if (fixedHost === undefined) {
-                const shouldSkip = await quickstartService.promptSkipHostOrExit(invalidSSHHost.incompleteValidSSHHost.name, onCancel);
+                const shouldSkip = await this.promptSkipHostOrExit(invalidSSHHost.incompleteValidSSHHost.name, onCancel);
 
                 if (shouldSkip) {
-                    logger.info(`Skipping host ${invalidSSHHost.incompleteValidSSHHost.name}...`);
+                    this.logger.info(`Skipping host ${invalidSSHHost.incompleteValidSSHHost.name}...`);
                     continue;
                 } else {
-                    logger.info('Prompt cancelled. Exiting out of quickstart...');
-                    await cleanExit(1, logger);
+                    this.logger.info('Prompt cancelled. Exiting out of quickstart...');
+                    await cleanExit(1, this.logger);
                 }
             } else {
                 fixedSSHHosts.push(fixedHost);
@@ -318,6 +368,13 @@ export class QuickstartSsmService {
         return fixedSSHHosts;
     }
 
+    /**
+     * Prompt the user with a series of questions to convert an invalid SSH host
+     * to a valid SSH host
+     * @param invalidSSHHost An invalid SSH host
+     * @returns A valid SSH host if the user answered all prompts and did not
+     * cancel. Undefined if the user cancelled any prompt.
+     */
     private async promptFixInvalidSSHHost(invalidSSHHost: InvalidSSHHost): Promise<ValidSSHHost | undefined> {
         const parseErrors = invalidSSHHost.parseErrors;
         const sshHostName = invalidSSHHost.incompleteValidSSHHost.name;
@@ -376,6 +433,14 @@ export class QuickstartSsmService {
         return validSSHHost;
     }
 
+    /**
+     * Prompt the user to provide their passphrase to handle an encrypted
+     * identity file (SSH key).
+     * @param identityFilePathName File path to key
+     * @param identityFileContents Contents of the key
+     * @returns A valid passphrase that correctly decrypts the SSH key.
+     * Undefined if the user cancels the prompt.
+     */
     private async handleEncryptedIdentityFile(identityFilePathName: string, identityFileContents: string): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
@@ -408,6 +473,11 @@ export class QuickstartSsmService {
         });
     }
 
+    /**
+     * Prompt the user to handle a missing HostName parameter for some parsed
+     * SSH host.
+     * @returns User's answer. Undefined if the user cancels the prompt.
+     */
     private async handleMissingHostName(): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
@@ -421,6 +491,11 @@ export class QuickstartSsmService {
         });
     }
 
+    /**
+     * Prompt the user to handle a missing Port parameter for some parsed SSH
+     * host. Prompt defaults to port 22.
+     * @returns User's answer. Undefined if the user cancels the prompt.
+     */
     private async handleMissingPort(): Promise<number | undefined> {
         return new Promise<number | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
@@ -434,6 +509,11 @@ export class QuickstartSsmService {
         });
     }
 
+    /**
+     * Prompt the user to handle a missing User parameter for some parsed SSH
+     * host.
+     * @returns User's answer. Undefined if the user cancels the prompt.
+     */
     private async handleMissingUser(): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
@@ -447,6 +527,11 @@ export class QuickstartSsmService {
         });
     }
 
+    /**
+     * Prompt the user to handle a missing IdentityFile (SSH key) parameter for
+     * some parsed SSH host.
+     * @returns User's answer. Undefined if the user cancels the prompt.
+     */
     private async handleMissingIdentityFile(): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
@@ -460,6 +545,15 @@ export class QuickstartSsmService {
         });
     }
 
+    /**
+     * Create an environment following the quickstart format (description +
+     * cleanupTimeout)
+     * @param sshUsername Username that all hosts in this environment should
+     * have TargetConnect policies for (with TargetUser=sshUsername) once
+     * quickstart finishes successfully
+     * @param envName Name of environment
+     * @returns Returns the ID of the newly created environment
+     */
     private async createQuickstartEnvironment(sshUsername: string, envName: string): Promise<string> {
         const createEnvResp = await this.environmentService.CreateEnvironment({
             name: envName,
@@ -470,13 +564,19 @@ export class QuickstartSsmService {
         return createEnvResp.id;
     }
 
+    /**
+    * Create a TargetConnect policy that permits:
+    * - Subject: The user running quickstart
+    * - Action: To perform the following three verbs with TargetUser (unix
+        username) == the parsed SSH username: open a shell connection, create an
+        SSH tunnel, and perform FUD.
+    * - Context: To any target in the environment as specified by envId
+     * @param sshUsername Username to use for the TargetUser parameter
+     * @param envId ID of environment in which this policy applies to
+     * @param policyName Name of the policy
+     * @returns Summary of the newly created policy
+     */
     private async createQuickstartTargetConnectPolicy(sshUsername: string, envId: string, policyName: string): Promise<PolicySummary> {
-        // Create a TargetConnect policy that permits:
-        // (1) Subject: The user running quickstart
-        // (2) Action: To perform the following three verbs with
-        // TargetUser (unix username) == the parsed SSH username: open a
-        // shell connection, create an SSH tunnel, and perform FUD.
-        // (3) Context: To any target in the Default environment
         const environmentContext: { [key: string]: PolicyEnvironment } = { [envId]: { id: envId } };
         const targetUserContext: { [key: string]: PolicyTargetUser } = { [sshUsername]: { userName: sshUsername } };
         const verbContext: { [key: string]: Verb } = {
@@ -505,6 +605,16 @@ export class QuickstartSsmService {
         });
     }
 
+    /**
+     * Creates an environment for each unique SSH username in the parsed SSH
+     * hosts. If the environment already exists, no environment will be created.
+     * @param hostsToAdd A list of valid SSH hosts in which environments should
+     * be created for
+     * @returns A list of registrable SSH hosts. Each registrable host includes
+     * the environment ID in which the host should be registered in during the
+     * autodiscovery process. The returned list may be smaller than the input
+     * list if the request to create the environment fails.
+     */
     public async createEnvForUniqueUsernames(hostsToAdd: ValidSSHHostAndConfig[]): Promise<RegistrableSSHHost[]> {
         const registrableSSHHosts: RegistrableSSHHost[] = [];
         const usernameMap: Map<string, ValidSSHHostAndConfig[]> = new Map();
@@ -553,6 +663,24 @@ export class QuickstartSsmService {
         return registrableSSHHosts;
     }
 
+    /**
+     * Creates a policy for each unique SSH username in the parsed SSH hosts. If
+     * the policy already exists, no new policy will be created.
+     * @param quickstartTargets A list of SSM targets that were successfully
+     * registered
+     * @returns A list of SSM targets which are most likely connectable. The
+     * list will be smaller than the input list if the request to create the
+     * policy fails.
+     *
+     * We say that the hosts are most likely connectable because there is no
+     * absolute guarantee that the created policy (or the retrieved policy in
+     * the case that the policy already exists) will permit the user running
+     * quickstart to connect to their targets. Some bad scenarios include:
+     * - There exists a policy with the expected name, but it does not actually
+     *   permit the user running quickstart to connect.
+     * - The created policy (in the case that no expected policy exists) is
+     *   changed or removed before quickstart actually makes the connection.
+     */
     public async createPolicyForUniqueUsernames(quickstartTargets: QuickstartSSMTarget[]): Promise<QuickstartSSMTarget[]> {
         const connectableTargets: QuickstartSSMTarget[] = [];
         const usernameMap: Map<string, QuickstartSSMTarget[]> = new Map();
@@ -613,19 +741,19 @@ export class QuickstartSsmService {
      * Parse SSH hosts from a valid ssh_config(5)
      * (https://linux.die.net/man/5/ssh_config)
      * @param sshConfig Contents of the ssh config file
-     * @returns A tuple of Maps.
+     * @returns A 2-tuple.
      *
      * The first element contains a mapping of all valid SSH hosts. The key is
      * the SSH host's name. The value is an interface containing information
      * about the host. A valid SSH host is defined as one that has enough
-     * information about it in the config file, so that it can be used with the
-     * ssh2-promise library. There is no guarantee that a valid ssh host is
-     * successfully connectable (e.g. network issue, encrypted key file, invalid
-     * IP/host, file not found at path, etc.).
+     * information about it in the parsed config file, so that it can be used
+     * with the ssh2-promise library. There is no guarantee that a valid ssh
+     * host is successfully connectable (e.g. network issue, encrypted key file,
+     * invalid IP/host, file not found at path, etc.).
      *
-     * The second tuple contains a mapping of all invalid SSH hosts. The key is
-     * the invalid SSH host's name. The value is a list of parse errors that
-     * occurred when reading the host from the config file.
+     * The second element contains a list of all invalid SSH hosts. Each invalid
+     * SSH host contains an associated list of parse errors and an incomplete
+     * ValidSSHHost (e.g. some required parameters were included). 
      */
     public parseSSHHosts(sshConfig: string): [hosts: Map<string, ValidSSHHost>, invalidSSHHosts: InvalidSSHHost[]] {
         // Parse sshConfig content to usable HostBlock types

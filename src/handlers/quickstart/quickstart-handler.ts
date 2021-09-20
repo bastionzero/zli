@@ -41,7 +41,7 @@ export async function quickstartHandler(
     // Handle parse errors
     if (invalidSSHHosts.length > 0) {
         logger.warn(`${invalidSSHHosts.length} host(s) in the SSH config file are missing required parameters used to connect them with BastionZero.`);
-        const fixedSSHHosts = await quickstartService.promptInteractiveDebugSession(invalidSSHHosts, quickstartService, logger, onCancelPrompt);
+        const fixedSSHHosts = await quickstartService.promptInteractiveDebugSession(invalidSSHHosts, onCancelPrompt);
         // Add them to the valid mapping
         fixedSSHHosts.forEach(validHost => validSSHHosts.set(validHost.name, validHost));
         if (fixedSSHHosts.length > 0) {
@@ -138,7 +138,7 @@ export async function quickstartHandler(
     const registrableHosts = await quickstartService.createEnvForUniqueUsernames(validSSHConfigs);
 
     // Run autodiscovery script on all hosts concurrently
-    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => quickstartService.addSSHHostToBastionZero(host, quickstartService, logger)));
+    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => quickstartService.addSSHHostToBastionZero(host)));
 
     // Await for **all** hosts to either come "Online" or error
     const autodiscoveryResults = await autodiscoveryResultsPromise;

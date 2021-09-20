@@ -38,6 +38,7 @@ import { listPoliciesHandler } from './handlers/policy/list-policies.handler';
 import { listTargetUsersHandler } from './handlers/target-user/list-target-users.handler';
 import { fetchGroupsHandler } from './handlers/group/fetch-groups.handler';
 import { generateBashHandler } from './handlers/generate-bash/generate-bash.handler';
+import { quickstartHandler } from './handlers/quickstart/quickstart-handler';
 
 // 3rd Party Modules
 import { Dictionary, includes } from 'lodash';
@@ -62,13 +63,12 @@ import { sshProxyCmdBuilder } from './handlers/ssh-proxy/ssh-proxy.command-build
 import { autoDiscoveryScriptCommandBuilder } from './handlers/autodiscovery-script/autodiscovery-script.command-builder';
 import { generateKubeCmdBuilder } from './handlers/generate-kube/generate-kube.command-builder';
 import { generateBashCmdBuilder } from './handlers/generate-bash/generate-bash.command-builder';
+import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
 import { TargetSummary, TargetType, TargetStatus } from './services/common.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
 import { MixpanelService } from './services/mixpanel/mixpanel.service';
 import { PolicyType } from './services/policy/policy.types';
 import { ClusterDetails } from './services/kube/kube.types';
-import { quickstartCmdBuilder } from './handlers/quickstart/quickstart.command-builder';
-import { quickstartHandler } from './handlers/quickstart/quickstart-handler';
 
 export class CliDriver
 {
@@ -476,11 +476,8 @@ export class CliDriver
                 },
             )
             .command(
-                `quickstart [--sshConfigFile <path>]`,
-                `Start an interactive onboarding session to add your SSH hosts to BastionZero.
-
-This command will scan your ~/.ssh/config file by default. Pass the --sshConfigFile flag to scan a different file. The file must follow the ssh_config(5) format.
-                `,
+                'quickstart',
+                'Start an interactive onboarding session to add your SSH hosts to BastionZero.',
                 (yargs) => {
                     return quickstartCmdBuilder(yargs);
                 },
