@@ -64,6 +64,8 @@ type Websocket struct {
 	params      map[string]string
 	headers     map[string]string
 
+	subscribed bool
+
 	ctx context.Context
 }
 
@@ -91,6 +93,7 @@ func NewWebsocket(ctx context.Context,
 		params:              params,
 		headers:             headers,
 		ctx:                 ctx,
+		subscribed:          false,
 	}
 
 	ret.Connect()
@@ -114,6 +117,9 @@ func NewWebsocket(ctx context.Context,
 }
 
 func (w *Websocket) subscribeToOutputChannel() {
+	// Update our object to let others know we have subscribed
+	w.subscribed = true
+
 	// Listener for any messages that need to be sent
 	go func() {
 		for {
@@ -171,7 +177,7 @@ func (w *Websocket) Receive() error {
 				} else if wrappedMessage.Target == "ReadyBastionToClient" {
 					w.subscribeToOutputChannel()
 					break
-				} else {
+				} else if !w.subscribed {
 					w.subscribeToOutputChannel()
 				}
 				w.InputChan <- wrappedMessage.Arguments[0]
@@ -183,6 +189,11 @@ func (w *Websocket) Receive() error {
 
 // Function to write signalr message to websocket
 func (w *Websocket) Send(agentMessage wsmsg.AgentMessage) error {
+	// Lock our send function so we don't hit any concurrency issues
+	// Ref: https://github.com/gorilla/websocket/issues/698
+	w.socketLock.Lock()
+	defer w.socketLock.Unlock()
+
 	if !w.IsReady {
 		return fmt.Errorf("Websocket not ready to send yet")
 	}
