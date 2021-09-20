@@ -3,12 +3,13 @@ import Table from 'cli-table3';
 import { Logger } from './services/logger/logger.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { ApiKeyDetails } from './services/api-key/api-key.types';
-import { TargetType, TargetStatus, ParsedTargetString, TargetSummary, IdP } from './services/common.types';
+import { TargetType, TargetStatus, ParsedTargetString, TargetSummary } from './services/common.types';
 import { ConnectionDetails } from './services/connection/connection.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
 import { GroupSummary } from './services/groups/groups.types';
 import { PolicyType, PolicySummary, SubjectType, KubernetesPolicyContext, TargetConnectContext } from './services/policy/policy.types';
 import { UserSummary } from './services/user/user.types';
+import { IdentityProvider } from '../webshell-common-ts/auth-service/auth.types';
 
 // case insensitive substring search, 'find targetString in searchString'
 export function findSubstring(targetString: string, searchString: string) : boolean
@@ -49,18 +50,13 @@ export function parsePolicyType(policyType: string) : PolicyType
     }
 }
 
-export function parseIdpType(idp: string) : IdP
+export function parseIdpType(idp: IdentityProvider) : IdentityProvider
 {
-    const idpTypePattern = /^(google|microsoft)$/i; // case insensitive check for idp
-
-    if(! idpTypePattern.test(idp))
-        return undefined;
-
     switch (idp.toLowerCase()) {
-    case IdP.Google.toLowerCase():
-        return IdP.Google;
-    case IdP.Microsoft.toLowerCase():
-        return IdP.Microsoft;
+    case IdentityProvider.Google.toLowerCase():
+        return IdentityProvider.Google;
+    case IdentityProvider.Microsoft.toLowerCase():
+        return IdentityProvider.Microsoft;
     default:
         return undefined;
     }

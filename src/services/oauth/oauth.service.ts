@@ -1,6 +1,7 @@
 import { AuthorizationParameters, Client, custom, errors, generators, Issuer, TokenSet, UserinfoResponse } from 'openid-client';
 import open from 'open';
 import { IDisposable } from '../../../webshell-common-ts/utility/disposable';
+import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 import { ConfigService } from '../config/config.service';
 import http, { RequestListener } from 'http';
 import { setTimeout } from 'timers';
@@ -9,7 +10,6 @@ import { loginHtml } from './templates/login';
 import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../handlers/clean-exit.handler';
 import { parse as QueryStringParse } from 'query-string';
-import { idpRedirect } from './templates/idpRedirect';
 import { parseIdpType } from '../../utils';
 
 export class OAuthService implements IDisposable {
@@ -31,11 +31,6 @@ export class OAuthService implements IDisposable {
     ): void {
 
         const requestListener: RequestListener = async (req, res) => {
-            res.writeHead(200, {
-                'Access-Control-Allow-Origin': '*',
-                'content-type': 'text/html',
-            });
-
             // Example of request url string
             // /login-callback?param=...
             const urlParts = req.url.split('?');
@@ -52,11 +47,10 @@ export class OAuthService implements IDisposable {
 
             switch (urlParts[0]) {
             case '/webapp-callback':
-                res.write(idpRedirect);
-                res.end();
 
                 // Prepare config for a new login
-                const provider = parseIdpType(queryParams.idp as string);
+                const provider = parseIdpType(queryParams.idp as IdentityProvider);
+
                 if(provider === undefined) {
                     this.logger.error('The selected identity provider is not currently supported.');
                     await cleanExit(1, this.logger);
@@ -68,7 +62,14 @@ export class OAuthService implements IDisposable {
                 this.codeVerifier = generators.codeVerifier();
                 const code_challenge = generators.codeChallenge(this.codeVerifier);
 
-                await open(this.getAuthUrl(code_challenge));
+                // Redirect to the idp
+                res.writeHead(302, {
+                    'Access-Control-Allow-Origin': '*',
+                    'content-type': 'text/html',
+                    'Location': this.getAuthUrl(code_challenge)
+                });
+                res.end();
+
                 break;
 
             case '/login-callback':
@@ -97,6 +98,10 @@ export class OAuthService implements IDisposable {
                 // write to config with callback
                 callback(tokenSet);
                 this.server.close();
+                res.writeHead(200, {
+                    'Access-Control-Allow-Origin': '*',
+                    'content-type': 'text/html'
+                });
                 res.write(loginHtml);
                 resolve();
                 break;

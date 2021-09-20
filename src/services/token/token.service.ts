@@ -1,4 +1,4 @@
-import { IdP } from '../common.types';
+import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 import { ConfigService } from '../config/config.service';
 import { HttpService } from '../http/http.service';
 import { Logger } from '../logger/logger.service';
@@ -16,7 +16,7 @@ export class TokenService extends HttpService
         return this.Get('mixpanel-token', {});
     }
 
-    public GetClientSecret(idp: IdP) : Promise<ClientSecretResponse>
+    public GetClientSecret(idp: IdentityProvider) : Promise<ClientSecretResponse>
     {
         return this.Get(`${idp.toLowerCase()}-client`, {});
     }

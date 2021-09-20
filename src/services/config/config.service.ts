@@ -4,11 +4,11 @@ import { Logger } from '../logger/logger.service';
 import { KeySplittingConfigSchema, ConfigInterface, getDefaultKeysplittingConfig } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service.types';
 import path from 'path';
 import { Observable, Subject } from 'rxjs';
-import { IdP } from '../common.types';
 import { ClientSecretResponse } from '../token/token.messages';
 import { TokenService } from '../token/token.service';
 import { UserSummary } from '../user/user.types';
 import { KubeConfig, getDefaultKubeConfig } from '../kube/kube.service';
+import { IdentityProvider } from '../../../webshell-common-ts/auth-service/auth.types';
 
 
 // refL: https://github.com/sindresorhus/conf/blob/master/test/index.test-d.ts#L5-L14
@@ -20,7 +20,7 @@ type BastionZeroConfigSchema = {
     tokenSet: TokenSetParameters,
     callbackListenerPort: number,
     mixpanelToken: string,
-    idp: IdP,
+    idp: IdentityProvider,
     sessionId: string,
     whoami: UserSummary,
     sshKeyPath: string
@@ -130,7 +130,7 @@ export class ConfigService implements ConfigInterface {
     }
 
     // private until we have a reason to expose to app
-    public idp(): IdP {
+    public idp(): IdentityProvider {
         return this.config.get('idp');
     }
 
@@ -188,7 +188,7 @@ export class ConfigService implements ConfigInterface {
         this.config.delete('keySplitting');
     }
 
-    public async loginSetup(idp: IdP): Promise<void>
+    public async loginSetup(idp: IdentityProvider): Promise<void>
     {
         this.config.set('idp', idp);
         this.config.set('authUrl', this.getAuthUrl(idp));
@@ -232,24 +232,24 @@ export class ConfigService implements ConfigInterface {
         return `https://${appName}.bastionzero.com/`;
     }
 
-    private getAuthUrl(idp: IdP) {
+    private getAuthUrl(idp: IdentityProvider) {
         switch(idp)
         {
-        case IdP.Google:
+        case IdentityProvider.Google:
             return 'https://accounts.google.com';
-        case IdP.Microsoft:
+        case IdentityProvider.Microsoft:
             return 'https://login.microsoftonline.com/common/v2.0';
         default:
             throw new Error(`Unknown idp ${idp}`);
         }
     }
 
-    private getAuthScopes(idp: IdP) {
+    private getAuthScopes(idp: IdentityProvider) {
         switch(idp)
         {
-        case IdP.Google:
+        case IdentityProvider.Google:
             return 'openid email profile';
-        case IdP.Microsoft:
+        case IdentityProvider.Microsoft:
             // both openid and offline_access must be set for refresh token
             return 'offline_access openid email profile';
         default:
@@ -257,7 +257,7 @@ export class ConfigService implements ConfigInterface {
         }
     }
 
-    private getOAuthClient(idp: IdP): Promise<ClientSecretResponse> {
+    private getOAuthClient(idp: IdentityProvider): Promise<ClientSecretResponse> {
         return this.tokenService.GetClientSecret(idp);
     }
 
