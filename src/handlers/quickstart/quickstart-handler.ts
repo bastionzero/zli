@@ -2,64 +2,18 @@ import { ConfigService } from '../../services/config/config.service';
 import { Logger } from '../../services/logger/logger.service';
 import { cleanExit } from '../clean-exit.handler';
 import { QuickstartSsmService } from '../../services/quickstart/quickstart-ssm.service';
-import { InvalidSSHHost, ValidSSHHost, RegistrableSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
+import { ValidSSHHost } from '../../services/quickstart/quickstart-ssm.service.types';
 import { MixpanelService } from '../../services/mixpanel/mixpanel.service';
 import { ParsedTargetString, TargetType } from '../../services/common.types';
 import { EnvironmentService } from '../../services/environment/environment.service';
+import { PolicyService } from '../../services/policy/policy.service';
 import { connectHandler } from '../connect/connect.handler';
 import { readFile } from '../../utils';
 import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
 import { quickstartArgs } from './quickstart.command-builder';
 
-import prompts, { PromptObject } from 'prompts';
+import prompts from 'prompts';
 import yargs from 'yargs';
-import { PolicyService } from '../../services/policy/policy.service';
-
-async function interactiveDebugSession(
-    invalidSSHHosts: InvalidSSHHost[],
-    quickstartService: QuickstartSsmService,
-    logger: Logger,
-    onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
-
-    // Get pretty string of invalid SSH hosts' names
-    const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.incompleteValidSSHHost.name).join(', ');
-    logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
-
-    const fixedSSHHosts: ValidSSHHost[] = [];
-    const confirmDebugSessionResponse = await prompts({
-        type: 'toggle',
-        name: 'value',
-        message: 'Do you want the zli to help you fix the issues?',
-        initial: true,
-        active: 'yes',
-        inactive: 'no',
-    }, { onCancel: onCancel });
-    const shouldStartDebugSession: boolean = confirmDebugSessionResponse.value;
-
-    if (!shouldStartDebugSession)
-        return fixedSSHHosts;
-
-    logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
-
-    for (const invalidSSHHost of invalidSSHHosts) {
-        const fixedHost = await quickstartService.promptFixInvalidSSHHost(invalidSSHHost);
-        if (fixedHost === undefined) {
-            const shouldSkip = await quickstartService.promptSkipHostOrExit(invalidSSHHost.incompleteValidSSHHost.name, onCancel);
-
-            if (shouldSkip) {
-                logger.info(`Skipping host ${invalidSSHHost.incompleteValidSSHHost.name}...`);
-                continue;
-            } else {
-                logger.info('Prompt cancelled. Exiting out of quickstart...');
-                await cleanExit(1, logger);
-            }
-        } else {
-            fixedSSHHosts.push(fixedHost);
-        }
-    }
-
-    return fixedSSHHosts;
-}
 
 export async function quickstartHandler(
     argv: yargs.Arguments<quickstartArgs>,
@@ -87,7 +41,7 @@ export async function quickstartHandler(
     // Handle parse errors
     if (invalidSSHHosts.length > 0) {
         logger.warn(`${invalidSSHHosts.length} host(s) in the SSH config file are missing required parameters used to connect them with BastionZero.`);
-        const fixedSSHHosts = await interactiveDebugSession(invalidSSHHosts, quickstartService, logger, onCancelPrompt);
+        const fixedSSHHosts = await quickstartService.promptInteractiveDebugSession(invalidSSHHosts, quickstartService, logger, onCancelPrompt);
         // Add them to the valid mapping
         fixedSSHHosts.forEach(validHost => validSSHHosts.set(validHost.name, validHost));
         if (fixedSSHHosts.length > 0) {
@@ -183,13 +137,8 @@ export async function quickstartHandler(
     // Create environment for each unique username parsed from the SSH config
     const registrableHosts = await quickstartService.createEnvForUniqueUsernames(validSSHConfigs);
 
-    // // Get "Default" environment which is guaranteed to exist
-    // const defaultEnvName = 'Default';
-    // const envs = await envService.ListEnvironments();
-    // const defaultEnv = envs.find(envDetails => envDetails.name == defaultEnvName)!;
-
     // Run autodiscovery script on all hosts concurrently
-    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => addSSHHostToBastionZero(host, quickstartService, logger)));
+    const autodiscoveryResultsPromise = Promise.allSettled(registrableHosts.map(host => quickstartService.addSSHHostToBastionZero(host, quickstartService, logger)));
 
     // Await for **all** hosts to either come "Online" or error
     const autodiscoveryResults = await autodiscoveryResultsPromise;
@@ -238,31 +187,4 @@ export async function quickstartHandler(
     }
 
     await cleanExit(exitCode, logger);
-}
-
-async function addSSHHostToBastionZero(
-    registrableHost: RegistrableSSHHost,
-    quickstartService: QuickstartSsmService,
-    logger: Logger): Promise<SsmTargetSummary> {
-
-    return new Promise<SsmTargetSummary>(async (resolve, reject) => {
-        try {
-            logger.info(`Attempting to add SSH host ${registrableHost.host.sshHost.name} to BastionZero...`);
-
-            logger.info(`Running autodiscovery script on SSH host ${registrableHost.host.sshHost.name} (could take several minutes)...`);
-            const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(registrableHost);
-
-            logger.info(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
-
-            // Poll for "Online" status
-            logger.info(`Waiting for target ${registrableHost.host.sshHost.name} to become online (could take several minutes)...`);
-            const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
-            logger.info(`SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
-
-            resolve(ssmTarget);
-        } catch (error) {
-            logger.error(`Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
-            reject(error);
-        }
-    });
 }

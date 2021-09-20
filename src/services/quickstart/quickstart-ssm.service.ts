@@ -7,7 +7,6 @@ import { SsmTargetService } from '../ssm-target/ssm-target.service';
 import { TargetStatus } from '../common.types';
 import { readFile } from '../../utils';
 
-import SSHConfig from 'ssh2-promise/lib/sshConfig';
 import SSHConnection from 'ssh2-promise/lib/sshConnection';
 import path from 'path';
 import os from 'os';
@@ -17,8 +16,8 @@ import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
 import { PolicyService } from '../policy/policy.service';
 import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject, SubjectType, TargetConnectContext } from '../policy/policy.types';
 import { Verb, VerbType } from '../policy-query/policy-query.types';
-import { EnvironmentDetails } from '../environment/environment.types';
 import { EnvironmentService } from '../environment/environment.service';
+import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
 
 export class QuickstartSsmService {
     constructor(
@@ -75,13 +74,40 @@ export class QuickstartSsmService {
         return true;
     }
 
+    public async addSSHHostToBastionZero(
+        registrableHost: RegistrableSSHHost,
+        quickstartService: QuickstartSsmService,
+        logger: Logger): Promise<SsmTargetSummary> {
+
+        return new Promise<SsmTargetSummary>(async (resolve, reject) => {
+            try {
+                logger.info(`Attempting to add SSH host ${registrableHost.host.sshHost.name} to BastionZero...`);
+
+                logger.info(`Running autodiscovery script on SSH host ${registrableHost.host.sshHost.name} (could take several minutes)...`);
+                const ssmTargetId = await quickstartService.runAutodiscoveryOnSSHHost(registrableHost);
+
+                logger.info(`Bastion assigned SSH host ${registrableHost.host.sshHost.name} with the following unique target id: ${ssmTargetId}`);
+
+                // Poll for "Online" status
+                logger.info(`Waiting for target ${registrableHost.host.sshHost.name} to become online (could take several minutes)...`);
+                const ssmTarget = await quickstartService.pollSsmTargetOnline(ssmTargetId);
+                logger.info(`SSH host ${registrableHost.host.sshHost.name} successfully added to BastionZero!`);
+
+                resolve(ssmTarget);
+            } catch (error) {
+                logger.error(`Failed to add SSH host: ${registrableHost.host.sshHost.name} to BastionZero. ${error}`);
+                reject(error);
+            }
+        });
+    }
+
     /**
      * Connects to an SSH host and runs the universal autodiscovery script on it.
      * @param sshConfig SSH configuration to use when building the SSH connection
      * @param hostName Name of SSH host to use in log messages
      * @returns The SSM target ID of the newly registered machine
      */
-    public async runAutodiscoveryOnSSHHost(registrableSSHHost : RegistrableSSHHost): Promise<string> {
+    private async runAutodiscoveryOnSSHHost(registrableSSHHost: RegistrableSSHHost): Promise<string> {
         const sshConfig = registrableSSHHost.host.config;
         const hostName = registrableSSHHost.host.sshHost.name;
 
@@ -208,7 +234,7 @@ export class QuickstartSsmService {
                     this.logger.info(`${host.name}'s IdentityFile (${host.identityFile}) is encrypted!`);
 
                     // Ask user for password to decrypt the key file
-                    const passwordResponse = await this.handleEncryptedIdentityFile(host.identityFile);
+                    const passwordResponse = await this.handleEncryptedIdentityFile(host.identityFile, keyFile);
 
                     // Check if user wants to skip this host or exit immediately
                     if (passwordResponse === undefined) {
@@ -222,13 +248,6 @@ export class QuickstartSsmService {
                             await cleanExit(1, this.logger);
                         }
                     } else {
-                        // One final check to see if private key is decryptable
-                        try {
-                            parsePrivateKey(keyFile, 'auto', { passphrase: passwordResponse });
-                        } catch (err) {
-                            this.logger.error(`Removing ${host.name} from list of SSH hosts to add to BastionZero due to error when reading IdentityFile with provided passphrase: ${err}`);
-                            continue;
-                        }
                         passphraseKeyFile = passwordResponse;
                     }
                 } else {
@@ -253,7 +272,53 @@ export class QuickstartSsmService {
         return sshConfigs;
     }
 
-    public async promptFixInvalidSSHHost(invalidSSHHost: InvalidSSHHost): Promise<ValidSSHHost | undefined> {
+    public async promptInteractiveDebugSession(
+        invalidSSHHosts: InvalidSSHHost[],
+        quickstartService: QuickstartSsmService,
+        logger: Logger,
+        onCancel: (prompt: PromptObject, answers: any) => void): Promise<ValidSSHHost[]> {
+
+        // Get pretty string of invalid SSH hosts' names
+        const prettyInvalidSSHHosts: string = invalidSSHHosts.map(host => host.incompleteValidSSHHost.name).join(', ');
+        logger.warn(`Hosts missing required parameters: ${prettyInvalidSSHHosts}`);
+
+        const fixedSSHHosts: ValidSSHHost[] = [];
+        const confirmDebugSessionResponse = await prompts({
+            type: 'toggle',
+            name: 'value',
+            message: 'Do you want the zli to help you fix the issues?',
+            initial: true,
+            active: 'yes',
+            inactive: 'no',
+        }, { onCancel: onCancel });
+        const shouldStartDebugSession: boolean = confirmDebugSessionResponse.value;
+
+        if (!shouldStartDebugSession)
+            return fixedSSHHosts;
+
+        logger.info('\nPress CTRL-C to skip the prompted host or to exit out of quickstart\n');
+
+        for (const invalidSSHHost of invalidSSHHosts) {
+            const fixedHost = await quickstartService.promptFixInvalidSSHHost(invalidSSHHost);
+            if (fixedHost === undefined) {
+                const shouldSkip = await quickstartService.promptSkipHostOrExit(invalidSSHHost.incompleteValidSSHHost.name, onCancel);
+
+                if (shouldSkip) {
+                    logger.info(`Skipping host ${invalidSSHHost.incompleteValidSSHHost.name}...`);
+                    continue;
+                } else {
+                    logger.info('Prompt cancelled. Exiting out of quickstart...');
+                    await cleanExit(1, logger);
+                }
+            } else {
+                fixedSSHHosts.push(fixedHost);
+            }
+        }
+
+        return fixedSSHHosts;
+    }
+
+    private async promptFixInvalidSSHHost(invalidSSHHost: InvalidSSHHost): Promise<ValidSSHHost | undefined> {
         const parseErrors = invalidSSHHost.parseErrors;
         const sshHostName = invalidSSHHost.incompleteValidSSHHost.name;
 
@@ -311,16 +376,34 @@ export class QuickstartSsmService {
         return validSSHHost;
     }
 
-    private async handleEncryptedIdentityFile(identityFilePath: string): Promise<string | undefined> {
+    private async handleEncryptedIdentityFile(identityFilePathName: string, identityFileContents: string): Promise<string | undefined> {
         return new Promise<string | undefined>(async (resolve, _) => {
             const onCancel = () => resolve(undefined);
             const onSubmit = (_: PromptObject, answer: string) => resolve(answer);
 
+            // Custom validation function. Require value to be passed and check
+            // if password is correct
+            const onValidate = (value: any): string | boolean => {
+                if (value) {
+                    try {
+                        parsePrivateKey(identityFileContents, 'auto', { passphrase: value });
+
+                        // Password is correct!
+                        return true;
+                    } catch (err) {
+                        // Password is either wrong or there was some error when reading the IdentityFile
+                        return 'Failed reading file with provided passphrase. Use CTRL-C to skip this host';
+                    }
+                } else {
+                    return 'Value is required. Use CTRL-C to skip this host';
+                }
+            };
+
             await prompts({
                 type: 'password',
                 name: 'value',
-                message: `Enter the passphrase for the encrypted SSH key ${identityFilePath}:`,
-                validate: value => value ? true : 'Value is required. Use CTRL-C to skip this host'
+                message: `Enter the passphrase for the encrypted SSH key ${identityFilePathName}:`,
+                validate: onValidate
             }, { onSubmit: onSubmit, onCancel: onCancel });
         });
     }
@@ -460,7 +543,7 @@ export class QuickstartSsmService {
 
                 // Convert hosts to registrable hosts with accompanying
                 // environment id to use during registration
-                hosts.forEach(host => registrableSSHHosts.push({host: host, envId: quickstartEnvId}));
+                hosts.forEach(host => registrableSSHHosts.push({ host: host, envId: quickstartEnvId }));
             } catch (err) {
                 this.logger.error(`Failed creating env for SSH username ${username}: ${err}`);
                 continue;
