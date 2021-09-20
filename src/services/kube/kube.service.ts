@@ -89,5 +89,5 @@ export function getDefaultKubeConfig(): KubeConfig {
         localPid: null,
         assumeRole: null,
         assumeCluster: null,
-    }
+    };
 }
