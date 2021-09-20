@@ -117,20 +117,22 @@ func NewWebsocket(ctx context.Context,
 }
 
 func (w *Websocket) subscribeToOutputChannel() {
-	// Update our object to let others know we have subscribed
-	w.subscribed = true
+	if !w.subscribed {
+		// Update our object to let others know we have subscribed
+		w.subscribed = true
 
-	// Listener for any messages that need to be sent
-	go func() {
-		for {
-			select {
-			case <-w.ctx.Done():
-				return
-			case msg := <-w.OutputChan:
-				w.Send(msg)
+		// Listener for any messages that need to be sent
+		go func() {
+			for {
+				select {
+				case <-w.ctx.Done():
+					return
+				case msg := <-w.OutputChan:
+					w.Send(msg)
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 // Returns error on websocket closed
@@ -174,7 +176,7 @@ func (w *Websocket) Receive() error {
 			} else if len(wrappedMessage.Arguments) != 0 {
 				if wrappedMessage.Target == "CloseConnection" {
 					return errors.New("closing message received; websocket closed")
-				} else if wrappedMessage.Target == "ReadyBastionToClient" {
+				} else if !w.subscribed && wrappedMessage.Target == "ReadyBastionToClient" {
 					w.subscribeToOutputChannel()
 					break
 				} else if !w.subscribed {
