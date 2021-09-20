@@ -225,8 +225,8 @@ export class CliDriver
                 this.envs = fetchDataResponse.envs;
             })
             .command(
-                'login <provider>',
-                'Login through a specific provider',
+                'login',
+                'Login through your identity provider',
                 (yargs) => {
                     return loginCmdBuilder(yargs);
                 },

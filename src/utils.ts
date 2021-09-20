@@ -3,7 +3,7 @@ import Table from 'cli-table3';
 import { Logger } from './services/logger/logger.service';
 import { cleanExit } from './handlers/clean-exit.handler';
 import { ApiKeyDetails } from './services/api-key/api-key.types';
-import { TargetType, TargetStatus, ParsedTargetString, TargetSummary } from './services/common.types';
+import { TargetType, TargetStatus, ParsedTargetString, TargetSummary, IdP } from './services/common.types';
 import { ConnectionDetails } from './services/connection/connection.types';
 import { EnvironmentDetails } from './services/environment/environment.types';
 import { GroupSummary } from './services/groups/groups.types';
@@ -44,6 +44,23 @@ export function parsePolicyType(policyType: string) : PolicyType
         return PolicyType.SessionRecording;
     case PolicyType.TargetConnect.toLowerCase():
         return PolicyType.TargetConnect;
+    default:
+        return undefined;
+    }
+}
+
+export function parseIdpType(idp: string) : IdP
+{
+    const idpTypePattern = /^(google|microsoft)$/i; // case insensitive check for idp
+
+    if(! idpTypePattern.test(idp))
+        return undefined;
+
+    switch (idp.toLowerCase()) {
+    case IdP.Google.toLowerCase():
+        return IdP.Google;
+    case IdP.Microsoft.toLowerCase():
+        return IdP.Microsoft;
     default:
         return undefined;
     }

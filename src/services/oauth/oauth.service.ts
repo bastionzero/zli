@@ -9,27 +9,32 @@ import { loginHtml } from './templates/login';
 import { logoutHtml } from './templates/logout';
 import { cleanExit } from '../../handlers/clean-exit.handler';
 import { parse as QueryStringParse } from 'query-string';
+import { idpRedirect } from './templates/idpRedirect';
+import { parseIdpType } from '../../utils';
 
 export class OAuthService implements IDisposable {
     private server: http.Server; // callback listener
     private host: string = 'localhost';
     private logger: Logger;
+    private oidcClient: Client;
+    private codeVerifier: string;
+    private nonce: string;
 
     constructor(private configService: ConfigService, logger: Logger) {
         this.logger = logger;
     }
 
     private setupCallbackListener(
-        client: Client,
-        codeVerifier: string,
         callback: (tokenSet: TokenSet) => void,
         onListen: () => void,
-        resolve: (value?: void | PromiseLike<void>) => void,
-        expectedNonce?: string
+        resolve: (value?: void | PromiseLike<void>) => void
     ): void {
 
         const requestListener: RequestListener = async (req, res) => {
-            res.writeHead(200, { 'content-type': 'text/html' });
+            res.writeHead(200, {
+                'Access-Control-Allow-Origin': '*',
+                'content-type': 'text/html',
+              });
 
             // Example of request url string
             // /login-callback?param=...
@@ -46,13 +51,45 @@ export class OAuthService implements IDisposable {
             }
 
             switch (urlParts[0]) {
-            case '/login-callback':
-                const params = client.callbackParams(req);
+            case '/webapp-callback':
+                res.write(idpRedirect);
+                res.end();
 
-                const tokenSet = await client.callback(
+                // Prepare config for a new login
+                const provider = parseIdpType(queryParams.idp as string);
+                if(provider === undefined) {
+                    this.logger.error('The selected identity provider is not currently supported.');
+                    await cleanExit(1, this.logger);
+                }
+                await this.configService.loginSetup(provider);
+                
+                // Setup the oidc client for a new login
+                await this.setupClient();
+                this.codeVerifier = generators.codeVerifier();
+                const code_challenge = generators.codeChallenge(this.codeVerifier);
+
+                await open(this.getAuthUrl(code_challenge));
+                break;
+
+            case '/login-callback':
+                if(this.oidcClient === undefined){
+                    throw new Error('Unable to parse idp response with undefined OIDC client');
+                }
+
+                if(this.codeVerifier === undefined){
+                    throw new Error('Unable to parse idp response with undefined code verifier');
+                }
+
+                if(this.nonce === undefined){
+                    throw new Error('Unable to parse idp response with undefined nonce');
+                }
+                
+                const params = this.oidcClient.callbackParams(req);
+
+                const tokenSet = await this.oidcClient.callback(
                     `http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`,
                     params,
-                    { code_verifier: codeVerifier, nonce: expectedNonce });
+                    { code_verifier: this.codeVerifier, nonce: this.nonce });
 
                 this.logger.info('Login successful');
                 this.logger.debug('callback listener closed');
@@ -93,10 +130,13 @@ export class OAuthService implements IDisposable {
     }
 
     // The client will make the log-in requests with the following parameters
-    private async getClient(): Promise<Client>
+    private async setupClient(): Promise<void>
     {
+        // If the client has already been set
+        if(this.oidcClient !== undefined)
+            return;
         const authority = await Issuer.discover(this.configService.authUrl());
-        const client = new authority.Client({
+        this.oidcClient = new authority.Client({
             client_id: this.configService.clientId(),
             redirect_uris: [`http://${this.host}:${this.configService.callbackListenerPort()}/login-callback`],
             response_types: ['code'],
@@ -106,13 +146,19 @@ export class OAuthService implements IDisposable {
 
         // set clock skew
         // ref: https://github.com/panva/node-openid-client/blob/77d7c30495df2df06c407741500b51498ba61a94/docs/README.md#customizing-clock-skew-tolerance
-        client[custom.clock_tolerance] = 5 * 60; // 5 minute clock skew allowed for verification
-
-        return client;
+        this.oidcClient[custom.clock_tolerance] = 5 * 60; // 5 minute clock skew allowed for verification
     }
 
-    private getAuthUrl(client: Client, code_challenge: string, nonce?: string) : string
+    private getAuthUrl(code_challenge: string) : string
     {
+        if(this.oidcClient === undefined){
+            throw new Error('Unable to get authUrl from undefined OIDC client');
+        }
+
+        if(this.nonce === undefined){
+            throw new Error('Unable to get authUrl from with undefined nonce');
+        }
+
         const authParams: AuthorizationParameters = {
             client_id: this.configService.clientId(), // This one gets put in the queryParams
             response_type: 'code',
@@ -122,10 +168,10 @@ export class OAuthService implements IDisposable {
             // required for google refresh token
             prompt: 'consent',
             access_type: 'offline',
-            nonce: nonce
+            nonce: this.nonce
         };
 
-        return client.authorizationUrl(authParams);
+        return this.oidcClient.authorizationUrl(authParams);
     }
 
     public isAuthenticated(): boolean
@@ -140,24 +186,22 @@ export class OAuthService implements IDisposable {
 
     public login(callback: (tokenSet: TokenSet) => void, nonce?: string): Promise<void>
     {
+        this.nonce = nonce;
         return new Promise<void>(async (resolve, reject) => {
             setTimeout(() => reject(this.logger.error('Login timeout reached')), 60 * 1000);
 
-            const client = await this.getClient();
-            const code_verifier = generators.codeVerifier();
-            const code_challenge = generators.codeChallenge(code_verifier);
+            const openBrowser = async () => await open(`${this.configService.serviceUrl()}authentication/login?zliLogin=true`);
 
-            const openBrowser = async () => await open(this.getAuthUrl(client, code_challenge, nonce));
-            this.setupCallbackListener(client, code_verifier, callback, openBrowser, resolve, nonce);
+            this.setupCallbackListener(callback, openBrowser, resolve);
         });
     }
 
     public async refresh(): Promise<TokenSet>
     {
-        const client = await this.getClient();
+        await this.setupClient();
         const tokenSet = this.configService.tokenSet();
         const refreshToken = tokenSet.refresh_token;
-        const refreshedTokenSet = await client.refresh(tokenSet);
+        const refreshedTokenSet = await this.oidcClient.refresh(tokenSet);
 
         // In case of google the refreshed token is not returned in the refresh
         // response so we set it from the previous value
@@ -170,9 +214,9 @@ export class OAuthService implements IDisposable {
     // If you need the token.sub this is where you can get it
     public async userInfo(): Promise<UserinfoResponse>
     {
-        const client = await this.getClient();
+        await this.setupClient();
         const tokenSet = this.configService.tokenSet();
-        const userInfo = await client.userinfo(tokenSet);
+        const userInfo = await this.oidcClient.userinfo(tokenSet);
         return userInfo;
     }
 

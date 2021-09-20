@@ -5,7 +5,6 @@ import { cleanExit } from '../clean-exit.handler';
 import { KeySplittingService } from '../../../webshell-common-ts/keysplitting.service/keysplitting.service';
 
 import qrcode from 'qrcode';
-import { IdP } from '../../services/common.types';
 import { MfaService } from '../../services/mfa/mfa.service';
 import { MfaActionRequired } from '../../services/mfa/mfa.types';
 import { UserService } from '../../services/user/user.service';
@@ -30,9 +29,6 @@ export async function loginHandler(configService: ConfigService, logger: Logger,
     // Clear previous log in info
     configService.logout();
     await keySplittingService.generateKeysplittingLoginData();
-
-    const provider = <IdP> argv.provider;
-    await configService.loginSetup(provider);
 
     // Can only create oauth service after loginSetup completes
     const oAuthService = new OAuthService(configService, logger);
