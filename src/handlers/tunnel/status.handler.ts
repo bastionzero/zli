@@ -9,7 +9,7 @@ export async function kubeStatusHandler(
     // First get the status from the config service
     const kubeConfig = configService.getKubeConfig();
 
-    if (kubeConfig === null || kubeConfig['localPid'] === null) {
+    if (kubeConfig['localPid'] == null) {
         logger.warn('No Kube daemon running');
     } else {
         // Check if the pid is still alive

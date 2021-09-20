@@ -38,13 +38,13 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
     const kubeConfig = configService.getKubeConfig();
 
     // Make sure the user has created a kubeConfig before
-    if (kubeConfig === null || kubeConfig['keyPath'] === null) {
+    if (kubeConfig['keyPath'] == null) {
         logger.error('Please make sure you have created your kubeconfig before running proxy. You can do this via "zli generate kubeConfig"');
         await cleanExit(1, logger);
     }
 
 
-    if (kubeConfig !== null && kubeConfig['localPid'] !== null) {
+    if (kubeConfig['localPid'] != null) {
         killDaemon(configService);
     }
 

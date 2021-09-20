@@ -16,7 +16,7 @@ export async function generateKubeconfigHandler(
     // Check if we already have generated a cert/key
     let kubeConfig = configService.getKubeConfig();
 
-    if (kubeConfig === null || kubeConfig['keyPath'] === null) {
+    if (kubeConfig['keyPath'] == null) {
         logger.info('No KubeConfig has been generated before, generating key and cert for local daemon...');
 
         // Create and save key/cert
