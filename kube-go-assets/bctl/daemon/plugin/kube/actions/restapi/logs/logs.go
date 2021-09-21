@@ -114,12 +114,6 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 			return nil
 		case logData := <-r.streamResponseChannel:
-			// for name, value := range responseLogBastionToDaemon.Headers {
-			// 	if name != "Content-Length" {
-			// 		w.Header().Set(name, value)
-			// 	}
-			// }
-
 			// Then stream the response to kubectl
 			contentBytes, _ := base64.StdEncoding.DecodeString(logData.Content)
 			src := bytes.NewReader(contentBytes)
@@ -129,7 +123,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 				r.logger.Error(rerr)
 				break
 			}
-			// This is required, don't touch - not sure why
+			// This is required to flush the data to the client
 			flush, ok := writer.(http.Flusher)
 			if ok {
 				flush.Flush()

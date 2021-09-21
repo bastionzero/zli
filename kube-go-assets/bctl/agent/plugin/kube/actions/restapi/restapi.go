@@ -97,5 +97,6 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 		Content:    bodyBytes,
 	}
 	responsePayloadBytes, _ := json.Marshal(responsePayload)
+
 	return action, responsePayloadBytes, nil
 }
