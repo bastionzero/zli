@@ -239,7 +239,7 @@ func (w *Websocket) Connect() {
 			// If we have a private key, we must solve the challenge
 			solvedChallenge, err := newChallenge(w.params["org_id"], w.params["cluster_name"], w.serviceUrl, config.Data.PrivateKey)
 			if err != nil {
-				w.logger.Error(fmt.Errorf("Error in getting challenge: %s", err))
+				w.logger.Error(fmt.Errorf("error in getting challenge: %s", err))
 
 				// Sleep in between
 				w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
@@ -252,7 +252,7 @@ func (w *Websocket) Connect() {
 			// And sign our agent version
 			signedAgentVersion, err := signString(config.Data.PrivateKey, w.params["agent_version"])
 			if err != nil {
-				w.logger.Error(fmt.Errorf("Error in signing agent version: %s", err))
+				w.logger.Error(fmt.Errorf("error in signing agent version: %s", err))
 
 				// Sleep in between
 				w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
