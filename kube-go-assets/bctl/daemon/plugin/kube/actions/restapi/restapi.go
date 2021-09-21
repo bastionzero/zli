@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	kuberest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
 	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
@@ -15,6 +16,9 @@ import (
 
 const (
 	action = "kube/restapi"
+
+	startLogs = "kube/log/start"
+	stopLogs  = "kube/log/stop"
 )
 
 type RestApiAction struct {
@@ -49,6 +53,22 @@ func NewRestApiAction(ctx context.Context,
 }
 
 func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
+	// Determin what type of request this is (regular rest, exec, etc)
+	if strings.HasSuffix(request.URL.Path, "/log") {
+		return r.handleLogRequest(writer, request)
+	} else {
+		return r.handleRestRequest(writer, request)
+	}
+}
+func (r *RestApiAction) handleLogRequest(writer http.ResponseWriter, request *http.Request) error {
+	// Determin if we are trying to follow the logs
+	follow, ok := request.URL.Query()["follow"]
+
+	if !ok || len(follow[0]) < 1 || follow[0] != "true" {
+		// If the follow bool is not there, treat this like a regular rest request
+		return r.handleRestRequest(writer, request)
+	}
+
 	// First extract the headers out of the request
 	headers := kubeutils.GetHeaders(request.Header)
 

@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
-	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	watchaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/watch"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
