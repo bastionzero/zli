@@ -111,11 +111,28 @@ func (w *WatchAction) StartWatch(watchActionRequest KubeWatchActionPayload, acti
 		return action, []byte{}, rerr
 	}
 
-	buf := make([]byte, 1024*10)
+	// Send our first message with the headers
+	headers := make(map[string][]string)
+	for name, value := range res.Header {
+		headers[name] = value
+	}
+	kubeWatchHeadersPayload := KubeWatchHeadersPayload{
+		Headers: headers,
+	}
+	kubeWatchHeadersPayloadBytes, _ := json.Marshal(kubeWatchHeadersPayload)
+	content := base64.StdEncoding.EncodeToString(kubeWatchHeadersPayloadBytes[:])
 
-	// for name, value := range res.Header {
-	// 	w.logger.Info(fmt.Sprintf("HERE: %s - %s", name, value))
-	// }
+	// Stream the response back
+	message := smsg.StreamMessage{
+		Type:           string(WatchData),
+		RequestId:      watchActionRequest.RequestId,
+		LogId:          watchActionRequest.LogId,
+		SequenceNumber: 0,
+		Content:        content,
+	}
+	w.streamOutputChannel <- message
+
+	buf := make([]byte, 1024*10)
 
 	go func() {
 		for {
@@ -126,14 +143,15 @@ func (w *WatchAction) StartWatch(watchActionRequest KubeWatchActionPayload, acti
 				// Read into the buffer
 				numBytes, err := res.Body.Read(buf)
 
-				// Check the error
+				// Check the errors
 				if err == io.EOF {
 					// This means we are done
-					break
+					w.logger.Info("Received  EOF error on Watch stream")
+					return
 				}
-
 				if err != nil {
 					w.logger.Info(fmt.Sprintf("Error reading HTTP response: %s", err))
+					return
 				}
 
 				// Stream the response back
@@ -154,6 +172,7 @@ func (w *WatchAction) StartWatch(watchActionRequest KubeWatchActionPayload, acti
 	// Subscribe to our done channel
 	go func() {
 		for {
+			defer res.Body.Close()
 			select {
 			case <-w.ctx.Done():
 				return
@@ -163,15 +182,5 @@ func (w *WatchAction) StartWatch(watchActionRequest KubeWatchActionPayload, acti
 		}
 	}()
 
-	// We also need to listen if we get a cancel watch request
 	return action, []byte{}, nil
-}
-
-func indexOf(word string, data []string) int {
-	for k, v := range data {
-		if word == v {
-			return k
-		}
-	}
-	return -1
 }

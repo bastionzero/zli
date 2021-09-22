@@ -197,7 +197,6 @@ func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action stri
 		}
 	}()
 
-	// We also need to listen if we get a cancel log request
 	return action, []byte{}, nil
 }
 

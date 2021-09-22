@@ -11,3 +11,7 @@ type KubeWatchActionPayload struct {
 	End       bool              `json:"end"`
 	LogId     string            `json:"logId"`
 }
+
+type KubeWatchHeadersPayload struct {
+	Headers map[string][]string
+}

@@ -48,14 +48,14 @@ func NewWatchAction(ctx context.Context,
 	}, nil
 }
 
-func (r *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
+func (w *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
 	// First extract the headers out of the request
 	headers := getHeaders(request.Header)
 
 	// Now extract the body
 	bodyInBytes, err := getBodyBytes(request.Body)
 	if err != nil {
-		r.logger.Error(err)
+		w.logger.Error(err)
 		return err
 	}
 
@@ -65,27 +65,71 @@ func (r *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *h
 		Headers:   headers,
 		Method:    request.Method,
 		Body:      string(bodyInBytes), // fix this
-		RequestId: r.requestId,
-		LogId:     r.logId,
+		RequestId: w.requestId,
+		LogId:     w.logId,
 		End:       false,
 	}
 
 	payloadBytes, _ := json.Marshal(payload)
-	r.RequestChannel <- plgn.ActionWrapper{
+	w.RequestChannel <- plgn.ActionWrapper{
 		Action:        startLogs,
 		ActionPayload: payloadBytes,
 	}
 
-	writer.Header().Set("Content-Type", "application/json")
+	// Wait for our initial message to determine what headers to use
+	earlyMessages := make([][]byte, 1024*10)
+	earlyMessageNumber := 0
+earlyMessageHandler:
+	for {
+		select {
+		case <-w.ctx.Done():
+			return nil
+		case watchData := <-w.streamResponseChannel:
+			contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
+
+			// Attempt to decode contentBytes
+			var kubewatchHeadersPayload kubewatch.KubeWatchHeadersPayload
+			if err := json.Unmarshal(contentBytes, &kubewatchHeadersPayload); err != nil {
+				// If we see an error this must be an early message
+				earlyMessages[earlyMessageNumber] = contentBytes
+				earlyMessageNumber += 1
+			} else {
+				// This is our header message, loop and apply
+				for name, values := range kubewatchHeadersPayload.Headers {
+					for _, value := range values {
+						w.logger.Info(fmt.Sprintf("HERE: %s", value))
+						writer.Header().Set(name, value)
+					}
+				}
+				break earlyMessageHandler
+			}
+		}
+	}
+
+	// If there are any early messages, stream them first
+	for _, earlyMessage := range earlyMessages {
+		src := bytes.NewReader(earlyMessage)
+		_, err = io.Copy(writer, src)
+		if err != nil {
+			rerr := fmt.Errorf("error streaming the watch to kubectl: %s", err)
+			w.logger.Error(rerr)
+			break
+		}
+		// This is required to flush the data to the client
+		flush, ok := writer.(http.Flusher)
+		if ok {
+			flush.Flush()
+		}
+	}
 
 	// Now subscribe to the response
 	// Keep this as a non-go function so we hold onto the http request
 	for {
 		select {
-		case <-r.ctx.Done():
+		case <-w.ctx.Done():
 			return nil
 		case <-request.Context().Done():
-			r.logger.Info(fmt.Sprintf("Watch request %v was requested to get cancelled", r.requestId))
+			w.logger.Info(fmt.Sprintf("Watch request %v was requested to get cancelled", w.requestId))
 
 			// Build the action payload
 			payload := kubewatch.KubeWatchActionPayload{
@@ -93,26 +137,26 @@ func (r *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *h
 				Headers:   headers,
 				Method:    request.Method,
 				Body:      string(bodyInBytes), // fix this
-				RequestId: r.requestId,
-				LogId:     r.logId,
+				RequestId: w.requestId,
+				LogId:     w.logId,
 				End:       true,
 			}
 
 			payloadBytes, _ := json.Marshal(payload)
-			r.RequestChannel <- plgn.ActionWrapper{
+			w.RequestChannel <- plgn.ActionWrapper{
 				Action:        stopLogs,
 				ActionPayload: payloadBytes,
 			}
 
 			return nil
-		case watchData := <-r.streamResponseChannel:
+		case watchData := <-w.streamResponseChannel:
 			// Then stream the response to kubectl
 			contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
 			src := bytes.NewReader(contentBytes)
 			_, err = io.Copy(writer, src)
 			if err != nil {
 				rerr := fmt.Errorf("error streaming the watch to kubectl: %s", err)
-				r.logger.Error(rerr)
+				w.logger.Error(rerr)
 				break
 			}
 			// This is required to flush the data to the client
@@ -122,15 +166,14 @@ func (r *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *h
 			}
 		}
 	}
-	return nil
 }
 
-func (r *WatchAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
-	r.ksResponseChannel <- wrappedAction
+func (w *WatchAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
+	w.ksResponseChannel <- wrappedAction
 }
 
-func (r *WatchAction) PushStreamResponse(message smsg.StreamMessage) {
-	r.streamResponseChannel <- message
+func (w *WatchAction) PushStreamResponse(message smsg.StreamMessage) {
+	w.streamResponseChannel <- message
 }
 
 // Helper function to extract headers from a http request
