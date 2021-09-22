@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
+	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	watchaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/watch"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
@@ -230,6 +231,13 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 
 	// Always generate requestId
 	requestId := generateRequestId()
+
+	watch, ok := r.URL.Query()["watch"]
+	if ok {
+		test := isWatchRequest(r)
+		watchEqual := (watch[0] != "true" || watch[0] != "1")
+		k.logger.Info(fmt.Sprintf("HERE: %s - %s - %s - %s", watch[0], watchEqual, test, r.URL.String()))
+	}
 
 	if strings.HasSuffix(r.URL.Path, "/exec") {
 		subLogger := k.logger.GetActionLogger(string(Exec))
