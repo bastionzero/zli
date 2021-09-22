@@ -10,7 +10,6 @@ import { readFile } from '../../utils';
 import SSHConnection from 'ssh2-promise/lib/sshConnection';
 import path from 'path';
 import os from 'os';
-import pRetry from 'p-retry';
 import prompts, { PromptObject } from 'prompts';
 import { KeyEncryptedError, parsePrivateKey } from 'sshpk';
 import { PolicyService } from '../policy/policy.service';
@@ -18,6 +17,7 @@ import { PolicyEnvironment, PolicySummary, PolicyTargetUser, PolicyType, Subject
 import { Verb, VerbType } from '../policy-query/policy-query.types';
 import { EnvironmentService } from '../environment/environment.service';
 import { SsmTargetSummary } from '../ssm-target/ssm-target.types';
+import { Retrier } from '@jsier/retrier';
 
 export class QuickstartSsmService {
     constructor(
@@ -28,31 +28,33 @@ export class QuickstartSsmService {
     ) { }
 
     /**
-     * Polls the bastion (using exponential backoff) until the SSM target is
-     * Online and the agent version is known.
+     * Polls the bastion until the SSM target is Online and the agent version is
+     * known.
      * @param ssmTargetId The ID of the target to poll
      * @returns Information about the target
      */
-    public async pollSsmTargetOnline(ssmTargetId: string) {
-        const run = async () => {
-            const ssmTargetService = new SsmTargetService(this.configService, this.logger);
-
-            const target = await ssmTargetService.GetSsmTarget(ssmTargetId);
-
-            if (target.status === TargetStatus.Online && target.agentVersion !== '') {
-                return target;
-            } else {
-                this.logger.debug(`Target ${target.name} has status:${target.status.toString()} and agentVersion:${target.agentVersion}`);
-                throw new Error(`Target ${target.name} is not online`);
-            }
-        };
-        const result = await pRetry(run, {
-            retries: 15,
-            minTimeout: 1000 * 10,
-            maxRetryTime: 1000 * 120,
+    public async pollSsmTargetOnline(ssmTargetId: string) : Promise<SsmTargetSummary> {
+        // Try 30 times with a delay of 10 seconds between each attempt.
+        const retrier = new Retrier({
+            limit: 30,
+            delay: 1000 * 10
         });
+        return retrier.resolve(() => new Promise<SsmTargetSummary>(async (resolve, reject) => {
+            try {
+                const ssmTargetService = new SsmTargetService(this.configService, this.logger);
 
-        return result;
+                const target = await ssmTargetService.GetSsmTarget(ssmTargetId);
+                if (target.status === TargetStatus.Online && target.agentVersion !== '') {
+                    resolve(target);
+                } else {
+                    this.logger.info(`Waiting for ${target.name} to come online...`);
+                    this.logger.debug(`Target ${target.name} has status:${target.status.toString()} and agentVersion:${target.agentVersion}`);
+                    reject(`Target ${target.name} is not online`);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        }));
     }
 
     /**

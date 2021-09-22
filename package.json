@@ -44,6 +44,7 @@
     "typescript": "^4.0.5"
   },
   "dependencies": {
+    "@jsier/retrier": "^1.2.4",
     "@microsoft/signalr": "^5.0.0",
     "@types/async": "^3.2.5",
     "@types/chalk": "^2.2.0",
@@ -74,7 +75,6 @@
     "noble-ed25519": "^1.0.3",
     "open": "^7.3.0",
     "openid-client": "^4.7.2",
-    "p-retry": "^4.6.1",
     "pem": "^1.14.4",
     "prompt": "^1.2.0",
     "qrcode": "^1.4.4",
