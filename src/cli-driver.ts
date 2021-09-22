@@ -316,7 +316,9 @@ export class CliDriver
                         this.logger.error(`Passed connection id ${argv.connectionId} is not a valid Guid`);
                         await cleanExit(1, this.logger);
                     }
-                    await attachHandler(this.configService, this.logger, argv.connectionId);
+
+                    const exitCode = await attachHandler(this.configService, this.logger, argv.connectionId);
+                    await cleanExit(exitCode, this.logger);
                 }
             )
             .command(

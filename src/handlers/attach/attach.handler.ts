@@ -29,5 +29,5 @@ export async function attachHandler(
         logger.error(`Connection ${connectionId} is not open`);
         await cleanExit(1, logger);
     }
-    await createAndRunShell(configService, logger, connectionSummary);
+    return await createAndRunShell(configService, logger, connectionSummary);
 }
