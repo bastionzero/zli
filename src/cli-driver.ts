@@ -11,7 +11,7 @@ import { KeySplittingService } from '../webshell-common-ts/keysplitting.service/
 import { cleanExit } from './handlers/clean-exit.handler';
 
 // Handlers
-import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware } from './handlers/middleware.handler';
+import { initMiddleware, oAuthMiddleware, fetchDataMiddleware, mixpanelTrackingMiddleware, initLoggerMiddleware } from './handlers/middleware.handler';
 import { sshProxyConfigHandler } from './handlers/ssh-proxy-config.handler';
 import { sshProxyHandler, SshTunnelParameters } from './handlers/ssh-proxy/ssh-proxy.handler';
 import { loginHandler } from './handlers/login/login.handler';
@@ -191,10 +191,17 @@ export class CliDriver
             .scriptName('zli')
             .usage('$0 <cmd> [args]')
             .wrap(null)
+            .middleware((argv) => {
+                // By passing true as the second argument to this middleware
+                // configuration, this.logger is guaranteed to be initialized
+                // prior to validation checks. This implies that logger will
+                // exist in fail() defined at the bottom of this file.
+                const initLoggerResponse = initLoggerMiddleware(argv);
+                this.logger = initLoggerResponse.logger;
+                this.loggerConfigService = initLoggerResponse.loggerConfigService;
+            }, true)
             .middleware(async (argv) => {
-                const initResponse = await initMiddleware(argv);
-                this.loggerConfigService = initResponse.loggingConfigService;
-                this.logger = initResponse.logger;
+                const initResponse = await initMiddleware(argv, this.logger);
                 this.configService = initResponse.configService;
                 this.keySplittingService = initResponse.keySplittingService;
             })
@@ -541,6 +548,21 @@ Command arguments key:
  - [arg] is optional or sometimes required
 
 Need help? https://cloud.bastionzero.com/support`)
+            .fail((msg, err) => {
+                if (msg) {
+                    // msg is a failure message that yargs prints (e.g. error
+                    // thrown in check(), validation error such as mutually
+                    // exclusive flags)
+                    this.logger.error(msg);
+                }
+                else if (err) {
+                    this.logger.error(err.message);
+                    if (err.stack)
+                        this.logger.debug(err.stack);
+                }
+                cleanExit(1, this.logger);
+                process.exit(1);
+            })
             .argv; // returns argv of yargs
     }
 }

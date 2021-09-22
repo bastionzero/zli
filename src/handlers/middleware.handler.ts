@@ -11,6 +11,7 @@ import { KubeService } from '../services/kube/kube.service';
 import { ClusterDetails } from '../services/kube/kube.types';
 import { MixpanelService } from '../services/mixpanel/mixpanel.service';
 import { SsmTargetService } from '../services/ssm-target/ssm-target.service';
+import { EnvironmentDetails } from '../services/environment/environment.types';
 
 
 export function fetchDataMiddleware(configService: ConfigService, logger: Logger) {
@@ -20,7 +21,7 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
     const dynamicConfigService = new DynamicAccessConfigService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
 
-    const dynamicConfigs = new Promise<TargetSummary[]>( async (res, _) => {
+    const dynamicConfigs = new Promise<TargetSummary[]>( async (res) => {
         try
         {
             const response = await dynamicConfigService.ListDynamicAccessConfigs();
@@ -31,14 +32,14 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             res(results);
         } catch (e: any) {
             logger.error(`Failed to fetch dynamic access configs: ${e}`);
-            return res([]);
+            res([]);
         }
     });
 
     // We will to show existing dynamic access targets for file transfer
     // UX to be more pleasant as people cannot file transfer to configs
     // only the DATs they produce from the config
-    const ssmTargets = new Promise<TargetSummary[]>( async (res, _) => {
+    const ssmTargets = new Promise<TargetSummary[]>( async (res) => {
         try
         {
             const response = await ssmTargetService.ListSsmTargets(true);
@@ -49,18 +50,35 @@ export function fetchDataMiddleware(configService: ConfigService, logger: Logger
             res(results);
         } catch (e: any) {
             logger.error(`Failed to fetch ssm targets: ${e}`);
-            return res([]);
+            res([]);
         }
     });
 
-    const clusterTargets = kubeService.ListKubeClusters()
-        .then(result =>
-            result.map<ClusterDetails>((cluster, _index, _array) => {
-                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate};
-            })
-        );
 
-    const envs = envService.ListEnvironments();
+    const clusterTargets = new Promise<ClusterDetails[]>( async (res) => {
+        try {
+            const response = await kubeService.ListKubeClusters();
+            const results = response.map<ClusterDetails>((cluster, _index, _array) => {
+                return { id: cluster.id, name: cluster.clusterName, status: cluster.status, environmentId: cluster.environmentId, targetUsers: cluster.validUsers, agentVersion: cluster.agentVersion, lastAgentUpdate: cluster.lastAgentUpdate };
+            });
+
+            res(results);
+        } catch (e: any) {
+            logger.error(`Failed to fetch cluster targets: ${e}`);
+            res([]);
+        }
+    });
+
+
+    const envs = new Promise<EnvironmentDetails[]>( async (res) => {
+        try {
+            const response = await envService.ListEnvironments();
+            res(response);
+        } catch (e: any) {
+            logger.error(`Failed to fetch environments: ${e}`);
+            res([]);
+        }
+    });
 
     return {
         dynamicConfigs: dynamicConfigs,
@@ -97,13 +115,23 @@ export async function oAuthMiddleware(configService: ConfigService, logger: Logg
     logger.info(`Logged in as: ${me.email}, bzero-id:${me.id}, session-id:${sessionId}`);
 }
 
-export async function initMiddleware(argv: any) {
+export function initLoggerMiddleware(argv: any) {
     // Configure our logger
     const loggerConfigService = new LoggerConfigService(<string> argv.configName);
-    // isTTY detects whether the process is being run with a text terminal ("TTY") attached
-    // This way we detect whether we should connect logger.error to stderr in order
-    // to be able to print error messages to the user (e.g. ssh-proxy mode)
+
     const logger = new Logger(loggerConfigService, !!argv.debug, !!argv.silent, !!process.stdout.isTTY);
+
+    // isTTY detects whether the process is being run with a text terminal
+    // ("TTY") attached. This way we detect whether we should connect
+    // logger.error to stderr in order to be able to print error messages to the
+    // user (e.g. ssh-proxy mode)
+    return {
+        logger: logger,
+        loggerConfigService: loggerConfigService
+    };
+}
+
+export async function initMiddleware(argv: any, logger : Logger) {
     // Config init
     const configService = new ConfigService(<string>argv.configName, logger);
 
@@ -112,8 +140,6 @@ export async function initMiddleware(argv: any) {
     await keySplittingService.init();
 
     return {
-        loggingConfigService: loggerConfigService,
-        logger: logger,
         configService: configService,
         keySplittingService: keySplittingService
     };
