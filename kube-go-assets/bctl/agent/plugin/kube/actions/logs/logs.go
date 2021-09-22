@@ -19,7 +19,7 @@ import (
 )
 
 type LogAction struct {
-	RequestId           string
+	requestId           string
 	serviceAccountToken string
 	kubeHost            string
 	impersonateGroup    string
@@ -70,9 +70,22 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 			return action, []byte{}, rerr
 		}
 
+		l.requestId = logActionRequest.RequestId
+
 		return l.StartLog(logActionRequest, action)
 	case LogStop:
+		var logActionRequest KubeLogsActionPayload
+		if err := json.Unmarshal(actionPayload, &logActionRequest); err != nil {
+			rerr := fmt.Errorf("malformed Kube Logs Action payload %v", actionPayload)
+			l.logger.Error(rerr)
+			return action, []byte{}, rerr
+		}
+		if err := l.validateRequestId(logActionRequest.RequestId); err != nil {
+			return "", []byte{}, err
+		}
+
 		l.logger.Info("Stopping Log Action")
+
 		l.doneChannel <- true
 		l.closed = true
 		return string(LogStop), []byte{}, nil
@@ -81,6 +94,15 @@ func (l *LogAction) InputMessageHandler(action string, actionPayload []byte) (st
 		l.logger.Error(rerr)
 		return "", []byte{}, rerr
 	}
+}
+
+func (l *LogAction) validateRequestId(requestId string) error {
+	if requestId != l.requestId {
+		rerr := fmt.Errorf("invalid request ID passed")
+		l.logger.Error(rerr)
+		return rerr
+	}
+	return nil
 }
 
 func (l *LogAction) StartLog(logActionRequest KubeLogsActionPayload, action string) (string, []byte, error) {

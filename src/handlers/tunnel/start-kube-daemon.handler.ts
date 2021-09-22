@@ -126,7 +126,7 @@ export async function startKubeDaemonHandler(argv: yargs.Arguments<tunnelArgs>, 
                         stdio: 'inherit'
                     });
                 } else {
-                    spawn('kill', ['-9', daemonProcess.pid], {
+                    spawn('pkill', ['-P', daemonProcess.pid], {
                         cwd: process.cwd(),
                         shell: true,
                         detached: true,

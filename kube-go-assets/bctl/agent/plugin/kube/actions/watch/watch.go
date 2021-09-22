@@ -15,7 +15,7 @@ import (
 )
 
 type WatchAction struct {
-	RequestId           string
+	requestId           string
 	serviceAccountToken string
 	kubeHost            string
 	impersonateGroup    string
@@ -54,7 +54,6 @@ func (l *WatchAction) Closed() bool {
 }
 
 func (l *WatchAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	// TODO: Check request ID matches from startwatch
 	switch WatchSubAction(action) {
 
 	// Start exec message required before anything else
@@ -66,8 +65,22 @@ func (l *WatchAction) InputMessageHandler(action string, actionPayload []byte) (
 			return action, []byte{}, rerr
 		}
 
+		l.requestId = watchActionRequest.RequestId
+
 		return l.StartWatch(watchActionRequest, action)
 	case WatchStop:
+
+		var watchActionRequest KubeWatchActionPayload
+		if err := json.Unmarshal(actionPayload, &watchActionRequest); err != nil {
+			rerr := fmt.Errorf("malformed Kube Watch Action payload %v", actionPayload)
+			l.logger.Error(rerr)
+			return action, []byte{}, rerr
+		}
+
+		if err := l.validateRequestId(watchActionRequest.RequestId); err != nil {
+			return "", []byte{}, err
+		}
+
 		l.logger.Info("Stopping Watch Action")
 		l.doneChannel <- true
 		l.closed = true
@@ -77,6 +90,15 @@ func (l *WatchAction) InputMessageHandler(action string, actionPayload []byte) (
 		l.logger.Error(rerr)
 		return "", []byte{}, rerr
 	}
+}
+
+func (l *WatchAction) validateRequestId(requestId string) error {
+	if requestId != l.requestId {
+		rerr := fmt.Errorf("invalid request ID passed")
+		l.logger.Error(rerr)
+		return rerr
+	}
+	return nil
 }
 
 func (w *WatchAction) StartWatch(watchActionRequest KubeWatchActionPayload, action string) (string, []byte, error) {

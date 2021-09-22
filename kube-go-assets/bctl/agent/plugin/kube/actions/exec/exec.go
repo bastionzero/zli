@@ -34,6 +34,7 @@ type ExecAction struct {
 	impersonateGroup    string
 	role                string
 	logId               string
+	requestId           string
 	closed              bool
 	logger              *lggr.Logger
 	ctx                 context.Context
@@ -86,6 +87,7 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 		}
 
 		e.logId = startExecRequest.LogId
+		e.requestId = startExecRequest.RequestId
 		return e.StartExec(startExecRequest)
 
 	case ExecInput:
@@ -94,6 +96,10 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 			rerr := fmt.Errorf("error unmarshaling stdin: %s", err)
 			e.logger.Error(rerr)
 			return "", []byte{}, rerr
+		}
+
+		if err := e.validateRequestId(execInputAction.RequestId); err != nil {
+			return "", []byte{}, err
 		}
 
 		e.execStdinChannel <- execInputAction.Stdin
@@ -107,6 +113,10 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 			return "", []byte{}, rerr
 		}
 
+		if err := e.validateRequestId(execResizeAction.RequestId); err != nil {
+			return "", []byte{}, err
+		}
+
 		e.execResizeChannel <- execResizeAction
 		return string(ExecResize), []byte{}, nil
 
@@ -115,6 +125,15 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 		e.logger.Error(rerr)
 		return "", []byte{}, rerr
 	}
+}
+
+func (e *ExecAction) validateRequestId(requestId string) error {
+	if requestId != e.requestId {
+		rerr := fmt.Errorf("invalid request ID passed")
+		e.logger.Error(rerr)
+		return rerr
+	}
+	return nil
 }
 
 func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (string, []byte, error) {
