@@ -212,7 +212,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	tokensSplit := strings.Split(tokenToValidate, securityTokenDelimiter)
 	if tokensSplit[0] != k.localhostToken {
 		w.WriteHeader(http.StatusInternalServerError)
-		msg := "Localhost token did not validate. Ensure you are using the right Kube config file!"
+		msg := "localhost token did not validate. Ensure you are using the right Kube config file"
 		w.Write([]byte(msg))
 		k.logger.Error(errors.New(msg))
 		return
@@ -231,13 +231,6 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 
 	// Always generate requestId
 	requestId := generateRequestId()
-
-	watch, ok := r.URL.Query()["watch"]
-	if ok {
-		test := isWatchRequest(r)
-		watchEqual := (watch[0] != "true" || watch[0] != "1")
-		k.logger.Info(fmt.Sprintf("HERE: %s - %s - %s - %s", watch[0], watchEqual, test, r.URL.String()))
-	}
 
 	if strings.HasSuffix(r.URL.Path, "/exec") {
 		subLogger := k.logger.GetActionLogger(string(Exec))

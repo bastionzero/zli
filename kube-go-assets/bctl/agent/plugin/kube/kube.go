@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -134,20 +135,18 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		switch KubeAction(kubeAction) {
 		case RestApi:
 			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
-			break
 		case Exec:
 			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
-			break
 		case Log:
 			a, err = logaction.NewLogAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
-			break
 		case Watch:
 			a, err = watchaction.NewWatchAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
-			break
-			// TODO: Add default where we set err to something
+		default:
+			msg := fmt.Sprintf("unhandled kubeAction: %s", kubeAction)
+			err = errors.New(msg)
 		}
 		if err != nil {
 			rerr := fmt.Errorf("could not start new action object: %s", err)
