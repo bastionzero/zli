@@ -1,8 +1,8 @@
-package logs
+package watch
 
-// For "kube/log/..." actions
+// For "kube/watch/.." actions
 
-type KubeLogsActionPayload struct {
+type KubeWatchActionPayload struct {
 	Endpoint  string            `json:"endpoint"`
 	Headers   map[string]string `json:"headers"`
 	Method    string            `json:"method"`

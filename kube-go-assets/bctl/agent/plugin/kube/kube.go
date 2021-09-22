@@ -12,6 +12,7 @@ import (
 	exec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
 	logaction "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
+	watchaction "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/watch"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -38,6 +39,7 @@ const (
 	Exec    KubeAction = "exec"
 	Log     KubeAction = "log"
 	RestApi KubeAction = "restapi"
+	Watch   KubeAction = "watch"
 )
 
 type KubePlugin struct {
@@ -110,12 +112,9 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		return "", []byte{}, fmt.Errorf("could not unmarshal json: %v", err.Error())
 	} else {
 		rid = justrid.RequestId
-
-		subLogger := k.logger.GetActionLogger(action)
-		subLogger.AddRequestId(rid)
 	}
 
-	// Interactive commands like exec and log need to be able to recieve multiple inputs, so we start them and track them
+	// Interactive commands like exec and log need to be able to receive multiple inputs, so we start them and track them
 	// and send any new messages with the same request ID to the existing action object
 	if act, ok := k.getActionsMap(rid); ok {
 		action, payload, err := act.InputMessageHandler(action, actionPayloadSafe)
@@ -131,15 +130,24 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		// Create an action object if we don't already have one for the incoming request id
 		var a IKubeAction
 		var err error
+
 		switch KubeAction(kubeAction) {
 		case RestApi:
 			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
+			break
 		case Exec:
 			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
+			break
 		case Log:
 			a, err = logaction.NewLogAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
+			break
+		case Watch:
+			a, err = watchaction.NewWatchAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+			k.updateActionsMap(a, rid) // save action for later input
+			break
+			// TODO: Add default where we set err to something
 		}
 		if err != nil {
 			rerr := fmt.Errorf("could not start new action object: %s", err)

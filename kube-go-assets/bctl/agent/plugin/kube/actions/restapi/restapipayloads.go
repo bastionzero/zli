@@ -7,7 +7,7 @@ type KubeRestApiActionPayload struct {
 	Headers         map[string]string `json:"headers"`
 	Method          string            `json:"method"`
 	Body            string            `json:"body"`
-	RequestId       string            `json:"requestIdentifier"`
+	RequestId       string            `json:"requestId"`
 	CommandBeingRun string            `json:"commandBeingRun"`
 	LogId           string            `json"logId"`
 }

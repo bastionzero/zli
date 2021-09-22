@@ -79,6 +79,10 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 				return "RequestLogDaemonToBastion", nil
 			case "kube/log/stop":
 				return "RequestLogDaemonToBastion", nil
+			case "kube/watch/start":
+				return "RequestWatchDaemonToBastion", nil
+			case "kube/watch/stop":
+				return "RequestWatchDaemonToBastion", nil
 			}
 		} else {
 			return "", fmt.Errorf("fail on expected payload: %v", payload["keysplittingPayload"])

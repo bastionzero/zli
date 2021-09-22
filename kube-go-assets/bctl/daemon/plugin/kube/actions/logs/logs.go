@@ -26,7 +26,6 @@ type LogsAction struct {
 	logId                 string
 	ksResponseChannel     chan plgn.ActionWrapper
 	RequestChannel        chan plgn.ActionWrapper
-	writer                http.ResponseWriter
 	streamResponseChannel chan smsg.StreamMessage
 	logger                *lggr.Logger
 	ctx                   context.Context
@@ -50,23 +49,14 @@ func NewLogAction(ctx context.Context,
 }
 
 func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
-	// Set this so that we know how to write the response when we get it later
-	r.writer = writer
-
 	// First extract the headers out of the request
-	headers := make(map[string]string)
-	for name, values := range request.Header {
-		for _, value := range values {
-			headers[name] = value
-		}
-	}
+	headers := getHeaders(request.Header)
 
 	// Now extract the body
-	bodyInBytes, err := ioutil.ReadAll(request.Body)
+	bodyInBytes, err := getBodyBytes(request.Body)
 	if err != nil {
-		rerr := fmt.Errorf("error building body: %s", err)
-		r.logger.Error(rerr)
-		return rerr
+		r.logger.Error(err)
+		return err
 	}
 
 	// Build the action payload
@@ -138,4 +128,25 @@ func (r *LogsAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (r *LogsAction) PushStreamResponse(message smsg.StreamMessage) {
 	r.streamResponseChannel <- message
+}
+
+// Helper function to extract headers from a http request
+func getHeaders(headers http.Header) map[string]string {
+	toReturn := make(map[string]string)
+	for name, values := range headers {
+		for _, value := range values {
+			toReturn[name] = value
+		}
+	}
+	return toReturn
+}
+
+// Helper function to extract the body of a http request
+func getBodyBytes(body io.ReadCloser) ([]byte, error) {
+	bodyInBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		rerr := fmt.Errorf("error building body: %s", err)
+		return nil, rerr
+	}
+	return bodyInBytes, nil
 }
