@@ -135,11 +135,9 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		switch KubeAction(kubeAction) {
 		case RestApi:
 			a, err = rest.NewRestApiAction(subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role)
-			break
 		case Exec:
 			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
-			break
 		case Log:
 			a, err = logaction.NewLogAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
