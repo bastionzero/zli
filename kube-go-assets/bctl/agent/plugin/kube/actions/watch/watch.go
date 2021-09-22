@@ -54,7 +54,7 @@ func (l *WatchAction) Closed() bool {
 }
 
 func (l *WatchAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	// TODO: Check request ID matches from startlog
+	// TODO: Check request ID matches from startwatch
 	switch WatchSubAction(action) {
 
 	// Start exec message required before anything else
@@ -132,7 +132,7 @@ func (w *WatchAction) StartWatch(watchActionRequest KubeWatchActionPayload, acti
 	}
 	w.streamOutputChannel <- message
 
-	buf := make([]byte, 1024*10)
+	buf := make([]byte, WatchBufferSize)
 
 	go func() {
 		for {

@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 
 	kuberest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -51,10 +50,10 @@ func NewRestApiAction(ctx context.Context,
 
 func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
 	// First extract the headers out of the request
-	headers := getHeaders(request.Header)
+	headers := kubeutils.GetHeaders(request.Header)
 
 	// Now extract the body
-	bodyInBytes, err := getBodyBytes(request.Body)
+	bodyInBytes, err := kubeutils.GetBodyBytes(request.Body)
 	if err != nil {
 		r.logger.Error(err)
 		return err
@@ -115,25 +114,4 @@ func (r *RestApiAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (r *RestApiAction) PushStreamResponse(message smsg.StreamMessage) {
 	r.streamResponseChannel <- message
-}
-
-// Helper function to extract headers from a http request
-func getHeaders(headers http.Header) map[string]string {
-	toReturn := make(map[string]string)
-	for name, values := range headers {
-		for _, value := range values {
-			toReturn[name] = value
-		}
-	}
-	return toReturn
-}
-
-// Helper function to extract the body of a http request
-func getBodyBytes(body io.ReadCloser) ([]byte, error) {
-	bodyInBytes, err := ioutil.ReadAll(body)
-	if err != nil {
-		rerr := fmt.Errorf("error building body: %s", err)
-		return nil, rerr
-	}
-	return bodyInBytes, nil
 }

@@ -2,6 +2,10 @@ package watch
 
 // For "kube/watch/.." actions
 
+const (
+	WatchBufferSize = 1024 * 10
+)
+
 type KubeWatchActionPayload struct {
 	Endpoint  string            `json:"endpoint"`
 	Headers   map[string]string `json:"headers"`

@@ -8,7 +8,7 @@ import (
 )
 
 // Helper function to extract headers from a http request
-func getHeaders(headers http.Header) map[string]string {
+func GetHeaders(headers http.Header) map[string]string {
 	toReturn := make(map[string]string)
 	for name, values := range headers {
 		for _, value := range values {
@@ -19,7 +19,7 @@ func getHeaders(headers http.Header) map[string]string {
 }
 
 // Helper function to extract the body of a http request
-func getBodyBytes(body io.ReadCloser) ([]byte, error) {
+func GetBodyBytes(body io.ReadCloser) ([]byte, error) {
 	bodyInBytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		rerr := fmt.Errorf("error building body: %s", err)

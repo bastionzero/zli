@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	kubewatch "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/watch"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -50,10 +50,10 @@ func NewWatchAction(ctx context.Context,
 
 func (w *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
 	// First extract the headers out of the request
-	headers := getHeaders(request.Header)
+	headers := kubeutils.GetHeaders(request.Header)
 
 	// Now extract the body
-	bodyInBytes, err := getBodyBytes(request.Body)
+	bodyInBytes, err := kubeutils.GetBodyBytes(request.Body)
 	if err != nil {
 		w.logger.Error(err)
 		return err
@@ -77,7 +77,7 @@ func (w *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *h
 	}
 
 	// Wait for our initial message to determine what headers to use
-	earlyMessages := make([][]byte, 1024*10)
+	earlyMessages := make([][]byte, kubewatch.WatchBufferSize)
 	earlyMessageNumber := 0
 earlyMessageHandler:
 	for {
@@ -108,17 +108,9 @@ earlyMessageHandler:
 
 	// If there are any early messages, stream them first
 	for _, earlyMessage := range earlyMessages {
-		src := bytes.NewReader(earlyMessage)
-		_, err = io.Copy(writer, src)
+		err := w.writeToHttpRequest(earlyMessage, writer)
 		if err != nil {
-			rerr := fmt.Errorf("error streaming the watch to kubectl: %s", err)
-			w.logger.Error(rerr)
-			break
-		}
-		// This is required to flush the data to the client
-		flush, ok := writer.(http.Flusher)
-		if ok {
-			flush.Flush()
+			return nil
 		}
 	}
 
@@ -152,17 +144,9 @@ earlyMessageHandler:
 		case watchData := <-w.streamResponseChannel:
 			// Then stream the response to kubectl
 			contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
-			src := bytes.NewReader(contentBytes)
-			_, err = io.Copy(writer, src)
+			err := w.writeToHttpRequest(contentBytes, writer)
 			if err != nil {
-				rerr := fmt.Errorf("error streaming the watch to kubectl: %s", err)
-				w.logger.Error(rerr)
-				break
-			}
-			// This is required to flush the data to the client
-			flush, ok := writer.(http.Flusher)
-			if ok {
-				flush.Flush()
+				return nil
 			}
 		}
 	}
@@ -176,23 +160,19 @@ func (w *WatchAction) PushStreamResponse(message smsg.StreamMessage) {
 	w.streamResponseChannel <- message
 }
 
-// Helper function to extract headers from a http request
-func getHeaders(headers http.Header) map[string]string {
-	toReturn := make(map[string]string)
-	for name, values := range headers {
-		for _, value := range values {
-			toReturn[name] = value
-		}
-	}
-	return toReturn
-}
-
-// Helper function to extract the body of a http request
-func getBodyBytes(body io.ReadCloser) ([]byte, error) {
-	bodyInBytes, err := ioutil.ReadAll(body)
+func (w *WatchAction) writeToHttpRequest(contentBytes []byte, writer http.ResponseWriter) error {
+	src := bytes.NewReader(contentBytes)
+	_, err := io.Copy(writer, src)
 	if err != nil {
-		rerr := fmt.Errorf("error building body: %s", err)
-		return nil, rerr
+		rerr := fmt.Errorf("error streaming the watch to kubectl: %s", err)
+		w.logger.Error(rerr)
+		return rerr
 	}
-	return bodyInBytes, nil
+	// This is required to flush the data to the client
+	flush, ok := writer.(http.Flusher)
+	if ok {
+		flush.Flush()
+	}
+
+	return nil
 }
