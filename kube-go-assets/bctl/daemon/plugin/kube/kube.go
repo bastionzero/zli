@@ -242,7 +242,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Exec call: %s", err))
 		}
-	} else if (strings.HasSuffix(r.URL.Path, "/log") && isLogFollowRequest(r)) || isWatchRequest(r) {
+	} else if isStreamRequest(r) {
 		subLogger := k.logger.GetActionLogger(string(Stream))
 		subLogger.AddRequestId(requestId)
 
@@ -267,6 +267,10 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 			k.logger.Error(fmt.Errorf("error handling REST API call: %s", err))
 		}
 	}
+}
+
+func isStreamRequest(request *http.Request) bool {
+	return (strings.HasSuffix(request.URL.Path, "/log") && isLogFollowRequest(request)) || isWatchRequest(request)
 }
 
 func isLogFollowRequest(request *http.Request) bool {
