@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 
+	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 )
@@ -93,10 +94,9 @@ func (l *WatchAction) InputMessageHandler(action string, actionPayload []byte) (
 }
 
 func (l *WatchAction) validateRequestId(requestId string) error {
-	if requestId != l.requestId {
-		rerr := fmt.Errorf("invalid request ID passed")
-		l.logger.Error(rerr)
-		return rerr
+	if err := kubeutils.ValidateRequestId(requestId, l.requestId); err != nil {
+		l.logger.Error(err)
+		return err
 	}
 	return nil
 }

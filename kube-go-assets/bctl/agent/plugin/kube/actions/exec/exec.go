@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
+	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
 	stdin "bastionzero.com/bctl/v1/bzerolib/stream/stdreader"
@@ -128,10 +129,9 @@ func (e *ExecAction) InputMessageHandler(action string, actionPayload []byte) (s
 }
 
 func (e *ExecAction) validateRequestId(requestId string) error {
-	if requestId != e.requestId {
-		rerr := fmt.Errorf("invalid request ID passed")
-		e.logger.Error(rerr)
-		return rerr
+	if err := kubeutils.ValidateRequestId(requestId, e.requestId); err != nil {
+		e.logger.Error(err)
+		return err
 	}
 	return nil
 }
