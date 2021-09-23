@@ -133,6 +133,10 @@ export class QuickstartSsmService {
         const sshConfig = registrableSSHHost.host.config;
         const hostName = registrableSSHHost.host.sshHost.name;
 
+        // Timeout the ssh connection handshake after 20s and dont retry
+        sshConfig.readyTimeout = 20 * 1000;
+        sshConfig.reconnect = false;
+
         // Start SSH connection
         const ssh = new SSHConnection(sshConfig);
         let conn: SSHConnection;
