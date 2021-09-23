@@ -80,6 +80,6 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	return action, responsePayloadBytes, nil
 }
 
-func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string]string) *http.Request {
+func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {
 	return kubeutils.BuildHttpRequest(r.kubeHost, endpoint, body, method, headers, r.serviceAccountToken, r.role, r.impersonateGroup)
 }

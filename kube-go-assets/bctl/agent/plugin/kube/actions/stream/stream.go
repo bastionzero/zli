@@ -192,6 +192,6 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 	return action, []byte{}, nil
 }
 
-func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string]string) *http.Request {
+func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string][]string) *http.Request {
 	return kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.role, s.impersonateGroup)
 }

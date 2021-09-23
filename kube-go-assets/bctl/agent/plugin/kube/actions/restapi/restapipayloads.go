@@ -3,13 +3,13 @@ package restapi
 // For "kube/restapi" actions
 
 type KubeRestApiActionPayload struct {
-	Endpoint        string            `json:"endpoint"`
-	Headers         map[string]string `json:"headers"`
-	Method          string            `json:"method"`
-	Body            string            `json:"body"`
-	RequestId       string            `json:"requestId"`
-	CommandBeingRun string            `json:"commandBeingRun"`
-	LogId           string            `json:"logId"`
+	Endpoint        string              `json:"endpoint"`
+	Headers         map[string][]string `json:"headers"`
+	Method          string              `json:"method"`
+	Body            string              `json:"body"`
+	RequestId       string              `json:"requestId"`
+	CommandBeingRun string              `json:"commandBeingRun"`
+	LogId           string              `json:"logId"`
 }
 
 type KubeRestApiActionResponsePayload struct {

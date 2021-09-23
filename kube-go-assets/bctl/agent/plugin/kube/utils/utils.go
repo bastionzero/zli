@@ -15,7 +15,7 @@ func ValidateRequestId(requestIdPassed string, requestIdSaved string) error {
 	return nil
 }
 
-func BuildHttpRequest(kubeHost string, endpoint string, body string, method string, headers map[string]string, serviceAccountToken string, impersonateUser string, impersonateGroup string) *http.Request {
+func BuildHttpRequest(kubeHost string, endpoint string, body string, method string, headers map[string][]string, serviceAccountToken string, impersonateUser string, impersonateGroup string) *http.Request {
 	// Perform the api request
 	kubeApiUrl := kubeHost + endpoint
 	bodyBytesReader := bytes.NewReader([]byte(body))
@@ -24,7 +24,9 @@ func BuildHttpRequest(kubeHost string, endpoint string, body string, method stri
 	// Add any headers
 	for name, values := range headers {
 		// Loop over all values for the name.
-		req.Header.Set(name, values)
+		for _, value := range values {
+			req.Header.Set(name, value)
+		}
 	}
 
 	// Add our impersonation and token headers

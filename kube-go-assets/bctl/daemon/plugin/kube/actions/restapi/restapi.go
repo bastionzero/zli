@@ -87,9 +87,11 @@ func (r *RestApiAction) InputMessageHandler(writer http.ResponseWriter, request 
 			return rerr
 		}
 
-		for name, value := range apiResponse.Headers {
-			if name != "Content-Length" {
-				writer.Header().Set(name, value)
+		for name, values := range apiResponse.Headers {
+			for _, value := range values {
+				if name != "Content-Length" {
+					writer.Header().Set(name, value)
+				}
 			}
 		}
 
