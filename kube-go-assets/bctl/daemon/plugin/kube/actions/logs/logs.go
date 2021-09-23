@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"net/http"
 
 	kubelogs "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/logs"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -77,7 +77,7 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	}
 
 	// Now subscribe to the response
-	// Keep this as a non-go function so we hold onto the http request
+	// Keep this as a non-go routine so we hold onto the http request
 	for {
 		select {
 		case <-r.ctx.Done():
@@ -106,17 +106,10 @@ func (r *LogsAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		case logData := <-r.streamResponseChannel:
 			// Then stream the response to kubectl
 			contentBytes, _ := base64.StdEncoding.DecodeString(logData.Content)
-			src := bytes.NewReader(contentBytes)
-			_, err = io.Copy(writer, src)
+			err := kubeutils.WriteToHttpRequest(contentBytes, writer)
 			if err != nil {
-				rerr := fmt.Errorf("error streaming the log to kubectl: %s", err)
-				r.logger.Error(rerr)
-				break
-			}
-			// This is required to flush the data to the client
-			flush, ok := writer.(http.Flusher)
-			if ok {
-				flush.Flush()
+				r.logger.Error(err)
+				return nil
 			}
 		}
 	}

@@ -1,12 +1,10 @@
 package logs
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	kubewatch "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/watch"
@@ -77,6 +75,8 @@ func (w *WatchAction) InputMessageHandler(writer http.ResponseWriter, request *h
 	}
 
 	// Wait for our initial message to determine what headers to use
+	// The first message that comes from the stream is our headers message, wait for it
+	// And keep any other messages that might come before
 	earlyMessages := make([][]byte, kubewatch.WatchBufferSize)
 	earlyMessageNumber := 0
 earlyMessageHandler:
@@ -97,7 +97,6 @@ earlyMessageHandler:
 				// This is our header message, loop and apply
 				for name, values := range kubewatchHeadersPayload.Headers {
 					for _, value := range values {
-						w.logger.Info(fmt.Sprintf("HERE: %s", value))
 						writer.Header().Set(name, value)
 					}
 				}
@@ -108,14 +107,14 @@ earlyMessageHandler:
 
 	// If there are any early messages, stream them first
 	for _, earlyMessage := range earlyMessages {
-		err := w.writeToHttpRequest(earlyMessage, writer)
+		err := kubeutils.WriteToHttpRequest(earlyMessage, writer)
 		if err != nil {
 			return nil
 		}
 	}
 
 	// Now subscribe to the response
-	// Keep this as a non-go function so we hold onto the http request
+	// Keep this as a non-go routine so we hold onto the http request
 	for {
 		select {
 		case <-w.ctx.Done():
@@ -144,8 +143,9 @@ earlyMessageHandler:
 		case watchData := <-w.streamResponseChannel:
 			// Then stream the response to kubectl
 			contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
-			err := w.writeToHttpRequest(contentBytes, writer)
+			err := kubeutils.WriteToHttpRequest(contentBytes, writer)
 			if err != nil {
+				w.logger.Error(err)
 				return nil
 			}
 		}
@@ -158,21 +158,4 @@ func (w *WatchAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (w *WatchAction) PushStreamResponse(message smsg.StreamMessage) {
 	w.streamResponseChannel <- message
-}
-
-func (w *WatchAction) writeToHttpRequest(contentBytes []byte, writer http.ResponseWriter) error {
-	src := bytes.NewReader(contentBytes)
-	_, err := io.Copy(writer, src)
-	if err != nil {
-		rerr := fmt.Errorf("error streaming the watch to kubectl: %s", err)
-		w.logger.Error(rerr)
-		return rerr
-	}
-	// This is required to flush the data to the client
-	flush, ok := writer.(http.Flusher)
-	if ok {
-		flush.Flush()
-	}
-
-	return nil
 }

@@ -141,9 +141,9 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 			case "kube/exec/stderr":
 				return "StderrClusterToBastion", nil
 			case "kube/log/stdout":
-				return "ResponseLogClusterToBastion", nil
+				return "ResponseHttpStreamClusterToBastion", nil
 			case "kube/watch/stdout":
-				return "ResponseWatchClusterToBastion", nil
+				return "ResponseHttpStreamClusterToBastion", nil
 			}
 		}
 	case wsmsg.Error:
