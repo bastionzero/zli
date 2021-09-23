@@ -761,7 +761,7 @@ export class QuickstartSsmService {
         // Parse sshConfig content to usable HostBlock types
         const SSHConfig = require('ssh-config');
         const config: [] = SSHConfig.parse(sshConfig);
-        const hostBlocks: SSHConfigHostBlock[] = config.filter((elem: any) => elem.param === 'Host');
+        const hostBlocks: SSHConfigHostBlock[] = config.filter((elem: any) => elem.param && elem.param.toLowerCase() === 'host');
 
         const seen: Map<string, boolean> = new Map();
         const validHosts: Map<string, ValidSSHHost> = new Map();
@@ -833,7 +833,7 @@ export class QuickstartSsmService {
     }
 
     private getSSHHostConfigValue(matchingParameter: string, hostConfig: SSHHostConfig[]): string | undefined {
-        const value = hostConfig.find(elem => elem.param === matchingParameter);
+        const value = hostConfig.find(elem => elem.param && elem.param.toLowerCase() === matchingParameter.toLowerCase());
         if (value === undefined) {
             return undefined;
         } else {
