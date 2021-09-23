@@ -284,7 +284,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 }
 
 func isLogFollowRequest(request *http.Request) bool {
-	// Determin if we are trying to follow the logs
+	// Determine if we are trying to follow the logs
 	follow, ok := request.URL.Query()["follow"]
 
 	// First check if we got any query returned
@@ -302,7 +302,7 @@ func isLogFollowRequest(request *http.Request) bool {
 }
 
 func isWatchRequest(request *http.Request) bool {
-	// Determin if we are trying to watch the resource
+	// Determine if we are trying to watch the resource
 	watch, ok := request.URL.Query()["watch"]
 
 	// First check if we got any query returned
