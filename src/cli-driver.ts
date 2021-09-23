@@ -199,7 +199,7 @@ export class CliDriver
                 const initLoggerResponse = initLoggerMiddleware(argv);
                 this.logger = initLoggerResponse.logger;
                 this.loggerConfigService = initLoggerResponse.loggerConfigService;
-            }, true)
+            })
             .middleware(async (argv) => {
                 const initResponse = await initMiddleware(argv, this.logger);
                 this.configService = initResponse.configService;
@@ -551,18 +551,23 @@ Command arguments key:
 
 Need help? https://cloud.bastionzero.com/support`)
             .fail((msg, err) => {
-                if (msg) {
-                    // msg is a failure message that yargs prints (e.g. error
-                    // thrown in check(), validation error such as mutually
-                    // exclusive flags)
-                    this.logger.error(msg);
+                if (this.logger) {
+                    if (msg) {
+                        this.logger.error(msg);
+                    }
+                    if (err) {
+                        this.logger.error(err.message);
+                        if (err.stack)
+                            this.logger.debug(err.stack);
+                    }
+                } else {
+                    if (msg) {
+                        console.error(msg);
+                    }
+                    if (err) {
+                        console.error(err.message);
+                    }
                 }
-                else if (err) {
-                    this.logger.error(err.message);
-                    if (err.stack)
-                        this.logger.debug(err.stack);
-                }
-                cleanExit(1, this.logger);
                 process.exit(1);
             })
             .argv; // returns argv of yargs

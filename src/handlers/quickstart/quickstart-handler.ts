@@ -10,10 +10,32 @@ import { PolicyService } from '../../services/policy/policy.service';
 import { connectHandler } from '../connect/connect.handler';
 import { readFile } from '../../utils';
 import { SsmTargetSummary } from '../../services/ssm-target/ssm-target.types';
-import { quickstartArgs } from './quickstart.command-builder';
+import { defaultSshConfigFilePath, quickstartArgs } from './quickstart.command-builder';
 
 import prompts from 'prompts';
 import yargs from 'yargs';
+import fs from 'fs';
+
+async function validateQuickstartArgs(argv: yargs.Arguments<quickstartArgs>) {
+    // OS check
+    if (process.platform === 'win32') {
+        throw new Error('Quickstart is not supported on Windows machines');
+    }
+
+    // Check sshConfigFile parameter
+    if (argv.sshConfigFile === undefined) {
+        // User did not pass in sshConfigFile parameter. Use default parameter
+        argv.sshConfigFile = defaultSshConfigFilePath;
+        if (!fs.existsSync(argv.sshConfigFile)) {
+            throw new Error(`Cannot read/access file at default path: ${argv.sshConfigFile}\nUse \`zli quickstart --sshConfigFile <filePath>\` to read a different file`);
+        }
+    } else {
+        // User passed in sshConfigFile
+        if (!fs.existsSync(argv.sshConfigFile)) {
+            throw new Error(`Cannot read/access file at path: ${argv.sshConfigFile}`);
+        }
+    }
+}
 
 export async function quickstartHandler(
     argv: yargs.Arguments<quickstartArgs>,
@@ -21,6 +43,8 @@ export async function quickstartHandler(
     configService: ConfigService,
     mixpanelService: MixpanelService,
 ) {
+    await validateQuickstartArgs(argv);
+
     const policyService = new PolicyService(configService, logger);
     const envService = new EnvironmentService(configService, logger);
     const quickstartService = new QuickstartSsmService(logger, configService, policyService, envService);
