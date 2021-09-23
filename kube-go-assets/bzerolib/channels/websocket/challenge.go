@@ -28,7 +28,11 @@ func newChallenge(orgId string, clusterName string, serviceUrl string, privateKe
 	response, err := http.Post("https://"+serviceUrl+challengeEndpoint, "application/json",
 		bytes.NewBuffer(challengeJson))
 	if err != nil || response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error making post request to challenge agent. Error: %s. Response: %s", err, response)
+		// If the status code is unauthorized, retrun an unauth error, error just a generic one
+		if response.StatusCode == http.StatusInternalServerError {
+			return "", fmt.Errorf("500")
+		}
+		return "", fmt.Errorf("Error making post request to challenge agent. Error: %s. Response: %d", err, response.StatusCode)
 	}
 	defer response.Body.Close()
 

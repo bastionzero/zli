@@ -241,6 +241,12 @@ func (w *Websocket) Connect() {
 			if err != nil {
 				w.logger.Error(fmt.Errorf("error in getting challenge: %s", err))
 
+				// If its a 500 error, this means Bastion has rejected this request
+				if err.Error() == "500" {
+					w.logger.Error(fmt.Errorf("received 500 response on getting challenge. Sleeping forever"))
+					select {}
+				}
+
 				// Sleep in between
 				w.logger.Info(fmt.Sprintf("Connecting failed! Sleeping for %d seconds before attempting again", sleepIntervalInSeconds))
 				continue
