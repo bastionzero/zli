@@ -76,13 +76,13 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 			case "kube/exec/resize":
 				return "ResizeTerminalDaemonToBastion", nil
 			case "kube/log/start":
-				return "RequestLogDaemonToBastion", nil
+				return "RequestHttpStreamDaemonToBastion", nil
 			case "kube/log/stop":
-				return "StopLogDaemonToBastion", nil
+				return "StopHttpStreamDaemonToBastion", nil
 			case "kube/watch/start":
-				return "RequestWatchDaemonToBastion", nil
+				return "RequestHttpStreamDaemonToBastion", nil
 			case "kube/watch/stop":
-				return "StopWatchDaemonToBastion", nil
+				return "StopHttpStreamDaemonToBastion", nil
 			}
 		} else {
 			return "", fmt.Errorf("fail on expected payload: %v", payload["keysplittingPayload"])
