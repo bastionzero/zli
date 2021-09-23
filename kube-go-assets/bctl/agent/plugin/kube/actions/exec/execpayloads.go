@@ -4,7 +4,8 @@ package exec
 type KubeExecStartActionPayload struct {
 	RequestId       string   `json:"requestId"`
 	LogId           string   `json:"logId"`
-	Command         []string `json:"command"` // what does this look like? Does it contain flags?
+	IsTty           bool     `json:"isTty"`
+	Command         []string `json:"command"`
 	Endpoint        string   `json:"endpoint"`
 	CommandBeingRun string   `json:"commandBeingRun"`
 }

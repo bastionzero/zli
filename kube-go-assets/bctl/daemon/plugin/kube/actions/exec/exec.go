@@ -53,8 +53,11 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 		return err
 	}
 
+	// Determine if this is tty
+	isTty := isTty(request)
+
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
-	r.RequestChannel <- wrapStartPayload(r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
+	r.RequestChannel <- wrapStartPayload(isTty, r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
 
 	// Set up a go function for stdout
 	go func() {
@@ -98,7 +101,8 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 	// Set up a go function for stdin
 	go func() {
-		buf := make([]byte, 16)
+		// Keep the buffer big incase we are passing data to the pod
+		buf := make([]byte, 1024*1024)
 		for {
 			select {
 			case <-r.ctx.Done():
@@ -116,29 +120,32 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 
 	}()
 
-	// Set up a go function for resize
-	go func() {
-		for {
-			select {
-			case <-r.ctx.Done():
-				return
-			default:
-				decoder := json.NewDecoder(spdy.resizeStream)
+	if isTty {
+		// Set up a go function for resize if we are running interactively
+		go func() {
+			for {
+				select {
+				case <-r.ctx.Done():
+					return
+				default:
+					decoder := json.NewDecoder(spdy.resizeStream)
 
-				size := TerminalSize{}
-				if err := decoder.Decode(&size); err != nil {
-					if err == io.EOF {
-						return
+					size := TerminalSize{}
+					if err := decoder.Decode(&size); err != nil {
+						if err == io.EOF {
+							return
+						} else {
+							r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
+						}
 					} else {
-						r.logger.Error(fmt.Errorf("error decoding resize message: %s", err))
+						// Emit this as a new resize event
+						r.RequestChannel <- wrapResizePayload(r.requestId, r.logId, size.Width, size.Height)
 					}
-				} else {
-					// Emit this as a new resize event
-					r.RequestChannel <- wrapResizePayload(r.requestId, r.logId, size.Width, size.Height)
 				}
 			}
-		}
-	}()
+		}()
+	}
+
 	return nil
 }
 
@@ -150,10 +157,29 @@ func (r *ExecAction) PushStreamResponse(stream smsg.StreamMessage) {
 	r.streamChannel <- stream
 }
 
-func wrapStartPayload(requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {
+func isTty(request *http.Request) bool {
+	// Determine if we are trying to watch the resource
+	tty, ok := request.URL.Query()["tty"]
+
+	// First check if we got any query returned
+	if !ok || len(tty[0]) < 1 {
+		return false
+	}
+
+	// Now check if watch is a valid value
+	if tty[0] == "true" || tty[0] == "1" {
+		return true
+	}
+
+	// Else return false
+	return false
+}
+
+func wrapStartPayload(isTty bool, requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {
 	payload := kubeexec.KubeExecStartActionPayload{
 		RequestId: requestId,
 		LogId:     logId,
+		IsTty:     isTty,
 		Command:   command,
 		Endpoint:  endpoint,
 	}

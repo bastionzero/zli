@@ -183,13 +183,21 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 	}()
 
 	go func() {
-		err := exec.Stream(remotecommand.StreamOptions{
-			Stdin:             stdinReader,
-			Stdout:            stdoutWriter,
-			Stderr:            stderrWriter,
-			TerminalSizeQueue: terminalSizeQueue,
-			Tty:               true, // TODO: We dont always want tty
-		})
+		if startExecRequest.IsTty {
+			err = exec.Stream(remotecommand.StreamOptions{
+				Stdin:             stdinReader,
+				Stdout:            stdoutWriter,
+				Stderr:            stderrWriter,
+				TerminalSizeQueue: terminalSizeQueue,
+				Tty:               true, // TODO: We dont always want tty
+			})
+		} else {
+			err = exec.Stream(remotecommand.StreamOptions{
+				Stdin:  stdinReader,
+				Stdout: stdoutWriter,
+				Stderr: stderrWriter,
+			})
+		}
 
 		// First check the error to bubble up to the user
 		if err != nil {
