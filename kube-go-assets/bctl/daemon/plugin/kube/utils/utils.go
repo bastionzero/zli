@@ -9,12 +9,10 @@ import (
 )
 
 // Helper function to extract headers from a http request
-func GetHeaders(headers http.Header) map[string]string {
-	toReturn := make(map[string]string)
+func GetHeaders(headers http.Header) map[string][]string {
+	toReturn := make(map[string][]string)
 	for name, values := range headers {
-		for _, value := range values {
-			toReturn[name] = value
-		}
+		toReturn[name] = values
 	}
 	return toReturn
 }

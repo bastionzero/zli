@@ -2,9 +2,7 @@ package stream
 
 import (
 	"bufio"
-	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -56,7 +54,6 @@ func (s *StreamAction) Closed() bool {
 }
 
 func (s *StreamAction) InputMessageHandler(action string, actionPayload []byte) (string, []byte, error) {
-	// TODO: Check request ID matches from startlog
 	switch StreamSubAction(action) {
 
 	// Start exec message required before anything else
@@ -103,30 +100,12 @@ func (s *StreamAction) validateRequestId(requestId string) error {
 }
 
 func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, action string) (string, []byte, error) {
-	// Perform the api request
-	httpClient := &http.Client{}
-	kubeApiUrl := s.kubeHost + streamActionRequest.Endpoint
-	bodyBytesReader := bytes.NewReader([]byte(streamActionRequest.Body))
-	req, _ := http.NewRequest(streamActionRequest.Method, kubeApiUrl, bodyBytesReader)
-
-	// Add any headers
-	for name, values := range streamActionRequest.Headers {
-		// Loop over all values for the name.
-		req.Header.Set(name, values)
-	}
-
-	// Add our impersonation and token headers
-	req.Header.Set("Authorization", "Bearer "+s.serviceAccountToken)
-	req.Header.Set("Impersonate-User", s.role)
-	req.Header.Set("Impersonate-Group", s.impersonateGroup)
+	// Build our request
+	s.logger.Info(fmt.Sprintf("Making request for %s", streamActionRequest.Endpoint))
+	req := s.buildHttpRequest(streamActionRequest.Endpoint, streamActionRequest.Body, streamActionRequest.Method, streamActionRequest.Headers)
 
 	// Make the request and wait for the body to close
-	s.logger.Info(fmt.Sprintf("Making request for %s", kubeApiUrl))
-
-	// TODO: Figure out a way around this
-	// CA certs can be found here /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
+	httpClient := &http.Client{}
 	res, err := httpClient.Do(req)
 	if err != nil {
 		rerr := fmt.Errorf("bad response to API request: %s", err)
@@ -213,4 +192,8 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 	}()
 
 	return action, []byte{}, nil
+}
+
+func (s *StreamAction) buildHttpRequest(endpoint, body, method string, headers map[string]string) *http.Request {
+	return kubeutils.BuildHttpRequest(s.kubeHost, endpoint, body, method, headers, s.serviceAccountToken, s.role, s.impersonateGroup)
 }

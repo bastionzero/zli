@@ -13,8 +13,8 @@ type KubeRestApiActionPayload struct {
 }
 
 type KubeRestApiActionResponsePayload struct {
-	StatusCode int               `json:"statusCode"`
-	RequestId  string            `json:"requestId"`
-	Headers    map[string]string `json:"headers"`
-	Content    []byte            `json:"content"`
+	StatusCode int                 `json:"statusCode"`
+	RequestId  string              `json:"requestId"`
+	Headers    map[string][]string `json:"headers"`
+	Content    []byte              `json:"content"`
 }

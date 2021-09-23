@@ -20,14 +20,17 @@ const (
 )
 
 type StreamAction struct {
-	requestId             string
-	logId                 string
-	ksResponseChannel     chan plgn.ActionWrapper
-	RequestChannel        chan plgn.ActionWrapper
-	streamResponseChannel chan smsg.StreamMessage
-	logger                *lggr.Logger
-	ctx                   context.Context
-	commandBeingRun       string
+	requestId              string
+	logId                  string
+	ksResponseChannel      chan plgn.ActionWrapper
+	RequestChannel         chan plgn.ActionWrapper
+	streamResponseChannel  chan smsg.StreamMessage
+	logger                 *lggr.Logger
+	ctx                    context.Context
+	commandBeingRun        string
+	expectedSequenceNumber int
+	earlyMessages          map[int]smsg.StreamMessage
+	writer                 http.ResponseWriter
 }
 
 func NewStreamAction(ctx context.Context,
@@ -46,10 +49,17 @@ func NewStreamAction(ctx context.Context,
 		logger:                logger,
 		ctx:                   ctx,
 		commandBeingRun:       commandBeingRun,
+
+		// Start at 1 since we wait for our headers message
+		expectedSequenceNumber: 1,
+		earlyMessages:          make(map[int]smsg.StreamMessage),
 	}, nil
 }
 
 func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *http.Request) error {
+	// Set our writer
+	s.writer = writer
+
 	// First extract the headers out of the request
 	headers := kubeutils.GetHeaders(request.Header)
 
@@ -81,7 +91,6 @@ func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *
 	// Wait for our initial message to determine what headers to use
 	// The first message that comes from the stream is our headers message, wait for it
 	// And keep any other messages that might come before
-	earlyMessages := make(map[int]smsg.StreamMessage)
 earlyMessageHandler:
 	for {
 		select {
@@ -91,13 +100,13 @@ earlyMessageHandler:
 			contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
 
 			// Attempt to decode contentBytes
-			var kubelogsHeadersPayload kubestream.KubeStreamHeadersPayload
-			if err := json.Unmarshal(contentBytes, &kubelogsHeadersPayload); err != nil {
+			var kubestreamHeadersPayload kubestream.KubeStreamHeadersPayload
+			if err := json.Unmarshal(contentBytes, &kubestreamHeadersPayload); err != nil {
 				// If we see an error this must be an early message
-				earlyMessages[watchData.SequenceNumber] = watchData
+				s.earlyMessages[watchData.SequenceNumber] = watchData
 			} else {
 				// This is our header message, loop and apply
-				for name, values := range kubelogsHeadersPayload.Headers {
+				for name, values := range kubestreamHeadersPayload.Headers {
 					for _, value := range values {
 						writer.Header().Set(name, value)
 					}
@@ -108,24 +117,7 @@ earlyMessageHandler:
 	}
 
 	// If there are any early messages, stream them first if the sequence number matches
-	// Start at 1 since we wait for our headers message
-	seqNumber := 1
-	for {
-		earlyMessageData, ok := earlyMessages[seqNumber]
-		for ok {
-			// If we have an early message, show it to the user
-			contentBytes, _ := base64.StdEncoding.DecodeString(earlyMessageData.Content)
-			err := kubeutils.WriteToHttpRequest(contentBytes, writer)
-			if err != nil {
-				return nil
-			}
-
-			// Increment the seqNumber and keep looking for more
-			seqNumber += 1
-			earlyMessageData, ok = earlyMessages[seqNumber]
-		}
-		break
-	}
+	s.handleAnyEarlyMessages()
 
 	// Now subscribe to the response
 	// Keep this as a non-go routine so we hold onto the http request
@@ -156,7 +148,7 @@ earlyMessageHandler:
 			return nil
 		case watchData := <-s.streamResponseChannel:
 			// Then stream the response to kubectl
-			if watchData.SequenceNumber == seqNumber {
+			if watchData.SequenceNumber == s.expectedSequenceNumber {
 				// If the incoming data is equal to the current expected seqNumber, show the user
 				contentBytes, _ := base64.StdEncoding.DecodeString(watchData.Content)
 				err := kubeutils.WriteToHttpRequest(contentBytes, writer)
@@ -166,22 +158,12 @@ earlyMessageHandler:
 				}
 
 				// Increment the seqNumber
-				seqNumber += 1
+				s.expectedSequenceNumber += 1
 
 				// See if we have any early messages for this seqNumber
-				earlyMessageData, ok := earlyMessages[seqNumber]
-				contentBytes, _ = base64.StdEncoding.DecodeString(earlyMessageData.Content)
-				for ok {
-					// If we do, keep displaying the ones we got early
-					err := kubeutils.WriteToHttpRequest(contentBytes, writer)
-					if err != nil {
-						return nil
-					}
-					seqNumber += 1
-					earlyMessageData, ok = earlyMessages[seqNumber]
-				}
+				s.handleAnyEarlyMessages()
 			} else {
-				earlyMessages[watchData.SequenceNumber] = watchData
+				s.earlyMessages[watchData.SequenceNumber] = watchData
 			}
 
 		}
@@ -194,4 +176,20 @@ func (s *StreamAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (s *StreamAction) PushStreamResponse(message smsg.StreamMessage) {
 	s.streamResponseChannel <- message
+}
+
+func (s *StreamAction) handleAnyEarlyMessages() {
+	earlyMessageData, ok := s.earlyMessages[s.expectedSequenceNumber]
+	for ok {
+		// If we have an early message, show it to the user
+		contentBytes, _ := base64.StdEncoding.DecodeString(earlyMessageData.Content)
+		err := kubeutils.WriteToHttpRequest(contentBytes, s.writer)
+		if err != nil {
+			return
+		}
+
+		// Increment the seqNumber and keep looking for more
+		s.expectedSequenceNumber += 1
+		earlyMessageData, ok = s.earlyMessages[s.expectedSequenceNumber]
+	}
 }

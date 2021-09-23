@@ -1,13 +1,12 @@
 package restapi
 
 import (
-	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	kubeutils "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 )
 
@@ -47,30 +46,11 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 		return action, []byte{}, rerr
 	}
 
-	// Perform the api request
+	// Build the request
+	r.logger.Info(fmt.Sprintf("Making request for %s", apiRequest.Endpoint))
+	req := r.buildHttpRequest(apiRequest.Endpoint, apiRequest.Body, apiRequest.Method, apiRequest.Headers)
+
 	httpClient := &http.Client{}
-	kubeApiUrl := r.kubeHost + apiRequest.Endpoint
-	bodyBytesReader := bytes.NewReader([]byte(apiRequest.Body))
-	req, _ := http.NewRequest(apiRequest.Method, kubeApiUrl, bodyBytesReader)
-
-	// Add any headers
-	for name, values := range apiRequest.Headers {
-		// Loop over all values for the name.
-		req.Header.Set(name, values)
-	}
-
-	// Add our impersonation and token headers
-	req.Header.Set("Authorization", "Bearer "+r.serviceAccountToken)
-	req.Header.Set("Impersonate-User", r.role)
-	req.Header.Set("Impersonate-Group", r.impersonateGroup)
-
-	// Make the request and wait for the body to close
-	r.logger.Info(fmt.Sprintf("Making request for %s", kubeApiUrl))
-
-	// TODO: Figure out a way around this
-	// CA certs can be found here /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
 	res, err := httpClient.Do(req)
 	if err != nil {
 		rerr := fmt.Errorf("bad response to API request: %s", err)
@@ -80,10 +60,9 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	defer res.Body.Close()
 
 	// Build the header response
-	header := make(map[string]string)
+	header := make(map[string][]string)
 	for key, value := range res.Header {
-		// TODO: This does not seem correct, we should add all headers even if they are dups
-		header[key] = value[0]
+		header[key] = value
 	}
 
 	// Parse out the body
@@ -99,4 +78,8 @@ func (r *RestApiAction) InputMessageHandler(action string, actionPayload []byte)
 	responsePayloadBytes, _ := json.Marshal(responsePayload)
 
 	return action, responsePayloadBytes, nil
+}
+
+func (r *RestApiAction) buildHttpRequest(endpoint, body, method string, headers map[string]string) *http.Request {
+	return kubeutils.BuildHttpRequest(r.kubeHost, endpoint, body, method, headers, r.serviceAccountToken, r.role, r.impersonateGroup)
 }
