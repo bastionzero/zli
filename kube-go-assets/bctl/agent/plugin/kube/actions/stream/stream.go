@@ -134,9 +134,8 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 	}
 	s.streamOutputChannel <- message
 
-	buf := make([]byte, 1024)
-
 	// Create our bufio object
+	buf := make([]byte, 1024)
 	br := bufio.NewReader(res.Body)
 
 	sequenceNumber := 1
@@ -149,7 +148,6 @@ func (s *StreamAction) StartStream(streamActionRequest KubeStreamActionPayload, 
 			default:
 				// Read into the buffer
 				numBytes, err := io.ReadFull(br, buf)
-				// numBytes, err := br.Read(buf, 1024)
 
 				// Check the errors
 				if err == io.EOF {
