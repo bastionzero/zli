@@ -11,9 +11,8 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
-	logaction "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/restapi"
-	watchaction "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/watch"
+	stream "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/stream"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -38,9 +37,8 @@ type KubeAction string
 
 const (
 	Exec    KubeAction = "exec"
-	Log     KubeAction = "log"
 	RestApi KubeAction = "restapi"
-	Watch   KubeAction = "watch"
+	Stream  KubeAction = "stream"
 )
 
 type KubePlugin struct {
@@ -138,11 +136,8 @@ func (k *KubePlugin) InputMessageHandler(action string, actionPayload []byte) (s
 		case Exec:
 			a, err = exec.NewExecAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
-		case Log:
-			a, err = logaction.NewLogAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
-			k.updateActionsMap(a, rid) // save action for later input
-		case Watch:
-			a, err = watchaction.NewWatchAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
+		case Stream:
+			a, err = stream.NewStreamAction(k.ctx, subLogger, k.serviceAccountToken, k.kubeHost, impersonateGroup, k.role, k.streamOutputChannel)
 			k.updateActionsMap(a, rid) // save action for later input
 		default:
 			msg := fmt.Sprintf("unhandled kubeAction: %s", kubeAction)

@@ -75,13 +75,9 @@ func targetSelectHandler(agentMessage wsmsg.AgentMessage) (string, error) {
 				return "StdinDaemonToBastion", nil
 			case "kube/exec/resize":
 				return "ResizeTerminalDaemonToBastion", nil
-			case "kube/log/start":
+			case "kube/stream/start":
 				return "RequestHttpStreamDaemonToBastion", nil
-			case "kube/log/stop":
-				return "StopHttpStreamDaemonToBastion", nil
-			case "kube/watch/start":
-				return "RequestHttpStreamDaemonToBastion", nil
-			case "kube/watch/stop":
+			case "kube/stream/stop":
 				return "StopHttpStreamDaemonToBastion", nil
 			}
 		} else {

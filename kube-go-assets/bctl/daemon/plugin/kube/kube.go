@@ -11,9 +11,8 @@ import (
 	"sync"
 
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
-	logaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/logs"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
-	watchaction "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/watch"
+	stream "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/stream"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -36,8 +35,7 @@ type KubeDaemonAction string
 
 const (
 	Exec    KubeDaemonAction = "exec"
-	Log     KubeDaemonAction = "log"
-	Watch   KubeDaemonAction = "watch"
+	Stream  KubeDaemonAction = "stream"
 	RestApi KubeDaemonAction = "restapi"
 )
 
@@ -244,29 +242,17 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		if err := execAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Exec call: %s", err))
 		}
-	} else if strings.HasSuffix(r.URL.Path, "/log") && isLogFollowRequest(r) {
-		subLogger := k.logger.GetActionLogger(string(Log))
+	} else if (strings.HasSuffix(r.URL.Path, "/log") && isLogFollowRequest(r)) || isWatchRequest(r) {
+		subLogger := k.logger.GetActionLogger(string(Stream))
 		subLogger.AddRequestId(requestId)
 
-		logAction, _ := logaction.NewLogAction(k.ctx, subLogger, requestId, logId, k.RequestChannel)
+		logAction, _ := stream.NewStreamAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
 
 		k.updateActionsMap(logAction, requestId)
 
-		k.logger.Info(fmt.Sprintf("Created Log action with requestId %v", requestId))
+		k.logger.Info(fmt.Sprintf("Created Stream action with requestId %v", requestId))
 		if err := logAction.InputMessageHandler(w, r); err != nil {
-			k.logger.Error(fmt.Errorf("error handling Logs call: %s", err))
-		}
-	} else if isWatchRequest(r) {
-		subLogger := k.logger.GetActionLogger(string(Watch))
-		subLogger.AddRequestId(requestId)
-
-		watchAction, _ := watchaction.NewWatchAction(k.ctx, subLogger, requestId, logId, k.RequestChannel)
-
-		k.updateActionsMap(watchAction, requestId)
-
-		k.logger.Info(fmt.Sprintf("Created Watch action with requestId %v", requestId))
-		if err := watchAction.InputMessageHandler(w, r); err != nil {
-			k.logger.Error(fmt.Errorf("error handling Watch call: %s", err))
+			k.logger.Error(fmt.Errorf("error handling Stream call: %s", err))
 		}
 	} else {
 		subLogger := k.logger.GetActionLogger(string(RestApi))

@@ -9,7 +9,7 @@ type KubeRestApiActionPayload struct {
 	Body            string            `json:"body"`
 	RequestId       string            `json:"requestId"`
 	CommandBeingRun string            `json:"commandBeingRun"`
-	LogId           string            `json"logId"`
+	LogId           string            `json:"logId"`
 }
 
 type KubeRestApiActionResponsePayload struct {

@@ -121,13 +121,9 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 					return "ResponseClusterToBastion", nil
 				case "kube/exec/resize":
 					return "ResponseClusterToBastion", nil
-				case "kube/log/start":
+				case "kube/stream/start":
 					return "ResponseClusterToBastion", nil
-				case "kube/log/stop":
-					return "ResponseClusterToBastion", nil
-				case "kube/watch/start":
-					return "ResponseClusterToBastion", nil
-				case "kube/watch/stop":
+				case "kube/stream/stop":
 					return "ResponseClusterToBastion", nil
 				}
 			}
@@ -140,9 +136,7 @@ func datachannelTargetSelectHandler(agentMessage wsmsg.AgentMessage) (string, er
 				return "StdoutClusterToBastion", nil
 			case "kube/exec/stderr":
 				return "StderrClusterToBastion", nil
-			case "kube/log/stdout":
-				return "ResponseHttpStreamClusterToBastion", nil
-			case "kube/watch/stdout":
+			case "kube/stream/stdout":
 				return "ResponseHttpStreamClusterToBastion", nil
 			}
 		}
