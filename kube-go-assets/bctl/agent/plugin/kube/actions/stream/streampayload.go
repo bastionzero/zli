@@ -8,7 +8,6 @@ type KubeStreamActionPayload struct {
 	Method          string              `json:"method"`
 	Body            string              `json:"body"`
 	RequestId       string              `json:"requestId"`
-	End             bool                `json:"end"`
 	LogId           string              `json:"logId"`
 	CommandBeingRun string              `json:"commandBeingRun"`
 }

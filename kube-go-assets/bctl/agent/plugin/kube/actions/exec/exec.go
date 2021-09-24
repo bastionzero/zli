@@ -189,7 +189,7 @@ func (e *ExecAction) StartExec(startExecRequest KubeExecStartActionPayload) (str
 				Stdout:            stdoutWriter,
 				Stderr:            stderrWriter,
 				TerminalSizeQueue: terminalSizeQueue,
-				Tty:               true, // TODO: We dont always want tty
+				Tty:               true,
 			})
 		} else {
 			err = exec.Stream(remotecommand.StreamOptions{

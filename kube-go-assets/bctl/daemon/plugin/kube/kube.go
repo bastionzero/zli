@@ -13,6 +13,7 @@ import (
 	exec "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/exec"
 	rest "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/restapi"
 	stream "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/actions/stream"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -246,12 +247,12 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 		subLogger := k.logger.GetActionLogger(string(Stream))
 		subLogger.AddRequestId(requestId)
 
-		logAction, _ := stream.NewStreamAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
+		streamAction, _ := stream.NewStreamAction(k.ctx, subLogger, requestId, logId, k.RequestChannel, commandBeingRun)
 
-		k.updateActionsMap(logAction, requestId)
+		k.updateActionsMap(streamAction, requestId)
 
 		k.logger.Info(fmt.Sprintf("Created Stream action with requestId %v", requestId))
-		if err := logAction.InputMessageHandler(w, r); err != nil {
+		if err := streamAction.InputMessageHandler(w, r); err != nil {
 			k.logger.Error(fmt.Errorf("error handling Stream call: %s", err))
 		}
 	} else {
@@ -270,43 +271,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 }
 
 func isStreamRequest(request *http.Request) bool {
-	return (strings.HasSuffix(request.URL.Path, "/log") && isLogFollowRequest(request)) || isWatchRequest(request)
-}
-
-func isLogFollowRequest(request *http.Request) bool {
-	// Determine if we are trying to follow the logs
-	follow, ok := request.URL.Query()["follow"]
-
-	// First check if we got any query returned
-	if !ok || len(follow[0]) < 1 {
-		return false
-	}
-
-	// Now check if follow is a valid value
-	if follow[0] == "true" || follow[0] == "1" {
-		return true
-	}
-
-	// Else return false
-	return false
-}
-
-func isWatchRequest(request *http.Request) bool {
-	// Determine if we are trying to watch the resource
-	watch, ok := request.URL.Query()["watch"]
-
-	// First check if we got any query returned
-	if !ok || len(watch[0]) < 1 {
-		return false
-	}
-
-	// Now check if watch is a valid value
-	if watch[0] == "true" || watch[0] == "1" {
-		return true
-	}
-
-	// Else return false
-	return false
+	return (strings.HasSuffix(request.URL.Path, "/log") && kubeutils.IsQueryParamPresent(request, "follow")) || kubeutils.IsQueryParamPresent(request, "watch")
 }
 
 func (k *KubeDaemonPlugin) updateActionsMap(newAction IKubeDaemonAction, id string) {

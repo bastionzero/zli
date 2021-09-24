@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	kubeexec "bastionzero.com/bctl/v1/bctl/agent/plugin/kube/actions/exec"
+	kubeutils "bastionzero.com/bctl/v1/bctl/daemon/plugin/kube/utils"
 	lggr "bastionzero.com/bctl/v1/bzerolib/logger"
 	plgn "bastionzero.com/bctl/v1/bzerolib/plugin"
 	smsg "bastionzero.com/bctl/v1/bzerolib/stream/message"
@@ -54,7 +55,7 @@ func (r *ExecAction) InputMessageHandler(writer http.ResponseWriter, request *ht
 	}
 
 	// Determine if this is tty
-	isTty := isTty(request)
+	isTty := kubeutils.IsQueryParamPresent(request, "tty")
 
 	// Now since we made our local connection to kubectl, initiate a connection with Bastion
 	r.RequestChannel <- wrapStartPayload(isTty, r.requestId, r.logId, request.URL.Query()["command"], request.URL.String())
@@ -155,24 +156,6 @@ func (r *ExecAction) PushKSResponse(wrappedAction plgn.ActionWrapper) {
 
 func (r *ExecAction) PushStreamResponse(stream smsg.StreamMessage) {
 	r.streamChannel <- stream
-}
-
-func isTty(request *http.Request) bool {
-	// Determine if we are trying to watch the resource
-	tty, ok := request.URL.Query()["tty"]
-
-	// First check if we got any query returned
-	if !ok || len(tty[0]) < 1 {
-		return false
-	}
-
-	// Now check if watch is a valid value
-	if tty[0] == "true" || tty[0] == "1" {
-		return true
-	}
-
-	// Else return false
-	return false
 }
 
 func wrapStartPayload(isTty bool, requestId string, logId string, command []string, endpoint string) plgn.ActionWrapper {

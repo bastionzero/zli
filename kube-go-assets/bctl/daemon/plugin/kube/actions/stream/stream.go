@@ -29,7 +29,7 @@ type StreamAction struct {
 	ctx                    context.Context
 	commandBeingRun        string
 	expectedSequenceNumber int
-	earlyMessages          map[int]smsg.StreamMessage
+	outOfOrderMessages     map[int]smsg.StreamMessage
 	writer                 http.ResponseWriter
 }
 
@@ -52,7 +52,7 @@ func NewStreamAction(ctx context.Context,
 
 		// Start at 1 since we wait for our headers message
 		expectedSequenceNumber: 1,
-		earlyMessages:          make(map[int]smsg.StreamMessage),
+		outOfOrderMessages:     make(map[int]smsg.StreamMessage),
 	}, nil
 }
 
@@ -78,7 +78,6 @@ func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *
 		Body:            string(bodyInBytes), // fix this
 		RequestId:       s.requestId,
 		LogId:           s.logId,
-		End:             false,
 		CommandBeingRun: s.commandBeingRun,
 	}
 
@@ -91,7 +90,7 @@ func (s *StreamAction) InputMessageHandler(writer http.ResponseWriter, request *
 	// Wait for our initial message to determine what headers to use
 	// The first message that comes from the stream is our headers message, wait for it
 	// And keep any other messages that might come before
-earlyMessageHandler:
+outOfOrderMessageHandler:
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -103,7 +102,7 @@ earlyMessageHandler:
 			var kubestreamHeadersPayload kubestream.KubeStreamHeadersPayload
 			if err := json.Unmarshal(contentBytes, &kubestreamHeadersPayload); err != nil {
 				// If we see an error this must be an early message
-				s.earlyMessages[watchData.SequenceNumber] = watchData
+				s.outOfOrderMessages[watchData.SequenceNumber] = watchData
 			} else {
 				// This is our header message, loop and apply
 				for name, values := range kubestreamHeadersPayload.Headers {
@@ -111,13 +110,13 @@ earlyMessageHandler:
 						writer.Header().Set(name, value)
 					}
 				}
-				break earlyMessageHandler
+				break outOfOrderMessageHandler
 			}
 		}
 	}
 
 	// If there are any early messages, stream them first if the sequence number matches
-	s.handleAnyEarlyMessages()
+	s.handleOutOfOrderMessage()
 
 	// Now subscribe to the response
 	// Keep this as a non-go routine so we hold onto the http request
@@ -136,7 +135,6 @@ earlyMessageHandler:
 				Body:      string(bodyInBytes), // fix this
 				RequestId: s.requestId,
 				LogId:     s.logId,
-				End:       true,
 			}
 
 			payloadBytes, _ := json.Marshal(payload)
@@ -161,9 +159,9 @@ earlyMessageHandler:
 				s.expectedSequenceNumber += 1
 
 				// See if we have any early messages for this seqNumber
-				s.handleAnyEarlyMessages()
+				s.handleOutOfOrderMessage()
 			} else {
-				s.earlyMessages[watchData.SequenceNumber] = watchData
+				s.outOfOrderMessages[watchData.SequenceNumber] = watchData
 			}
 
 		}
@@ -178,11 +176,11 @@ func (s *StreamAction) PushStreamResponse(message smsg.StreamMessage) {
 	s.streamResponseChannel <- message
 }
 
-func (s *StreamAction) handleAnyEarlyMessages() {
-	earlyMessageData, ok := s.earlyMessages[s.expectedSequenceNumber]
+func (s *StreamAction) handleOutOfOrderMessage() {
+	outOfOrderMessageData, ok := s.outOfOrderMessages[s.expectedSequenceNumber]
 	for ok {
 		// If we have an early message, show it to the user
-		contentBytes, _ := base64.StdEncoding.DecodeString(earlyMessageData.Content)
+		contentBytes, _ := base64.StdEncoding.DecodeString(outOfOrderMessageData.Content)
 		err := kubeutils.WriteToHttpRequest(contentBytes, s.writer)
 		if err != nil {
 			return
@@ -190,6 +188,6 @@ func (s *StreamAction) handleAnyEarlyMessages() {
 
 		// Increment the seqNumber and keep looking for more
 		s.expectedSequenceNumber += 1
-		earlyMessageData, ok = s.earlyMessages[s.expectedSequenceNumber]
+		outOfOrderMessageData, ok = s.outOfOrderMessages[s.expectedSequenceNumber]
 	}
 }
