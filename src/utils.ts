@@ -465,3 +465,12 @@ export async function disambiguateTarget(
 export function readFile(filePath: string): Promise<string> {
     return util.promisify(fs.readFile)(filePath, 'utf8');
 }
+
+export async function getEnvironmentFromName(enviromentName: string, envs: EnvironmentDetails[], logger: Logger): Promise<EnvironmentDetails> {
+    const environment = envs.find(envDetails => envDetails.name == enviromentName);
+    if (!environment) {
+        logger.error(`Environment ${enviromentName} does not exist`);
+        await cleanExit(1, logger);
+    }
+    return environment;
+}

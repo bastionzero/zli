@@ -6,6 +6,7 @@ import { cleanExit } from '../clean-exit.handler';
 import { KubeService } from '../../services/kube/kube.service';
 import yargs from 'yargs';
 import { generateKubeArgs } from './generate-kube.command-builder';
+import { getEnvironmentFromName } from '../../../src/utils';
 
 const fs = require('fs');
 
@@ -38,21 +39,14 @@ export async function generateKubeYamlHandler(
     }
 
     // If environment has been passed, ensure it's a valid envId
-    if (argv.environmentId != null) {
-        let validEnv = false;
-        (await envs).forEach(env => {
-            if (env.id == argv.environmentId) {
-                validEnv = true;
-            }
-        });
-        if (validEnv == false) {
-            logger.error('The environment Id you passed is invalid.');
-            await cleanExit(1, logger);
-        }
+    let environmentId = null;
+    if (argv.environmentName != null) {
+        const environment = await getEnvironmentFromName(argv.environmentName, await envs, logger);
+        environmentId = environment.id;
     }
 
     // Get our kubeYaml
-    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labels, argv.namespace, argv.environmentId);
+    const kubeYaml = await kubeService.getKubeUnregisteredAgentYaml(argv.clusterName, labels, argv.namespace, environmentId);
 
     // Show it to the user or write to file
     if (outputFileArg) {

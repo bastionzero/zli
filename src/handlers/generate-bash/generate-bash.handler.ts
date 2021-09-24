@@ -4,10 +4,10 @@ import { Logger } from '../../services/logger/logger.service';
 import { ConfigService } from '../../services/config/config.service';
 import { EnvironmentDetails } from '../../services/environment/environment.types';
 import { getAutodiscoveryScript } from '../../services/auto-discovery-script/auto-discovery-script.service';
-import { cleanExit } from '../clean-exit.handler';
 import yargs from 'yargs';
 import { generateBashArgs } from './generate-bash.command-builder';
 import { TargetName } from '../../../webshell-common-ts/autodiscovery-script/autodiscovery-script.types';
+import { getEnvironmentFromName } from '../../../src/utils';
 
 export async function generateBashHandler(
     argv: yargs.Arguments<generateBashArgs>,
@@ -43,11 +43,7 @@ export async function generateBashHandler(
 
     // Ensure that environment name argument is valid
     const envs = await environments;
-    const environment = envs.find(envDetails => envDetails.name == argv.environment);
-    if (!environment) {
-        logger.error(`Environment ${argv.environment} does not exist`);
-        await cleanExit(1, logger);
-    }
+    const environment = await getEnvironmentFromName(argv.environment, envs, logger);
 
     const script = await getAutodiscoveryScript(logger, configService, environment.id, targetName, argv.os, argv.agentVersion);
 
