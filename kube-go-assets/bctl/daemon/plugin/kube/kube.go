@@ -231,7 +231,7 @@ func (k *KubeDaemonPlugin) rootCallback(w http.ResponseWriter, r *http.Request) 
 	// Always generate requestId
 	requestId := generateRequestId()
 
-	if strings.HasSuffix(r.URL.Path, "/exec") {
+	if strings.HasSuffix(r.URL.Path, "/exec") || strings.HasSuffix(r.URL.Path, "/attach") {
 		subLogger := k.logger.GetActionLogger(string(Exec))
 		subLogger.AddRequestId(requestId)
 
